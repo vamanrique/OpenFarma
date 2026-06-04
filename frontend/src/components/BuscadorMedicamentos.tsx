@@ -1,22 +1,22 @@
 import { useState } from 'react'
 import { medicamentosApi, type MedicamentoLive, type AlternativaLive } from '../api/client'
 
-const TIPO_FORMULA_LABEL: Record<string, { label: string; color: string }> = {
-  monocomponente:  { label: 'Mono',  color: 'bg-blue-100 text-blue-700' },
-  biconjugado:     { label: 'Bi',    color: 'bg-violet-100 text-violet-700' },
-  triconjugado:    { label: 'Tri',   color: 'bg-orange-100 text-orange-700' },
-  tetraconjugado:  { label: 'Tetra', color: 'bg-red-100 text-red-700' },
+const FORMULA_CFG: Record<string, { label: string; color: string }> = {
+  monocomponente: { label: 'Mono',  color: 'bg-blue-100 text-blue-700' },
+  biconjugado:    { label: 'Bi',    color: 'bg-violet-100 text-violet-700' },
+  triconjugado:   { label: 'Tri',   color: 'bg-orange-100 text-orange-700' },
+  tetraconjugado: { label: 'Tetra', color: 'bg-red-100 text-red-700' },
 }
 
-const TIPO_ALT_COLOR: Record<string, string> = {
-  MISMO_PRINCIPIO_ACTIVO:    'bg-green-100 text-green-800 border-green-200',
-  EQUIVALENTE_EXACTO:        'bg-blue-100 text-blue-800 border-blue-200',
-  EQUIVALENTE_CLASE:         'bg-indigo-100 text-indigo-800 border-indigo-200',
-  COMPONENTE_COMPARTIDO:     'bg-purple-100 text-purple-800 border-purple-200',
-  ALTERNATIVA_DIFERENTE_FORMA: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+const ALT_CFG: Record<string, { color: string; label: string }> = {
+  MISMO_PRINCIPIO_ACTIVO:      { color: 'bg-emerald-50 text-emerald-800 border-emerald-200',   label: 'Mismo principio activo (genérico / multifuente)' },
+  EQUIVALENTE_EXACTO:          { color: 'bg-blue-50 text-blue-800 border-blue-200',             label: 'Equivalente exacto (sales / ésteres)' },
+  EQUIVALENTE_CLASE:           { color: 'bg-indigo-50 text-indigo-800 border-indigo-200',       label: 'Equivalente terapéutico — misma clase ATC' },
+  COMPONENTE_COMPARTIDO:       { color: 'bg-purple-50 text-purple-800 border-purple-200',       label: 'Combinado con componente en común' },
+  ALTERNATIVA_DIFERENTE_FORMA: { color: 'bg-amber-50 text-amber-800 border-amber-200',          label: 'Alternativa terapéutica — diferente forma' },
 }
 
-const TIPO_ALT_ORDEN = [
+const ALT_ORDEN = [
   'MISMO_PRINCIPIO_ACTIVO',
   'EQUIVALENTE_EXACTO',
   'EQUIVALENTE_CLASE',
@@ -25,48 +25,52 @@ const TIPO_ALT_ORDEN = [
 ]
 
 function BadgeFormula({ tipo }: { tipo: string }) {
-  const cfg = TIPO_FORMULA_LABEL[tipo] ?? { label: tipo, color: 'bg-gray-100 text-gray-600' }
+  const cfg = FORMULA_CFG[tipo] ?? { label: tipo, color: 'bg-slate-100 text-slate-600' }
   return (
-    <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${cfg.color}`}>
+    <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${cfg.color}`}>
       {cfg.label}
     </span>
   )
 }
 
-function TagDCI({ dci }: { dci: string }) {
+function TagDCI({ dci, highlight }: { dci: string; highlight?: boolean }) {
   return (
-    <span className="text-xs bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-full">
+    <span className={`text-xs px-2 py-0.5 rounded-full border ${
+      highlight
+        ? 'bg-emerald-50 border-emerald-300 text-emerald-700 font-medium'
+        : 'bg-slate-100 border-slate-200 text-slate-600'
+    }`}>
       {dci}
     </span>
   )
 }
 
 function TarjetaMedicamento({
-  med,
-  onVerAlternativas,
-  activa,
+  med, onVer, activa,
 }: {
   med: MedicamentoLive
-  onVerAlternativas: (m: MedicamentoLive) => void
+  onVer: (m: MedicamentoLive) => void
   activa: boolean
 }) {
   return (
     <div
-      className={`bg-white border rounded-xl p-4 shadow-sm transition-all cursor-pointer ${
-        activa ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200 hover:border-blue-300'
+      onClick={() => onVer(med)}
+      className={`bg-white border rounded-xl p-4 cursor-pointer transition-all hover:shadow-sm ${
+        activa
+          ? 'border-blue-400 ring-2 ring-blue-100 shadow-sm'
+          : 'border-slate-200 hover:border-slate-300'
       }`}
-      onClick={() => onVerAlternativas(med)}
     >
       <div className="flex justify-between items-start gap-2 mb-2">
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-gray-900 truncate">{med.nombre_comercial}</p>
-          <p className="text-xs text-gray-400">{med.laboratorio}</p>
+        <div className="min-w-0">
+          <p className="font-semibold text-slate-900 truncate text-sm">{med.nombre_comercial}</p>
+          <p className="text-xs text-slate-400 truncate">{med.laboratorio}</p>
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
           <BadgeFormula tipo={med.tipo_formula} />
-          <span className={`text-xs px-2 py-0.5 rounded-full ${
+          <span className={`text-xs px-1.5 py-0.5 rounded-full ${
             med.estado_cum === 'Activo'
-              ? 'bg-green-100 text-green-700'
+              ? 'bg-emerald-100 text-emerald-700'
               : 'bg-red-100 text-red-600'
           }`}>
             {med.estado_cum}
@@ -74,120 +78,105 @@ function TarjetaMedicamento({
         </div>
       </div>
 
-      {/* Principios activos como tags */}
       <div className="flex flex-wrap gap-1 mb-2">
-        {med.principios_dci.map((dci, i) => (
-          <TagDCI key={i} dci={dci} />
-        ))}
+        {med.principios_dci.map((dci, i) => <TagDCI key={i} dci={dci} />)}
       </div>
 
-      <div className="text-xs text-gray-500 space-y-0.5">
+      <div className="text-xs text-slate-500 space-y-0.5">
         <p>{med.forma_farmaceutica} · {med.via_administracion}</p>
         {med.concentracion_display && (
-          <p className="text-gray-400 truncate" title={med.concentracion_display}>
+          <p className="text-slate-400 truncate" title={med.concentracion_display}>
             {med.concentracion_display}
           </p>
         )}
-        <p>ATC: <span className="font-mono">{med.atc}</span> — {med.descripcion_atc}</p>
+        <p className="text-slate-400">
+          ATC: <span className="font-mono text-slate-500">{med.atc}</span> · {med.descripcion_atc}
+        </p>
       </div>
     </div>
   )
 }
 
 function PanelAlternativas({
-  medicamento,
-  alternativas,
-  cargando,
-  error,
+  medicamento, alternativas, cargando, error,
 }: {
   medicamento: MedicamentoLive
   alternativas: AlternativaLive[]
   cargando: boolean
   error: string
 }) {
-  const porTipo = TIPO_ALT_ORDEN.reduce<Record<string, AlternativaLive[]>>((acc, t) => {
+  const porTipo = ALT_ORDEN.reduce<Record<string, AlternativaLive[]>>((acc, t) => {
     acc[t] = alternativas.filter(a => a.tipo === t)
     return acc
   }, {})
 
-  const TIPO_LABEL: Record<string, string> = {
-    MISMO_PRINCIPIO_ACTIVO: 'Mismo principio activo (genérico/multifuente)',
-    EQUIVALENTE_EXACTO: 'Equivalente farmacológico exacto (sales/ésteres)',
-    EQUIVALENTE_CLASE: 'Equivalente terapéutico — misma clase ATC',
-    COMPONENTE_COMPARTIDO: 'Combinado con componente en común',
-    ALTERNATIVA_DIFERENTE_FORMA: 'Alternativa terapéutica — diferente forma',
-  }
-
   return (
-    <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-      <div className="bg-blue-50 border-b border-blue-100 px-4 py-3">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-blue-900">{medicamento.nombre_comercial}</span>
+    <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+      {/* Panel header */}
+      <div className="bg-slate-50 border-b border-slate-200 px-4 py-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="font-semibold text-slate-900 text-sm">{medicamento.nombre_comercial}</p>
           <BadgeFormula tipo={medicamento.tipo_formula} />
         </div>
-        <div className="flex flex-wrap gap-1 mt-1">
+        <div className="flex flex-wrap gap-1 mt-1.5">
           {medicamento.principios_dci.map((dci, i) => <TagDCI key={i} dci={dci} />)}
         </div>
       </div>
 
       <div className="p-4">
         {cargando && (
-          <div className="text-center py-8 text-gray-400">
-            <div className="text-2xl mb-2">⏳</div>
-            <p>Consultando API online...</p>
+          <div className="py-10 text-center">
+            <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-xs text-slate-400 mt-2">Consultando API online...</p>
           </div>
         )}
         {error && <p className="text-red-500 text-sm">{error}</p>}
 
         {!cargando && !error && alternativas.length === 0 && (
-          <p className="text-gray-400 text-sm text-center py-4">
+          <p className="text-slate-400 text-sm text-center py-6">
             No se encontraron alternativas para este medicamento.
           </p>
         )}
 
-        {!cargando && TIPO_ALT_ORDEN.map(tipo => {
+        {!cargando && ALT_ORDEN.map(tipo => {
           const lista = porTipo[tipo]
           if (!lista?.length) return null
+          const cfg = ALT_CFG[tipo]
           return (
-            <div key={tipo} className="mb-5">
-              <h4 className={`text-xs font-semibold px-2 py-1 rounded border mb-2 ${TIPO_ALT_COLOR[tipo]}`}>
-                {TIPO_LABEL[tipo]} ({lista.length})
+            <div key={tipo} className="mb-5 last:mb-0">
+              <h4 className={`text-xs font-semibold px-2.5 py-1.5 rounded-lg border mb-2 ${cfg.color}`}>
+                {cfg.label} ({lista.length})
               </h4>
               <div className="space-y-2">
                 {lista.map((alt, i) => {
                   const dest = alt.medicamento_destino
                   return (
-                    <div key={i} className="border border-gray-100 rounded-lg p-3 bg-gray-50">
+                    <div key={i} className="border border-slate-100 rounded-lg p-3 bg-slate-50">
                       {dest ? (
                         <>
                           <div className="flex items-start justify-between gap-2">
-                            <p className="font-medium text-sm text-gray-900">{dest.nombre_comercial}</p>
+                            <p className="font-medium text-sm text-slate-900">{dest.nombre_comercial}</p>
                             <BadgeFormula tipo={dest.tipo_formula} />
                           </div>
-                          <div className="flex flex-wrap gap-1 my-1">
+                          <div className="flex flex-wrap gap-1 my-1.5">
                             {dest.principios_dci.map((dci, j) => (
-                              <span
+                              <TagDCI
                                 key={j}
-                                className={`text-xs px-1.5 py-0.5 rounded-full border ${
-                                  alt.componentes_compartidos.includes(dci)
-                                    ? 'bg-green-50 border-green-300 text-green-700 font-medium'
-                                    : 'bg-gray-100 border-gray-200 text-gray-500'
-                                }`}
-                              >
-                                {dci}
-                              </span>
+                                dci={dci}
+                                highlight={alt.componentes_compartidos.includes(dci)}
+                              />
                             ))}
                           </div>
-                          <p className="text-xs text-gray-400">
+                          <p className="text-xs text-slate-400">
                             {dest.forma_farmaceutica} · ATC {dest.atc} · {dest.laboratorio}
                           </p>
                         </>
                       ) : (
-                        <p className="text-xs text-gray-500">{alt.cum_destino}</p>
+                        <p className="text-xs text-slate-500 font-mono">{alt.cum_destino}</p>
                       )}
                       {alt.componentes_compartidos.length > 0 && (
-                        <p className="text-xs text-green-600 mt-1">
-                          Componente(s) en común: {alt.componentes_compartidos.join(', ')}
+                        <p className="text-xs text-emerald-600 mt-1.5 font-medium">
+                          Compartido: {alt.componentes_compartidos.join(', ')}
                         </p>
                       )}
                     </div>
@@ -207,6 +196,7 @@ export default function BuscadorMedicamentos() {
   const [resultados, setResultados] = useState<MedicamentoLive[]>([])
   const [buscando, setBuscando] = useState(false)
   const [errorBusq, setErrorBusq] = useState('')
+  const [hasBuscado, setHasBuscado] = useState(false)
 
   const [medSeleccionado, setMedSeleccionado] = useState<MedicamentoLive | null>(null)
   const [alternativas, setAlternativas] = useState<AlternativaLive[]>([])
@@ -219,11 +209,12 @@ export default function BuscadorMedicamentos() {
     setBuscando(true)
     setErrorBusq('')
     setMedSeleccionado(null)
+    setHasBuscado(true)
     try {
       const res = await medicamentosApi.buscar(query.trim(), true, 30)
       setResultados(res.data)
     } catch {
-      setErrorBusq('Error conectando con el servidor. Verifica que el backend esté activo.')
+      setErrorBusq('Error de conexión. Verifica que el backend esté activo.')
     } finally {
       setBuscando(false)
     }
@@ -244,7 +235,6 @@ export default function BuscadorMedicamentos() {
     }
   }
 
-  // Agrupar por tipo_formula para el resumen
   const stats = resultados.reduce<Record<string, number>>((acc, m) => {
     acc[m.tipo_formula] = (acc[m.tipo_formula] ?? 0) + 1
     return acc
@@ -252,68 +242,117 @@ export default function BuscadorMedicamentos() {
 
   return (
     <div className="space-y-4">
-      {/* Buscador */}
-      <form onSubmit={buscar} className="flex gap-2">
-        <input
-          type="text"
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          placeholder="Nombre comercial, principio activo, ATC o CUM..."
-          className="flex-1 border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-        />
-        <button
-          type="submit"
-          disabled={buscando}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-medium text-sm transition-colors disabled:opacity-50"
-        >
-          {buscando ? 'Buscando...' : 'Buscar'}
-        </button>
-      </form>
 
-      {errorBusq && <p className="text-red-500 text-sm">{errorBusq}</p>}
+      {/* Search bar */}
+      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+        <form onSubmit={buscar} className="flex gap-2">
+          <div className="relative flex-1">
+            <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607z" />
+            </svg>
+            <input
+              type="text"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Nombre comercial, principio activo o código ATC..."
+              className="w-full border border-slate-200 rounded-lg pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={buscando || query.trim().length < 2}
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors shrink-0"
+          >
+            {buscando ? 'Buscando...' : 'Buscar'}
+          </button>
+        </form>
 
-      {/* Resumen de resultados */}
-      {resultados.length > 0 && (
-        <div className="flex flex-wrap gap-2 items-center text-sm text-gray-500">
-          <span>{resultados.length} resultados</span>
-          {Object.entries(stats).map(([tipo, n]) => {
-            const cfg = TIPO_FORMULA_LABEL[tipo]
-            if (!cfg) return null
-            return (
-              <span key={tipo} className={`text-xs px-2 py-0.5 rounded font-medium ${cfg.color}`}>
-                {n} {tipo}
+        {errorBusq && <p className="text-red-500 text-sm mt-2">{errorBusq}</p>}
+
+        {resultados.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-100 items-center">
+            <span className="text-xs text-slate-500">{resultados.length} resultados</span>
+            {Object.entries(stats).map(([tipo, n]) => {
+              const cfg = FORMULA_CFG[tipo]
+              if (!cfg) return null
+              return (
+                <span key={tipo} className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.color}`}>
+                  {n} {tipo}
+                </span>
+              )
+            })}
+            {medSeleccionado && (
+              <span className="text-xs text-blue-600 ml-auto">
+                Mostrando alternativas de: <strong>{medSeleccionado.nombre_comercial}</strong>
               </span>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Layout de dos columnas */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Columna izquierda: resultados */}
-        <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
-          {resultados.map(med => (
-            <TarjetaMedicamento
-              key={med.cum_id}
-              med={med}
-              onVerAlternativas={verAlternativas}
-              activa={medSeleccionado?.cum_id === med.cum_id}
-            />
-          ))}
-        </div>
-
-        {/* Columna derecha: panel de alternativas */}
-        {medSeleccionado && (
-          <div className="max-h-[70vh] overflow-y-auto">
-            <PanelAlternativas
-              medicamento={medSeleccionado}
-              alternativas={alternativas}
-              cargando={cargandoAlt}
-              error={errorAlt}
-            />
+            )}
           </div>
         )}
       </div>
+
+      {/* Empty state */}
+      {!hasBuscado && (
+        <div className="bg-white border border-slate-200 rounded-xl py-14 text-center shadow-sm">
+          <svg className="w-10 h-10 text-slate-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0 1 12 15a9.065 9.065 0 0 1-6.23-.693L4.2 15.3m15.6 0 1.004 4.014A1.5 1.5 0 0 1 19.35 21H4.65a1.5 1.5 0 0 1-1.454-1.686L4.2 15.3" />
+          </svg>
+          <p className="text-sm font-medium text-slate-600">Busca un medicamento</p>
+          <p className="text-xs text-slate-400 mt-1">
+            Ingresa el nombre comercial, principio activo (DCI) o código ATC
+          </p>
+          <p className="text-xs text-slate-300 mt-3">
+            Datos en tiempo real desde INVIMA · datos.gov.co
+          </p>
+        </div>
+      )}
+
+      {/* Results grid */}
+      {hasBuscado && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="space-y-3 max-h-[68vh] overflow-y-auto pr-1">
+            {buscando && (
+              <div className="bg-white border border-slate-200 rounded-xl py-12 text-center">
+                <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                <p className="text-xs text-slate-400 mt-2">Consultando datos.gov.co...</p>
+              </div>
+            )}
+            {!buscando && resultados.length === 0 && (
+              <div className="bg-white border border-slate-200 rounded-xl py-12 text-center">
+                <p className="text-sm text-slate-500">Sin resultados para "{query}"</p>
+                <p className="text-xs text-slate-400 mt-1">Intenta con otro nombre o principio activo</p>
+              </div>
+            )}
+            {resultados.map(med => (
+              <TarjetaMedicamento
+                key={med.cum_id}
+                med={med}
+                onVer={verAlternativas}
+                activa={medSeleccionado?.cum_id === med.cum_id}
+              />
+            ))}
+          </div>
+
+          {medSeleccionado && (
+            <div className="max-h-[68vh] overflow-y-auto">
+              <PanelAlternativas
+                medicamento={medSeleccionado}
+                alternativas={alternativas}
+                cargando={cargandoAlt}
+                error={errorAlt}
+              />
+            </div>
+          )}
+
+          {!medSeleccionado && resultados.length > 0 && (
+            <div className="bg-white border border-dashed border-slate-300 rounded-xl flex items-center justify-center py-16 text-center hidden lg:flex">
+              <div>
+                <p className="text-sm text-slate-400">Selecciona un medicamento</p>
+                <p className="text-xs text-slate-300 mt-1">para ver sus alternativas terapéuticas</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

@@ -6,112 +6,144 @@ import FormularioReporte from './components/FormularioReporte'
 
 type Tab = 'busqueda' | 'mapa' | 'modelo' | 'reportes'
 
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'busqueda', label: 'Consulta',            icon: '💊' },
-  { id: 'mapa',    label: 'Mapa de Riesgo',       icon: '🗺️' },
-  { id: 'modelo',  label: 'Modelo Predictivo',    icon: '🤖' },
-  { id: 'reportes',label: 'Reportar',             icon: '⚠️' },
+function IconSearch() {
+  return (
+    <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607z" />
+    </svg>
+  )
+}
+function IconMap() {
+  return (
+    <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498 4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 0 0-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" />
+    </svg>
+  )
+}
+function IconChart() {
+  return (
+    <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75zm9.75-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.625c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.25zm9.75-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V20.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V3.375z" />
+    </svg>
+  )
+}
+function IconFlag() {
+  return (
+    <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5" />
+    </svg>
+  )
+}
+
+const TABS: { id: Tab; label: string; short: string; icon: React.ReactElement; meta: string }[] = [
+  {
+    id: 'busqueda',
+    label: 'Alternativas Farmacológicas',
+    short: 'Consulta',
+    icon: <IconSearch />,
+    meta: '65,420 medicamentos CUM · búsqueda en tiempo real',
+  },
+  {
+    id: 'mapa',
+    label: 'Mapa de Riesgo',
+    short: 'Mapa',
+    icon: <IconMap />,
+    meta: '33 departamentos · 200 medicamentos · predicciones ML',
+  },
+  {
+    id: 'modelo',
+    label: 'Modelo Predictivo',
+    short: 'Modelo',
+    icon: <IconChart />,
+    meta: 'Random Forest calibrado · ROC-AUC 0.79',
+  },
+  {
+    id: 'reportes',
+    label: 'Reportar No Disponibilidad',
+    short: 'Reportar',
+    icon: <IconFlag />,
+    meta: 'Datos colaborativos · alimenta el modelo predictivo',
+  },
 ]
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('busqueda')
+  const active = TABS.find(t => t.id === tab)!
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-blue-700 text-white shadow-md">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-slate-100 flex flex-col">
+
+      {/* Brand header */}
+      <header className="bg-slate-900 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="text-2xl">💊</div>
-            <div>
-              <h1 className="text-xl font-bold leading-tight">FarmaVigia</h1>
-              <p className="text-blue-200 text-xs">
-                Alternativas farmacológicas · Predicción de desabastecimiento · Colombia
-              </p>
+            <div className="w-7 h-7 rounded-md bg-blue-500 flex items-center justify-center shrink-0">
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-base tracking-tight">OpenFarma</span>
+              <span className="hidden sm:inline text-slate-400 text-xs">·</span>
+              <span className="hidden sm:inline text-slate-400 text-xs">
+                Alternativas farmacológicas y predicción de desabastecimiento
+              </span>
             </div>
           </div>
-          <div className="hidden md:flex items-center gap-2 text-xs text-blue-300">
-            <span className="w-2 h-2 bg-green-400 rounded-full inline-block"></span>
-            API datos.gov.co · Live
+          <div className="flex items-center gap-1.5 text-xs text-slate-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="hidden sm:inline">INVIMA · datos.gov.co</span>
+            <span className="sm:hidden">API en vivo</span>
           </div>
         </div>
-
-        <nav className="max-w-6xl mx-auto px-4 flex gap-1">
-          {TABS.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors ${
-                tab === t.id
-                  ? 'bg-white text-blue-700'
-                  : 'text-blue-100 hover:bg-blue-600'
-              }`}
-            >
-              {t.icon} {t.label}
-            </button>
-          ))}
-        </nav>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-6">
-        {tab === 'busqueda' && (
-          <section>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-800">
-                Consulta de Alternativas Farmacológicas
-              </h2>
-              <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
-                Fuente: CUM · INVIMA · datos.gov.co
-              </span>
-            </div>
-            <BuscadorMedicamentos />
-          </section>
-        )}
+      {/* Tab navigation */}
+      <div className="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <nav className="flex -mb-px overflow-x-auto">
+            {TABS.map(t => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`flex items-center gap-2 px-4 py-3.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors focus:outline-none ${
+                  tab === t.id
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                }`}
+              >
+                {t.icon}
+                <span className="hidden md:inline">{t.label}</span>
+                <span className="md:hidden">{t.short}</span>
+              </button>
+            ))}
+          </nav>
+        </div>
+      </div>
 
-        {tab === 'mapa' && (
-          <section>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-800">
-                Mapa de Riesgo de Desabastecimiento por Región
-              </h2>
-              <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
-                33 departamentos · Colombia
-              </span>
-            </div>
-            <MapaRiesgo />
-          </section>
-        )}
+      {/* Section subheader */}
+      <div className="bg-white border-b border-slate-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+          <p className="text-xs text-slate-500">{active.meta}</p>
+          <span className="text-xs text-slate-400 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-full">
+            Fuente: datos.gov.co
+          </span>
+        </div>
+      </div>
 
-        {tab === 'modelo' && (
-          <section>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-800">
-                Modelo Predictivo de Desabastecimiento
-              </h2>
-              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded font-medium">
-                Random Forest · ROC-AUC 0.79
-              </span>
-            </div>
-            <PanelModelo />
-          </section>
-        )}
-
-        {tab === 'reportes' && (
-          <section>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-800">
-                Reportar No Disponibilidad
-              </h2>
-              <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
-                Datos colaborativos · Colombia
-              </span>
-            </div>
-            <FormularioReporte />
-          </section>
-        )}
+      {/* Content */}
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6">
+        {tab === 'busqueda' && <BuscadorMedicamentos />}
+        {tab === 'mapa'     && <MapaRiesgo />}
+        {tab === 'modelo'   && <PanelModelo />}
+        {tab === 'reportes' && <FormularioReporte />}
       </main>
 
-      <footer className="text-center text-xs text-gray-400 py-6 border-t mt-8">
-        FarmaVigia · Concurso Datos al Ecosistema 2026 · datos.gov.co · INVIMA
+      <footer className="bg-white border-t border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between text-xs text-slate-400">
+          <span>OpenFarma · Concurso Datos al Ecosistema 2026</span>
+          <span>Colombia · INVIMA · datos.gov.co</span>
+        </div>
       </footer>
     </div>
   )

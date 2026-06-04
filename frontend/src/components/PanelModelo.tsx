@@ -13,16 +13,33 @@ const FEATURE_LABELS: Record<string, string> = {
   num_presentaciones_activas: 'Presentaciones activas',
   tasa_inactivacion_atc5: 'Tasa inactivación ATC',
   busquedas_norm: 'Búsquedas recientes',
-  reportes_norm: 'Reportes no disponibilidad',
-  num_competidores: 'Nro. competidores',
+  reportes_norm: 'Reportes ciudadanos',
+  num_competidores: 'Competidores en mercado',
   grupo_atc_enc: 'Grupo ATC anatómico',
-  tipo_formula_num: 'Complejidad fórmula',
-  es_combinado: 'Es combinado',
+  tipo_formula_num: 'Complejidad de fórmula',
+  es_combinado: 'Fórmula combinada',
   tiene_alternativas: 'Tiene alternativas',
   monopolio: 'Monopolio de mercado',
 }
 
-const BAR_COLORS = ['#1d4ed8', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#dbeafe', '#eff6ff', '#f0f9ff', '#f8fafc']
+const BAR_COLORS = [
+  '#1d4ed8', '#2563eb', '#3b82f6', '#60a5fa',
+  '#93c5fd', '#bfdbfe', '#dbeafe', '#eff6ff', '#f0f9ff', '#f8fafc',
+]
+
+function MetricCard({
+  label, value, sub, color,
+}: {
+  label: string; value: string; sub: string; color: string
+}) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
+      <p className={`text-3xl font-bold mt-1 tabular-nums ${color}`}>{value}</p>
+      <p className="text-xs text-slate-400 mt-1">{sub}</p>
+    </div>
+  )
+}
 
 export default function PanelModelo() {
   const [info, setInfo] = useState<ModeloInfo | null>(null)
@@ -35,68 +52,137 @@ export default function PanelModelo() {
       .catch(() => setError('Modelo no disponible'))
   }, [])
 
-  if (error) return (
-    <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-yellow-700 text-sm">
-      {error}. Ejecuta el entrenamiento primero.
-    </div>
-  )
-  if (!info) return <p className="text-gray-400 text-sm">Cargando info del modelo...</p>
+  if (error) {
+    return (
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 text-amber-700 text-sm">
+        {error}. Ejecuta el entrenamiento primero desde el backend.
+      </div>
+    )
+  }
+
+  if (!info) {
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="bg-white border border-slate-200 rounded-xl p-4 animate-pulse">
+            <div className="h-3 bg-slate-100 rounded w-2/3 mb-3" />
+            <div className="h-8 bg-slate-100 rounded w-1/2" />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  const aucColor = info.roc_auc >= 0.8 ? 'text-emerald-600' : info.roc_auc >= 0.7 ? 'text-amber-600' : 'text-red-600'
 
   const chartData = info.importancia_features.map(f => ({
     name: FEATURE_LABELS[f.feature] ?? f.feature,
     valor: +(f.importancia * 100).toFixed(1),
   }))
 
-  const aucColor = info.roc_auc >= 0.8 ? 'text-green-600' : info.roc_auc >= 0.7 ? 'text-yellow-600' : 'text-red-600'
-
   return (
-    <div className="space-y-6">
-      {/* Métricas */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: 'ROC-AUC', value: info.roc_auc.toFixed(3), color: aucColor, desc: '≥0.8 = excelente' },
-          { label: 'Avg Precision', value: info.avg_precision.toFixed(3), color: 'text-blue-600', desc: 'Precisión media' },
-          { label: 'Muestras train', value: info.n_train.toLocaleString('es-CO'), color: 'text-gray-700', desc: 'Registros CUM' },
-          { label: 'Tasa positivos', value: `${(info.tasa_positivos * 100).toFixed(1)}%`, color: 'text-orange-600', desc: 'Vigente + inactivo' },
-        ].map(m => (
-          <div key={m.label} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-gray-400 mb-1">{m.label}</p>
-            <p className={`text-2xl font-bold ${m.color}`}>{m.value}</p>
-            <p className="text-xs text-gray-400 mt-1">{m.desc}</p>
-          </div>
-        ))}
+    <div className="space-y-5">
+
+      {/* KPI metrics */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <MetricCard
+          label="ROC-AUC"
+          value={info.roc_auc.toFixed(3)}
+          sub={info.roc_auc >= 0.8 ? 'Excelente discriminación' : 'Buena discriminación'}
+          color={aucColor}
+        />
+        <MetricCard
+          label="Avg Precision"
+          value={info.avg_precision.toFixed(3)}
+          sub="Precisión media ponderada"
+          color="text-blue-600"
+        />
+        <MetricCard
+          label="Muestras entrenamiento"
+          value={info.n_train.toLocaleString('es-CO')}
+          sub="Registros CUM usados"
+          color="text-slate-700"
+        />
+        <MetricCard
+          label="Tasa positivos"
+          value={`${(info.tasa_positivos * 100).toFixed(1)}%`}
+          sub="Vigentes con riesgo señalado"
+          color="text-orange-600"
+        />
       </div>
 
-      {/* Importancia de features */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-        <h3 className="font-semibold text-gray-800 mb-4 text-sm">
-          Importancia de variables en el modelo (Random Forest)
-        </h3>
-        <ResponsiveContainer width="100%" height={260}>
-          <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 24 }}>
-            <XAxis type="number" tickFormatter={v => `${v}%`} tick={{ fontSize: 11 }} />
-            <YAxis type="category" dataKey="name" width={190} tick={{ fontSize: 11 }} />
-            <Tooltip formatter={(v) => [`${v}%`, 'Importancia']} />
-            <Bar dataKey="valor" radius={[0, 4, 4, 0]}>
-              {chartData.map((_, i) => <Cell key={i} fill={BAR_COLORS[i] ?? '#3b82f6'} />)}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+      {/* Feature importance chart */}
+      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-100">
+          <h3 className="text-sm font-semibold text-slate-800">
+            Importancia de variables — Random Forest
+          </h3>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Qué tanto influye cada variable en la predicción de desabastecimiento
+          </p>
+        </div>
+        <div className="p-4">
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 32, top: 4, bottom: 4 }}>
+              <XAxis
+                type="number"
+                tickFormatter={v => `${v}%`}
+                tick={{ fontSize: 11, fill: '#94a3b8' }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                type="category"
+                dataKey="name"
+                width={195}
+                tick={{ fontSize: 11, fill: '#475569' }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip
+                formatter={(v) => [`${v}%`, 'Importancia']}
+                contentStyle={{
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+                }}
+              />
+              <Bar dataKey="valor" radius={[0, 4, 4, 0]} maxBarSize={22}>
+                {chartData.map((_, i) => (
+                  <Cell key={i} fill={BAR_COLORS[i] ?? '#3b82f6'} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
-      {/* Explicación del modelo */}
-      <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-800 space-y-2">
-        <p className="font-semibold">¿Cómo funciona el modelo?</p>
-        <p>
-          Clasifica cada medicamento como <em>en riesgo de desabastecimiento</em> usando 10 variables
-          extraídas del CUM oficial (INVIMA). El target de entrenamiento son los{' '}
-          <strong>35,600 medicamentos con registro vigente pero presentación inactiva</strong>{' '}
-          — el patrón más consistente de desabastecimiento en el dataset.
+      {/* How it works */}
+      <div className="bg-blue-50 border border-blue-100 rounded-xl p-5 text-sm text-blue-900 space-y-2">
+        <p className="font-semibold text-blue-800">¿Cómo funciona el modelo?</p>
+        <p className="text-blue-700 text-xs leading-relaxed">
+          Utiliza un <strong>Random Forest calibrado (Platt scaling)</strong> entrenado sobre los 65,420
+          medicamentos del CUM-INVIMA. Para cada par (medicamento, departamento) genera una probabilidad
+          de desabastecimiento en los próximos 30 días. Los factores más relevantes son la presencia de
+          alternativas terapéuticas y el historial de consultas y reportes ciudadanos de esa región.
         </p>
-        <p>
-          Las señales colaborativas (búsquedas y reportes por región) actualmente son simuladas.
-          Al crecer con datos reales de usuarios e IPS, el recall mejorará significativamente.
-        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+          {[
+            { color: 'bg-emerald-500', label: 'Bajo', desc: '< 25%' },
+            { color: 'bg-amber-500',   label: 'Medio',   desc: '25–50%' },
+            { color: 'bg-orange-500',  label: 'Alto',  desc: '50–75%' },
+            { color: 'bg-red-500',     label: 'Crítico',  desc: '> 75%' },
+          ].map(n => (
+            <div key={n.label} className="bg-white border border-blue-100 rounded-lg px-3 py-2 flex items-center gap-2">
+              <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${n.color}`} />
+              <div>
+                <p className="text-xs font-semibold text-slate-700">{n.label}</p>
+                <p className="text-xs text-slate-400">{n.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )
