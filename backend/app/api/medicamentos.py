@@ -22,8 +22,11 @@ async def buscar_medicamentos(
     vistos: set[str] = set()
     unicos = []
     for m in meds:
-        if m.cum_id not in vistos:
-            vistos.add(m.cum_id)
+        # Deduplicar por (nombre_comercial, forma_farmaceutica) — el CUM tiene múltiples
+        # expedientes para el mismo producto; solo mostramos una presentación por nombre.
+        key = f"{m.nombre_comercial.upper().strip()}|{m.forma_farmaceutica.upper().strip()}"
+        if key not in vistos:
+            vistos.add(key)
             unicos.append(MedicamentoLiveRead(
                 cum_id=m.cum_id,
                 nombre_comercial=m.nombre_comercial,
