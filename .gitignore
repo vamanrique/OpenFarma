@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# SQLite WAL (los archivos temporales, no la DB principal)
+*.db-shm
+*.db-wal
+
+# CSVs grandes (se regeneran con el ETL)
+backend/data/cum_raw.csv
+backend/data/cum_limpio.csv
+backend/data/validacion_reporte.csv
+
+# Node
+node_modules/
+.vite/
+
+# OS
+.DS_Store
+Thumbs.db
