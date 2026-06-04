@@ -62,6 +62,7 @@ async def obtener_alternativas_live(cum_id: str):
     pares = await cum_live.alternativas_para(med)
 
     # Enriquecer con datos del medicamento destino (ya disponibles en los grupos)
+    vistos: set[str] = set()
     resultado: list[AlternativaLiveRead] = []
     for p in pares:
         cum_destino = p.cum_destino if p.cum_origen == cum_id else p.cum_origen
@@ -85,6 +86,19 @@ async def obtener_alternativas_live(cum_id: str):
                     estado_registro=med_dest_obj.estado_registro,
                     estado_cum=med_dest_obj.estado_cum,
                 )
+
+        # Deduplicar por (tipo, nombre, concentración, laboratorio) — el CUM tiene múltiples
+        # expedientes por producto; mostramos una entrada por variante única.
+        if med_dest:
+            conc = (med_dest.concentracion_display or '').upper().strip()
+            lab  = (med_dest.laboratorio or '').upper().strip()
+            key  = f"{p.tipo}|{med_dest.nombre_comercial.upper().strip()}|{conc}|{lab}"
+        else:
+            key = f"{p.tipo}|{cum_destino}"
+        if key in vistos:
+            continue
+        vistos.add(key)
+
         resultado.append(AlternativaLiveRead(
             cum_origen=p.cum_origen,
             cum_destino=p.cum_destino,
