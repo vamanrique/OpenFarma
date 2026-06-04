@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { medicamentosApi, type MedicamentoLive, type AlternativaLive } from '../api/client'
 
 const FORMULA_CFG: Record<string, { label: string; color: string }> = {
@@ -82,19 +82,33 @@ function TarjetaMedicamento({
         {med.principios_dci.map((dci, i) => <TagDCI key={i} dci={dci} />)}
       </div>
 
-      <div className="text-xs text-slate-500 space-y-0.5">
-        <p>{med.forma_farmaceutica} · {med.via_administracion}</p>
-        {med.concentracion_display && (
-          <p className="text-slate-400 truncate" title={med.concentracion_display}>
-            {med.concentracion_display}
-          </p>
-        )}
+      <div className="text-xs text-slate-500 space-y-1">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-slate-500">{med.forma_farmaceutica}</span>
+          {med.concentracion_display && (
+            <span
+              className="px-2 py-0.5 bg-slate-100 border border-slate-200 rounded-full font-mono font-semibold text-slate-700 truncate max-w-[180px]"
+              title={med.concentracion_display}
+            >
+              {med.concentracion_display}
+            </span>
+          )}
+        </div>
+        <p className="text-slate-400">{med.via_administracion}</p>
         <p className="text-slate-400">
           ATC: <span className="font-mono text-slate-500">{med.atc}</span> · {med.descripcion_atc}
         </p>
       </div>
     </div>
   )
+}
+
+function esExacta(med: MedicamentoLive, dest: MedicamentoLive): boolean {
+  const mismaForma = dest.forma_farmaceutica.toUpperCase() === med.forma_farmaceutica.toUpperCase()
+  const mismaConc = dest.concentracion_display && med.concentracion_display
+    ? dest.concentracion_display.toUpperCase() === med.concentracion_display.toUpperCase()
+    : false
+  return mismaForma && mismaConc
 }
 
 function PanelAlternativas({
@@ -105,8 +119,22 @@ function PanelAlternativas({
   cargando: boolean
   error: string
 }) {
+  const [soloExactas, setSoloExactas] = useState(false)
+
+  const exactasCount = useMemo(
+    () => alternativas.filter(a => a.medicamento_destino && esExacta(medicamento, a.medicamento_destino)).length,
+    [alternativas, medicamento],
+  )
+
+  const altsFiltradas = useMemo(
+    () => soloExactas
+      ? alternativas.filter(a => a.medicamento_destino && esExacta(medicamento, a.medicamento_destino))
+      : alternativas,
+    [alternativas, soloExactas, medicamento],
+  )
+
   const porTipo = ALT_ORDEN.reduce<Record<string, AlternativaLive[]>>((acc, t) => {
-    acc[t] = alternativas.filter(a => a.tipo === t)
+    acc[t] = altsFiltradas.filter(a => a.tipo === t)
     return acc
   }, {})
 
@@ -121,7 +149,48 @@ function PanelAlternativas({
         <div className="flex flex-wrap gap-1 mt-1.5">
           {medicamento.principios_dci.map((dci, i) => <TagDCI key={i} dci={dci} />)}
         </div>
+        {(medicamento.concentracion_display || medicamento.forma_farmaceutica) && (
+          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+            <span className="text-xs text-slate-400">Buscando alternativas a:</span>
+            <span className="text-xs bg-white border border-slate-200 rounded-full px-2 py-0.5 text-slate-600">
+              {medicamento.forma_farmaceutica}
+            </span>
+            {medicamento.concentracion_display && (
+              <span className="text-xs bg-white border border-slate-200 rounded-full px-2 py-0.5 font-mono font-semibold text-slate-700">
+                {medicamento.concentracion_display}
+              </span>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Filter bar */}
+      {!cargando && alternativas.length > 0 && (
+        <div className="px-4 py-2.5 border-b border-slate-100 flex items-center gap-3">
+          <button
+            onClick={() => setSoloExactas(false)}
+            className={`text-xs px-3 py-1 rounded-full border transition-colors ${
+              !soloExactas
+                ? 'bg-slate-800 text-white border-slate-800'
+                : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+            }`}
+          >
+            Todas ({alternativas.length})
+          </button>
+          <button
+            onClick={() => setSoloExactas(true)}
+            disabled={exactasCount === 0}
+            title="Misma forma farmacéutica y concentración"
+            className={`text-xs px-3 py-1 rounded-full border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+              soloExactas
+                ? 'bg-emerald-700 text-white border-emerald-700'
+                : 'bg-white text-emerald-700 border-emerald-300 hover:border-emerald-500'
+            }`}
+          >
+            ✓ Concentración exacta ({exactasCount})
+          </button>
+        </div>
+      )}
 
       <div className="p-4">
         {cargando && (
@@ -138,6 +207,12 @@ function PanelAlternativas({
           </p>
         )}
 
+        {!cargando && soloExactas && exactasCount === 0 && (
+          <p className="text-slate-400 text-sm text-center py-6">
+            No hay alternativas con la misma concentración y forma farmacéutica.
+          </p>
+        )}
+
         {!cargando && ALT_ORDEN.map(tipo => {
           const lista = porTipo[tipo]
           if (!lista?.length) return null
@@ -150,13 +225,28 @@ function PanelAlternativas({
               <div className="space-y-2">
                 {lista.map((alt, i) => {
                   const dest = alt.medicamento_destino
+                  const exacta = dest ? esExacta(medicamento, dest) : false
                   return (
-                    <div key={i} className="border border-slate-100 rounded-lg p-3 bg-slate-50">
+                    <div
+                      key={i}
+                      className={`border rounded-lg p-3 ${
+                        exacta
+                          ? 'border-emerald-200 bg-emerald-50'
+                          : 'border-slate-100 bg-slate-50'
+                      }`}
+                    >
                       {dest ? (
                         <>
                           <div className="flex items-start justify-between gap-2">
                             <p className="font-medium text-sm text-slate-900">{dest.nombre_comercial}</p>
-                            <BadgeFormula tipo={dest.tipo_formula} />
+                            <div className="flex items-center gap-1 shrink-0">
+                              {exacta && (
+                                <span className="text-xs bg-emerald-100 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded-full font-semibold">
+                                  Exacta
+                                </span>
+                              )}
+                              <BadgeFormula tipo={dest.tipo_formula} />
+                            </div>
                           </div>
                           <div className="flex flex-wrap gap-1 my-1.5">
                             {dest.principios_dci.map((dci, j) => (
@@ -167,9 +257,15 @@ function PanelAlternativas({
                               />
                             ))}
                           </div>
-                          <p className="text-xs text-slate-400">
-                            {dest.forma_farmaceutica} · ATC {dest.atc} · {dest.laboratorio}
-                          </p>
+                          <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400">
+                            <span>{dest.forma_farmaceutica}</span>
+                            {dest.concentracion_display && (
+                              <span className="font-mono font-semibold text-slate-600 bg-white border border-slate-200 px-1.5 py-0.5 rounded">
+                                {dest.concentracion_display}
+                              </span>
+                            )}
+                            <span>· ATC {dest.atc} · {dest.laboratorio}</span>
+                          </div>
                         </>
                       ) : (
                         <p className="text-xs text-slate-500 font-mono">{alt.cum_destino}</p>
