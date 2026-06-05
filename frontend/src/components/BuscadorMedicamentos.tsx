@@ -107,6 +107,19 @@ function TarjetaMedicamento({
   )
 }
 
+const VIAS_PARENTERALES = new Set([
+  'INTRAVENOSA', 'INTRAMUSCULAR', 'SUBCUTANEA', 'PARENTERAL',
+  'INTRAARTICULAR', 'INTRATECAL', 'INTRAPERITONEAL',
+])
+
+function esInyectable(med: MedicamentoLive): boolean {
+  return (
+    VIAS_PARENTERALES.has(med.via_administracion.toUpperCase()) ||
+    med.forma_farmaceutica.toUpperCase().includes('INYECT') ||
+    med.forma_farmaceutica.toUpperCase().includes('LIOFILIZADO')
+  )
+}
+
 function PanelAlternativas({
   medicamento, alternativas, cargando, error,
 }: {
@@ -115,6 +128,8 @@ function PanelAlternativas({
   cargando: boolean
   error: string
 }) {
+  const inyectable = esInyectable(medicamento)
+
   const porTipo = useMemo(
     () => ALT_ORDEN.reduce<Record<string, AlternativaLive[]>>((acc, t) => {
       acc[t] = alternativas.filter(a => a.tipo === t)
@@ -220,6 +235,17 @@ function PanelAlternativas({
                   <p className="text-xs opacity-70 mt-0.5">{cfg.desc}</p>
                 </div>
               </div>
+              {/* Advertencia específica para inyectables en A1 */}
+              {tipo === 'MISMO_PRINCIPIO_ACTIVO' && inyectable && (
+                <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2">
+                  <svg className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                  </svg>
+                  <p className="text-xs text-amber-700 leading-relaxed">
+                    <strong>Inyectables:</strong> la comparación usa el contenido total del envase (mcg o mg por ampolla), no la concentración por mL. Un vial de 250 mcg/5 mL y uno de 500 mcg/10 mL son la <strong>misma concentración</strong> (50 mcg/mL). Verifique mcg/mL antes de concluir que son dosis diferentes.
+                  </p>
+                </div>
+              )}
               <div className="space-y-2">
                 {lista.map((alt, i) => {
                   const dest = alt.medicamento_destino
@@ -274,6 +300,18 @@ function PanelAlternativas({
           <p className="text-xs text-slate-400 text-center pt-2">
             Solo se encontraron sustitutos del mismo producto. No hay alternativas terapéuticas en el CUM para esta clase.
           </p>
+        )}
+
+        {/* Disclaimer de fuente y limitaciones */}
+        {!cargando && alternativas.length > 0 && (
+          <div className="mt-4 pt-3 border-t border-slate-100 flex gap-2">
+            <svg className="w-3.5 h-3.5 text-slate-300 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zm-9-3.75h.008v.008H12V8.25z" />
+            </svg>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Datos en tiempo real del <strong>CUM-INVIMA</strong> vía datos.gov.co. Las equivalencias son farmacéuticas (misma molécula, forma y dosis según el registro). <strong>No reemplazan el criterio clínico ni farmacéutico</strong> — toda sustitución debe ser validada por un profesional de salud.
+            </p>
+          </div>
         )}
       </div>
     </div>
