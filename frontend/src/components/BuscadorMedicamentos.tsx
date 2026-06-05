@@ -14,7 +14,7 @@ const ALT_CFG: Record<string, { color: string; label: string; desc: string }> = 
   EQUIVALENTE_EXACTO:           { color: 'bg-blue-50 text-blue-800 border-blue-200',           label: 'Equivalente exacto (sales / ésteres)', desc: 'Mismo ATC-7, misma forma. Distinta sal o éster del mismo compuesto.' },
   EQUIVALENTE_CLASE:            { color: 'bg-indigo-50 text-indigo-800 border-indigo-200',     label: 'Equivalente terapéutico — misma clase ATC', desc: 'Misma clase farmacológica ATC-5, misma forma. Molécula distinta.' },
   COMPONENTE_COMPARTIDO:        { color: 'bg-purple-50 text-purple-800 border-purple-200',     label: 'Combinado con componente en común', desc: 'Comparte al menos un principio activo.' },
-  ALTERNATIVA_DIFERENTE_FORMA:  { color: 'bg-amber-50 text-amber-800 border-amber-200',        label: 'Alternativa terapéutica — diferente forma', desc: 'Misma clase terapéutica, diferente forma farmacéutica.' },
+  ALTERNATIVA_DIFERENTE_FORMA:  { color: 'bg-amber-50 text-amber-800 border-amber-200',        label: 'Misma molécula o clase — diferente vía/forma', desc: 'Oral vs vaginal, tableta vs inyectable, etc. Requiere evaluación clínica.' },
 }
 
 const ALT_ORDEN = [
@@ -87,6 +87,9 @@ function TarjetaMedicamento({
       <div className="text-xs text-slate-500 space-y-1">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-slate-500">{med.forma_farmaceutica}</span>
+          <span className="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-500 uppercase text-[10px] font-semibold tracking-wide">
+            {med.via_administracion}
+          </span>
           {med.concentracion_display && (
             <span
               className="px-2 py-0.5 bg-slate-100 border border-slate-200 rounded-full font-mono font-semibold text-slate-700 truncate max-w-[180px]"
@@ -96,7 +99,6 @@ function TarjetaMedicamento({
             </span>
           )}
         </div>
-        <p className="text-slate-400">{med.via_administracion}</p>
         <p className="text-slate-400">
           ATC: <span className="font-mono text-slate-500">{med.atc}</span> · {med.descripcion_atc}
         </p>
@@ -240,6 +242,9 @@ function PanelAlternativas({
                           </div>
                           <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400">
                             <span>{dest.forma_farmaceutica}</span>
+                            <span className="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded uppercase text-[10px] font-semibold tracking-wide text-slate-500">
+                              {dest.via_administracion}
+                            </span>
                             {dest.concentracion_display && (
                               <span className="font-mono font-semibold text-slate-600 bg-white border border-slate-200 px-1.5 py-0.5 rounded">
                                 {dest.concentracion_display}
