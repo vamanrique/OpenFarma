@@ -59,36 +59,33 @@ async def obtener_alternativas_live(cum_id: str):
     if not med:
         raise HTTPException(status_code=404, detail="Medicamento no encontrado en la API")
 
-    pares = await cum_live.alternativas_para(med)
+    # Una sola query ATC-5 devuelve pares + lookup (sin N llamadas adicionales)
+    pares, lookup = await cum_live.alternativas_para(med)
 
-    # Enriquecer con datos del medicamento destino (ya disponibles en los grupos)
     vistos: set[str] = set()
     resultado: list[AlternativaLiveRead] = []
     for p in pares:
         cum_destino = p.cum_destino if p.cum_origen == cum_id else p.cum_origen
-        partes_dest = cum_destino.split("-", 1)
+        med_dest_obj = lookup.get(cum_destino)
         med_dest = None
-        if len(partes_dest) == 2:
-            med_dest_obj = await cum_live.obtener_por_cum(partes_dest[0], partes_dest[1])
-            if med_dest_obj:
-                med_dest = MedicamentoLiveRead(
-                    cum_id=med_dest_obj.cum_id,
-                    nombre_comercial=med_dest_obj.nombre_comercial,
-                    principios_dci=med_dest_obj.principios_dci,
-                    tipo_formula=med_dest_obj.tipo_formula,
-                    concentracion_display=med_dest_obj.concentracion_display,
-                    forma_farmaceutica=med_dest_obj.forma_farmaceutica,
-                    via_administracion=med_dest_obj.via_administracion,
-                    atc=med_dest_obj.atc,
-                    descripcion_atc=med_dest_obj.descripcion_atc,
-                    laboratorio=med_dest_obj.laboratorio,
-                    registro_sanitario=med_dest_obj.registro_sanitario,
-                    estado_registro=med_dest_obj.estado_registro,
-                    estado_cum=med_dest_obj.estado_cum,
-                )
+        if med_dest_obj:
+            med_dest = MedicamentoLiveRead(
+                cum_id=med_dest_obj.cum_id,
+                nombre_comercial=med_dest_obj.nombre_comercial,
+                principios_dci=med_dest_obj.principios_dci,
+                tipo_formula=med_dest_obj.tipo_formula,
+                concentracion_display=med_dest_obj.concentracion_display,
+                forma_farmaceutica=med_dest_obj.forma_farmaceutica,
+                via_administracion=med_dest_obj.via_administracion,
+                atc=med_dest_obj.atc,
+                descripcion_atc=med_dest_obj.descripcion_atc,
+                laboratorio=med_dest_obj.laboratorio,
+                registro_sanitario=med_dest_obj.registro_sanitario,
+                estado_registro=med_dest_obj.estado_registro,
+                estado_cum=med_dest_obj.estado_cum,
+            )
 
-        # Deduplicar por (tipo, nombre, concentración, laboratorio) — el CUM tiene múltiples
-        # expedientes por producto; mostramos una entrada por variante única.
+        # Deduplicar por (tipo, nombre, concentración, laboratorio)
         if med_dest:
             conc = (med_dest.concentracion_display or '').upper().strip()
             lab  = (med_dest.laboratorio or '').upper().strip()

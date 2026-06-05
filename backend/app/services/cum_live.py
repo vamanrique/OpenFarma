@@ -67,13 +67,13 @@ async def obtener_por_cum(expedientecum: str, consecutivocum: str) -> Optional[M
 async def alternativas_para(
     medicamento: MedicamentoTransformado,
     limit_clase: int = 500,
-) -> list[ParAlternativa]:
+) -> tuple[list[ParAlternativa], dict[str, MedicamentoTransformado]]:
     """
-    Busca en línea todas las alternativas para un medicamento dado.
-    Consulta por ATC5 para encontrar la clase terapéutica completa.
+    Busca alternativas para un medicamento dado.
+    Retorna (pares_filtrados, lookup) — el lookup evita N API calls adicionales.
     """
     if not medicamento.atc or len(medicamento.atc) < 5:
-        return []
+        return [], {}
 
     atc5 = medicamento.atc[:5]
     params = {
@@ -84,19 +84,20 @@ async def alternativas_para(
 
     filas = await _get(params)
     if not filas:
-        return []
+        return [], {}
 
     df = pd.DataFrame(filas)
     todos = agrupar_y_transformar(df)
+    lookup: dict[str, MedicamentoTransformado] = {m.cum_id: m for m in todos}
 
     pares = generar_alternativas(todos)
 
-    # Filtrar solo los que involucran al medicamento de interés
     cum_objetivo = medicamento.cum_id
-    return [
+    filtrados = [
         p for p in pares
         if p.cum_origen == cum_objetivo or p.cum_destino == cum_objetivo
     ]
+    return filtrados, lookup
 
 
 async def estadisticas_por_atc() -> list[dict]:

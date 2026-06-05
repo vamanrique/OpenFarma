@@ -67,6 +67,7 @@ def generar_alternativas(meds: list[MedicamentoTransformado]) -> list[ParAlterna
     y devuelve pares de alternativas.
     """
     # Índices de búsqueda
+    por_producto: dict[tuple, list[MedicamentoTransformado]] = defaultdict(list)   # A0
     por_dci_forma: dict[tuple, list[MedicamentoTransformado]] = defaultdict(list)
     por_atc7_forma: dict[tuple, list[MedicamentoTransformado]] = defaultdict(list)
     por_atc5_forma: dict[tuple, list[MedicamentoTransformado]] = defaultdict(list)
@@ -82,6 +83,10 @@ def generar_alternativas(meds: list[MedicamentoTransformado]) -> list[ParAlterna
         por_atc7_forma[(m.atc, g_forma)].append(m)
         por_atc5_forma[(m.atc[:5], g_forma)].append(m)
         por_atc5[m.atc[:5]].append(m)
+
+        if m.dosis_numerica is not None:
+            dosis_key = round(m.dosis_numerica, 1)
+            por_producto[(dci_key, dosis_key, g_forma)].append(m)
 
     pares_vistos: set[tuple[str, str, str]] = set()
     resultado: list[ParAlternativa] = []
@@ -99,12 +104,22 @@ def generar_alternativas(meds: list[MedicamentoTransformado]) -> list[ParAlterna
                 componentes_compartidos=compartidos,
             ))
 
-    # A1 — Mismos DCI + misma forma
+    # A0 — Mismo producto (mismo DCI + misma dosis + misma forma), diferente laboratorio
+    for (dci_key, dosis, _), grupo in por_producto.items():
+        for a, b in combinations(grupo, 2):
+            agregar(a, b, "MISMO_PRODUCTO_DIFERENTE_LAB",
+                    f"Mismo principio activo ({', '.join(dci_key)}) y concentración ({dosis} mg), diferente laboratorio",
+                    list(dci_key))
+
+    # A1 — Mismos DCI + misma forma + DIFERENTE dosis (antes mezclaba todo; A0 cubre la misma dosis)
     for (dci_key, _), grupo in por_dci_forma.items():
         for a, b in combinations(grupo, 2):
-            agregar(a, b, "MISMO_PRINCIPIO_ACTIVO",
-                    f"Mismo principio activo ({', '.join(dci_key)}) y forma farmacéutica",
-                    list(dci_key))
+            dosis_a = round(a.dosis_numerica, 1) if a.dosis_numerica is not None else None
+            dosis_b = round(b.dosis_numerica, 1) if b.dosis_numerica is not None else None
+            if dosis_a != dosis_b:
+                agregar(a, b, "MISMO_PRINCIPIO_ACTIVO",
+                        f"Mismo principio activo ({', '.join(dci_key)}) y forma farmacéutica, diferente concentración",
+                        list(dci_key))
 
     # A2 — Mismo ATC7 + misma forma + distintos DCI (sales del mismo compuesto)
     for (atc7, gf), grupo in por_atc7_forma.items():

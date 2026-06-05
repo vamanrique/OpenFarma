@@ -8,15 +8,17 @@ const FORMULA_CFG: Record<string, { label: string; color: string }> = {
   tetraconjugado: { label: 'Tetra', color: 'bg-red-100 text-red-700' },
 }
 
-const ALT_CFG: Record<string, { color: string; label: string }> = {
-  MISMO_PRINCIPIO_ACTIVO:      { color: 'bg-emerald-50 text-emerald-800 border-emerald-200',   label: 'Mismo principio activo (genérico / multifuente)' },
-  EQUIVALENTE_EXACTO:          { color: 'bg-blue-50 text-blue-800 border-blue-200',             label: 'Equivalente exacto (sales / ésteres)' },
-  EQUIVALENTE_CLASE:           { color: 'bg-indigo-50 text-indigo-800 border-indigo-200',       label: 'Equivalente terapéutico — misma clase ATC' },
-  COMPONENTE_COMPARTIDO:       { color: 'bg-purple-50 text-purple-800 border-purple-200',       label: 'Combinado con componente en común' },
-  ALTERNATIVA_DIFERENTE_FORMA: { color: 'bg-amber-50 text-amber-800 border-amber-200',          label: 'Alternativa terapéutica — diferente forma' },
+const ALT_CFG: Record<string, { color: string; label: string; desc: string }> = {
+  MISMO_PRODUCTO_DIFERENTE_LAB: { color: 'bg-emerald-50 text-emerald-800 border-emerald-200', label: 'Mismo producto — diferente laboratorio', desc: 'Misma molécula, misma dosis, misma forma. Solo cambia el titular.' },
+  MISMO_PRINCIPIO_ACTIVO:       { color: 'bg-teal-50 text-teal-800 border-teal-200',          label: 'Mismo principio activo — diferente concentración', desc: 'Misma molécula y forma, distinta dosis.' },
+  EQUIVALENTE_EXACTO:           { color: 'bg-blue-50 text-blue-800 border-blue-200',           label: 'Equivalente exacto (sales / ésteres)', desc: 'Mismo ATC-7, misma forma. Distinta sal o éster del mismo compuesto.' },
+  EQUIVALENTE_CLASE:            { color: 'bg-indigo-50 text-indigo-800 border-indigo-200',     label: 'Equivalente terapéutico — misma clase ATC', desc: 'Misma clase farmacológica ATC-5, misma forma. Molécula distinta.' },
+  COMPONENTE_COMPARTIDO:        { color: 'bg-purple-50 text-purple-800 border-purple-200',     label: 'Combinado con componente en común', desc: 'Comparte al menos un principio activo.' },
+  ALTERNATIVA_DIFERENTE_FORMA:  { color: 'bg-amber-50 text-amber-800 border-amber-200',        label: 'Alternativa terapéutica — diferente forma', desc: 'Misma clase terapéutica, diferente forma farmacéutica.' },
 }
 
 const ALT_ORDEN = [
+  'MISMO_PRODUCTO_DIFERENTE_LAB',
   'MISMO_PRINCIPIO_ACTIVO',
   'EQUIVALENTE_EXACTO',
   'EQUIVALENTE_CLASE',
@@ -103,14 +105,6 @@ function TarjetaMedicamento({
   )
 }
 
-function esExacta(med: MedicamentoLive, dest: MedicamentoLive): boolean {
-  const mismaForma = dest.forma_farmaceutica.toUpperCase() === med.forma_farmaceutica.toUpperCase()
-  const mismaConc = dest.concentracion_display && med.concentracion_display
-    ? dest.concentracion_display.toUpperCase() === med.concentracion_display.toUpperCase()
-    : false
-  return mismaForma && mismaConc
-}
-
 function PanelAlternativas({
   medicamento, alternativas, cargando, error,
 }: {
@@ -119,28 +113,19 @@ function PanelAlternativas({
   cargando: boolean
   error: string
 }) {
-  const [soloExactas, setSoloExactas] = useState(false)
-
-  const exactasCount = useMemo(
-    () => alternativas.filter(a => a.medicamento_destino && esExacta(medicamento, a.medicamento_destino)).length,
-    [alternativas, medicamento],
+  const porTipo = useMemo(
+    () => ALT_ORDEN.reduce<Record<string, AlternativaLive[]>>((acc, t) => {
+      acc[t] = alternativas.filter(a => a.tipo === t)
+      return acc
+    }, {}),
+    [alternativas],
   )
 
-  const altsFiltradas = useMemo(
-    () => soloExactas
-      ? alternativas.filter(a => a.medicamento_destino && esExacta(medicamento, a.medicamento_destino))
-      : alternativas,
-    [alternativas, soloExactas, medicamento],
-  )
-
-  const porTipo = ALT_ORDEN.reduce<Record<string, AlternativaLive[]>>((acc, t) => {
-    acc[t] = altsFiltradas.filter(a => a.tipo === t)
-    return acc
-  }, {})
+  const mismoProd = porTipo['MISMO_PRODUCTO_DIFERENTE_LAB'] ?? []
 
   return (
     <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-      {/* Panel header */}
+      {/* Header */}
       <div className="bg-slate-50 border-b border-slate-200 px-4 py-3">
         <div className="flex items-center gap-2 flex-wrap">
           <p className="font-semibold text-slate-900 text-sm">{medicamento.nombre_comercial}</p>
@@ -149,48 +134,20 @@ function PanelAlternativas({
         <div className="flex flex-wrap gap-1 mt-1.5">
           {medicamento.principios_dci.map((dci, i) => <TagDCI key={i} dci={dci} />)}
         </div>
-        {(medicamento.concentracion_display || medicamento.forma_farmaceutica) && (
-          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-            <span className="text-xs text-slate-400">Buscando alternativas a:</span>
-            <span className="text-xs bg-white border border-slate-200 rounded-full px-2 py-0.5 text-slate-600">
-              {medicamento.forma_farmaceutica}
+        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+          <span className="text-xs bg-white border border-slate-200 rounded-full px-2 py-0.5 text-slate-600">
+            {medicamento.forma_farmaceutica}
+          </span>
+          {medicamento.concentracion_display && (
+            <span className="text-xs bg-white border border-slate-200 rounded-full px-2 py-0.5 font-mono font-semibold text-slate-700">
+              {medicamento.concentracion_display}
             </span>
-            {medicamento.concentracion_display && (
-              <span className="text-xs bg-white border border-slate-200 rounded-full px-2 py-0.5 font-mono font-semibold text-slate-700">
-                {medicamento.concentracion_display}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Filter bar */}
-      {!cargando && alternativas.length > 0 && (
-        <div className="px-4 py-2.5 border-b border-slate-100 flex items-center gap-3">
-          <button
-            onClick={() => setSoloExactas(false)}
-            className={`text-xs px-3 py-1 rounded-full border transition-colors ${
-              !soloExactas
-                ? 'bg-slate-800 text-white border-slate-800'
-                : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
-            }`}
-          >
-            Todas ({alternativas.length})
-          </button>
-          <button
-            onClick={() => setSoloExactas(true)}
-            disabled={exactasCount === 0}
-            title="Misma forma farmacéutica y concentración"
-            className={`text-xs px-3 py-1 rounded-full border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-              soloExactas
-                ? 'bg-emerald-700 text-white border-emerald-700'
-                : 'bg-white text-emerald-700 border-emerald-300 hover:border-emerald-500'
-            }`}
-          >
-            ✓ Concentración exacta ({exactasCount})
-          </button>
+          )}
+          {!cargando && alternativas.length > 0 && (
+            <span className="text-xs text-slate-400 ml-auto">{alternativas.length} alternativas</span>
+          )}
         </div>
-      )}
+      </div>
 
       <div className="p-4">
         {cargando && (
@@ -200,16 +157,9 @@ function PanelAlternativas({
           </div>
         )}
         {error && <p className="text-red-500 text-sm">{error}</p>}
-
         {!cargando && !error && alternativas.length === 0 && (
           <p className="text-slate-400 text-sm text-center py-6">
             No se encontraron alternativas para este medicamento.
-          </p>
-        )}
-
-        {!cargando && soloExactas && exactasCount === 0 && (
-          <p className="text-slate-400 text-sm text-center py-6">
-            No hay alternativas con la misma concentración y forma farmacéutica.
           </p>
         )}
 
@@ -217,36 +167,67 @@ function PanelAlternativas({
           const lista = porTipo[tipo]
           if (!lista?.length) return null
           const cfg = ALT_CFG[tipo]
+
+          // A0: render compacto — tabla de laboratorios
+          if (tipo === 'MISMO_PRODUCTO_DIFERENTE_LAB') {
+            return (
+              <div key={tipo} className="mb-5 last:mb-0">
+                <div className={`flex items-start gap-2 px-2.5 py-2 rounded-lg border mb-1 ${cfg.color}`}>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold">{cfg.label} ({lista.length})</p>
+                    <p className="text-xs opacity-70 mt-0.5">{cfg.desc}</p>
+                  </div>
+                </div>
+                <div className="border border-emerald-100 rounded-lg overflow-hidden">
+                  {lista.map((alt, i) => {
+                    const dest = alt.medicamento_destino
+                    return (
+                      <div key={i} className="flex items-center gap-3 px-3 py-2 border-b border-emerald-50 last:border-0 hover:bg-emerald-50 transition-colors">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-800 truncate">{dest?.nombre_comercial ?? alt.cum_destino}</p>
+                          {dest?.concentracion_display && (
+                            <p className="text-xs font-mono text-slate-500 truncate">{dest.concentracion_display}</p>
+                          )}
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="text-xs text-slate-600 font-medium">{dest?.laboratorio}</p>
+                          {dest && (
+                            <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                              dest.estado_cum === 'Activo'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-red-100 text-red-600'
+                            }`}>
+                              {dest.estado_cum}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          }
+
+          // Resto de categorías: render estándar
           return (
             <div key={tipo} className="mb-5 last:mb-0">
-              <h4 className={`text-xs font-semibold px-2.5 py-1.5 rounded-lg border mb-2 ${cfg.color}`}>
-                {cfg.label} ({lista.length})
-              </h4>
+              <div className={`flex items-start gap-2 px-2.5 py-2 rounded-lg border mb-2 ${cfg.color}`}>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold">{cfg.label} ({lista.length})</p>
+                  <p className="text-xs opacity-70 mt-0.5">{cfg.desc}</p>
+                </div>
+              </div>
               <div className="space-y-2">
                 {lista.map((alt, i) => {
                   const dest = alt.medicamento_destino
-                  const exacta = dest ? esExacta(medicamento, dest) : false
                   return (
-                    <div
-                      key={i}
-                      className={`border rounded-lg p-3 ${
-                        exacta
-                          ? 'border-emerald-200 bg-emerald-50'
-                          : 'border-slate-100 bg-slate-50'
-                      }`}
-                    >
+                    <div key={i} className="border border-slate-100 rounded-lg p-3 bg-slate-50">
                       {dest ? (
                         <>
                           <div className="flex items-start justify-between gap-2">
                             <p className="font-medium text-sm text-slate-900">{dest.nombre_comercial}</p>
-                            <div className="flex items-center gap-1 shrink-0">
-                              {exacta && (
-                                <span className="text-xs bg-emerald-100 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded-full font-semibold">
-                                  Exacta
-                                </span>
-                              )}
-                              <BadgeFormula tipo={dest.tipo_formula} />
-                            </div>
+                            <BadgeFormula tipo={dest.tipo_formula} />
                           </div>
                           <div className="flex flex-wrap gap-1 my-1.5">
                             {dest.principios_dci.map((dci, j) => (
@@ -264,13 +245,13 @@ function PanelAlternativas({
                                 {dest.concentracion_display}
                               </span>
                             )}
-                            <span>· ATC {dest.atc} · {dest.laboratorio}</span>
+                            <span>· {dest.laboratorio}</span>
                           </div>
                         </>
                       ) : (
                         <p className="text-xs text-slate-500 font-mono">{alt.cum_destino}</p>
                       )}
-                      {alt.componentes_compartidos.length > 0 && (
+                      {alt.componentes_compartidos.length > 0 && tipo !== 'MISMO_PRINCIPIO_ACTIVO' && (
                         <p className="text-xs text-emerald-600 mt-1.5 font-medium">
                           Compartido: {alt.componentes_compartidos.join(', ')}
                         </p>
@@ -282,6 +263,13 @@ function PanelAlternativas({
             </div>
           )
         })}
+
+        {/* Nota si solo hay A0 y ninguna otra */}
+        {!cargando && mismoProd.length > 0 && alternativas.length === mismoProd.length && (
+          <p className="text-xs text-slate-400 text-center pt-2">
+            Solo se encontraron sustitutos del mismo producto. No hay alternativas terapéuticas en el CUM para esta clase.
+          </p>
+        )}
       </div>
     </div>
   )

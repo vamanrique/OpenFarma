@@ -9,7 +9,7 @@ import re
 import pandas as pd
 from dataclasses import dataclass, field
 
-# Sufijos de sal/éster a eliminar para obtener la DCI (nombre genérico)
+# Sufijos de sal/éster/forma a eliminar para obtener la DCI (nombre genérico)
 _SUFIJOS_SAL = re.compile(
     r"\b(TRIHIDRATO|MONOHIDRATO|DIHIDRATO|ANHIDRO|HEMIHIDRATO|"
     r"SODICO|SODICA|POTASICO|POTASICA|CALCICO|CALCICA|MAGNESICO|"
@@ -20,9 +20,12 @@ _SUFIJOS_SAL = re.compile(
     r"LACTATO|CITRATO|MALATO|OXALATO|VALERATO|BUTIRATO|"
     r"DIPROPIONATO|FUROATO|PROPIONATO|HEXANOATO|DECANOATO|"
     r"PALMITATO|ESTEARATO|BENZOATO|SALICILATO|"
-    r"TRIHIDRATADA?|DIHIDRATADA?|MONOHIDRATADA?)\b",
+    r"TRIHIDRATADA?|DIHIDRATADA?|MONOHIDRATADA?|BASE)\b",
     re.IGNORECASE,
 )
+
+# Extrae el primer valor numérico de un string de concentración ("25 mg" → 25.0)
+_NUM_DOSIS = re.compile(r'(\d+(?:[.,]\d+)?)')
 
 # Patrón para extraer el nombre DCI de "NOMBRE COMPLEJO EQUIVALENTE A NOMBRE_DCI"
 _EQUIV_PATRON = re.compile(
@@ -105,6 +108,7 @@ class MedicamentoTransformado:
     tipo_formula: str                    # monocomponente|biconjugado|triconjugado|tetraconjugado
     concentraciones: list[str]           # una por componente
     concentracion_display: str           # para mostrar en UI
+    dosis_numerica: float | None         # primer valor numérico de concentraciones[0] (para comparar exacto)
     forma_farmaceutica: str
     via_administracion: str
     atc: str
@@ -163,6 +167,16 @@ def agrupar_y_transformar(df: pd.DataFrame) -> list[MedicamentoTransformado]:
         else:
             concentracion_display = ""
 
+        # Valor numérico de la dosis del primer componente (para comparar exacto en alternativas)
+        dosis_numerica: float | None = None
+        if concentraciones:
+            m_num = _NUM_DOSIS.search(concentraciones[0])
+            if m_num:
+                try:
+                    dosis_numerica = float(m_num.group(1).replace(',', '.'))
+                except ValueError:
+                    pass
+
         primera = grupo.iloc[0]
 
         resultados.append(MedicamentoTransformado(
@@ -175,6 +189,7 @@ def agrupar_y_transformar(df: pd.DataFrame) -> list[MedicamentoTransformado]:
             tipo_formula=tipo,
             concentraciones=concentraciones,
             concentracion_display=concentracion_display,
+            dosis_numerica=dosis_numerica,
             forma_farmaceutica=str(primera.get("formafarmaceutica", "")).strip().upper(),
             via_administracion=str(primera.get("viaadministracion", "")).strip().upper(),
             atc=str(primera.get("atc", "")).strip().upper(),
