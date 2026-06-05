@@ -27,11 +27,15 @@ _SUFIJOS_SAL = re.compile(
 # Extrae el primer valor numérico de un string de concentración ("25 mg" → 25.0)
 _NUM_DOSIS = re.compile(r'(\d+(?:[.,]\d+)?)')
 
-# Patrón para extraer el nombre DCI de "NOMBRE COMPLEJO EQUIVALENTE A NOMBRE_DCI"
+# Patrón para extraer el DCI de "NOMBRE EQUIVALENTE A DCI" — tolera espacio faltante antes del DCI
+# cubre tanto "EQUIVALENTE A FENTANILO" como "EQUIVALENTE AFENTANILO" (sin espacio, frecuente en CUM)
 _EQUIV_PATRON = re.compile(
-    r"EQUIVALENTE\s+A\s+(.+?)(?:\s*\d[\d.,]*\s*(?:MG|MCG|G|UI|U|ML))?$",
+    r"EQUIVALENTE\s+A?\s*(.+?)(?:\s*\d[\d.,]*\s*(?:MG|MCG|G|UI|U|ML))?$",
     re.IGNORECASE,
 )
+
+# Limpia cualquier residuo "EQUIVALENTE [A] X" que quede tras la extracción parcial
+_EQUIV_RESIDUO = re.compile(r"\s+EQUIVALENTE\b.*$", re.IGNORECASE)
 
 # Patrón para limpiar concentraciones incrustadas en el nombre
 _CONCENTRACION_INCRUSTADA = re.compile(
@@ -52,7 +56,7 @@ def normalizar_principio(principio: str) -> str:
     """
     p = str(principio).strip().upper()
 
-    # Si hay "EQUIVALENTE A", tomar la parte de después
+    # Si hay "EQUIVALENTE [A] X", tomar la parte posterior (tolera espacio faltante)
     m = _EQUIV_PATRON.search(p)
     if m:
         p = m.group(1).strip()
@@ -60,8 +64,11 @@ def normalizar_principio(principio: str) -> str:
     # Quitar concentraciones incrustadas al final
     p = _CONCENTRACION_INCRUSTADA.sub("", p).strip()
 
-    # Quitar sufijos de sal
+    # Quitar sufijos de sal/forma
     p = _SUFIJOS_SAL.sub("", p)
+
+    # Limpiar cualquier residuo "EQUIVALENTE ..." que no capturó el patrón principal
+    p = _EQUIV_RESIDUO.sub("", p).strip()
 
     # Limpiar espacios múltiples
     p = re.sub(r"\s{2,}", " ", p).strip()
@@ -82,16 +89,18 @@ def construir_concentracion(row: pd.Series) -> str:
     if not cantidad or cantidad in ("nan", "None", ""):
         return ""
 
-    # Unidad real: preferir unidadmedida, luego unidad
-    unidad_real = unidad_medida if unidad_medida not in ("nan", "None", "") else unidad
+    # Valores de campo que no son unidades reales (basura del CUM)
+    _INVALIDOS = {"nan", "None", "U", "", "SI", "NO", "S", "N", "N/A", "NA"}
 
-    if unidad_real in ("nan", "None", "U", ""):
+    # Unidad real: preferir unidadmedida, luego unidad; descartar valores inválidos
+    unidad_real = unidad_medida if unidad_medida.upper() not in _INVALIDOS else unidad
+    if unidad_real.upper() in _INVALIDOS:
         unidad_real = "mg"  # default para sólidos orales
 
     base = f"{cantidad} {unidad_real}"
 
-    # Agregar referencia si aporta contexto (no repetir si ya está en unidad)
-    if unidad_ref and unidad_ref not in ("nan", "None", "") and unidad_ref.upper() != unidad_real.upper():
+    # Agregar referencia de presentación si aporta contexto (ej. "AMPOLLA POR 5 ML")
+    if unidad_ref and unidad_ref.upper() not in _INVALIDOS and unidad_ref.upper() != unidad_real.upper():
         base = f"{base}/{unidad_ref}"
 
     return base.strip()
