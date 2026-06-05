@@ -87,7 +87,9 @@ async def alternativas_para(
         return [], {}
 
     df = pd.DataFrame(filas)
-    todos = agrupar_y_transformar(df)
+    todos_raw = agrupar_y_transformar(df)
+    # Solo productos con registro sanitario vigente como posibles alternativas
+    todos = [m for m in todos_raw if m.estado_registro.lower() in ('vigente', '')]
     lookup: dict[str, MedicamentoTransformado] = {m.cum_id: m for m in todos}
 
     pares = generar_alternativas(todos)

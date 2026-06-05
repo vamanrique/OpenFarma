@@ -3,7 +3,7 @@ Genera relaciones de alternativas farmacológicas usando MedicamentoTransformado
 Soporta principios activos mono/bi/tri/tetraconjugados.
 
 Criterios:
-  A0 — MISMO_PRODUCTO_DIFERENTE_LAB : mismo DCI + misma dosis + misma forma+vía, distinto lab
+  A0 — SUSTITUTO_DIRECTO            : mismo DCI + misma dosis + misma forma+vía, distinto lab
   A1 — MISMO_PRINCIPIO_ACTIVO       : mismo DCI + misma forma+vía + distinta dosis
   A2 — EQUIVALENTE_EXACTO           : mismo ATC-7 + misma forma+vía + distintos DCI (sales)
   A3 — EQUIVALENTE_CLASE            : mismo ATC-5 + misma forma+vía + distinto ATC-7
@@ -183,10 +183,10 @@ def generar_alternativas(meds: list[MedicamentoTransformado]) -> list[ParAlterna
                 componentes_compartidos=compartidos,
             ))
 
-    # A0 — Mismo producto (mismo DCI + misma dosis + misma forma), diferente laboratorio
+    # A0 — Sustituto directo: mismo DCI + misma dosis + misma forma, diferente laboratorio
     for (dci_key, dosis, _), grupo in por_producto.items():
         for a, b in combinations(grupo, 2):
-            agregar(a, b, "MISMO_PRODUCTO_DIFERENTE_LAB",
+            agregar(a, b, "SUSTITUTO_DIRECTO",
                     f"Mismo principio activo ({', '.join(dci_key)}) y concentración ({dosis} mg), diferente laboratorio",
                     list(dci_key))
 

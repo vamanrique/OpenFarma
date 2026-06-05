@@ -9,17 +9,15 @@ const FORMULA_CFG: Record<string, { label: string; color: string }> = {
 }
 
 const ALT_CFG: Record<string, { color: string; label: string; desc: string }> = {
-  MISMO_PRODUCTO_DIFERENTE_LAB: { color: 'bg-emerald-50 text-emerald-800 border-emerald-200', label: 'Mismo producto — diferente laboratorio', desc: 'Misma molécula, misma dosis, misma forma. Solo cambia el titular.' },
-  MISMO_PRINCIPIO_ACTIVO:       { color: 'bg-teal-50 text-teal-800 border-teal-200',          label: 'Mismo principio activo — diferente concentración', desc: 'Misma molécula y forma, distinta dosis.' },
+  SUSTITUTO_DIRECTO:            { color: 'bg-emerald-50 text-emerald-800 border-emerald-200', label: 'Sustituto directo', desc: 'Mismo principio activo, misma concentración, misma forma. Solo cambia el titular.' },
+  MISMO_PRINCIPIO_ACTIVO:       { color: 'bg-teal-50 text-teal-800 border-teal-200',          label: 'Misma molécula — diferente concentración', desc: 'Misma molécula y forma, distinta dosis.' },
   EQUIVALENTE_EXACTO:           { color: 'bg-blue-50 text-blue-800 border-blue-200',           label: 'Equivalente exacto (sales / ésteres)', desc: 'Mismo ATC-7, misma forma. Distinta sal o éster del mismo compuesto.' },
   EQUIVALENTE_CLASE:            { color: 'bg-indigo-50 text-indigo-800 border-indigo-200',     label: 'Equivalente terapéutico — misma clase ATC', desc: 'Misma clase farmacológica ATC-5, misma forma. Molécula distinta.' },
   COMPONENTE_COMPARTIDO:        { color: 'bg-purple-50 text-purple-800 border-purple-200',     label: 'Combinado con componente en común', desc: 'Comparte al menos un principio activo.' },
   ALTERNATIVA_DIFERENTE_FORMA:  { color: 'bg-amber-50 text-amber-800 border-amber-200',        label: 'Misma molécula o clase — diferente vía/forma', desc: 'Oral vs vaginal, tableta vs inyectable, etc. Requiere evaluación clínica.' },
 }
 
-const ALT_ORDEN = [
-  'MISMO_PRODUCTO_DIFERENTE_LAB',
-  'MISMO_PRINCIPIO_ACTIVO',
+const TIPOS_TERAPEUTICOS = [
   'EQUIVALENTE_EXACTO',
   'EQUIVALENTE_CLASE',
   'COMPONENTE_COMPARTIDO',
@@ -129,16 +127,55 @@ function PanelAlternativas({
   error: string
 }) {
   const inyectable = esInyectable(medicamento)
+  const [terapExpanded, setTerapExpanded] = useState(false)
 
-  const porTipo = useMemo(
-    () => ALT_ORDEN.reduce<Record<string, AlternativaLive[]>>((acc, t) => {
-      acc[t] = alternativas.filter(a => a.tipo === t)
-      return acc
-    }, {}),
-    [alternativas],
-  )
+  const sustitutos   = useMemo(() => alternativas.filter(a => a.tipo === 'SUSTITUTO_DIRECTO'),       [alternativas])
+  const mismaConc    = useMemo(() => alternativas.filter(a => a.tipo === 'MISMO_PRINCIPIO_ACTIVO'),   [alternativas])
+  const terapeuticas = useMemo(() => alternativas.filter(a => TIPOS_TERAPEUTICOS.includes(a.tipo)),  [alternativas])
+  const porTipo      = useMemo(() => TIPOS_TERAPEUTICOS.reduce<Record<string, AlternativaLive[]>>((acc, t) => {
+    acc[t] = alternativas.filter(a => a.tipo === t)
+    return acc
+  }, {}), [alternativas])
 
-  const mismoProd = porTipo['MISMO_PRODUCTO_DIFERENTE_LAB'] ?? []
+  const renderAlternativa = (alt: AlternativaLive, i: number, tipo: string) => {
+    const dest = alt.medicamento_destino
+    return (
+      <div key={i} className="border border-slate-100 rounded-lg p-3 bg-slate-50">
+        {dest ? (
+          <>
+            <div className="flex items-start justify-between gap-2">
+              <p className="font-medium text-sm text-slate-900">{dest.nombre_comercial}</p>
+              <BadgeFormula tipo={dest.tipo_formula} />
+            </div>
+            <div className="flex flex-wrap gap-1 my-1.5">
+              {dest.principios_dci.map((dci, j) => (
+                <TagDCI key={j} dci={dci} highlight={alt.componentes_compartidos.includes(dci)} />
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400">
+              <span>{dest.forma_farmaceutica}</span>
+              <span className="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded uppercase text-[10px] font-semibold tracking-wide text-slate-500">
+                {dest.via_administracion}
+              </span>
+              {dest.concentracion_display && (
+                <span className="font-mono font-semibold text-slate-600 bg-white border border-slate-200 px-1.5 py-0.5 rounded">
+                  {dest.concentracion_display}
+                </span>
+              )}
+              <span>· {dest.laboratorio}</span>
+            </div>
+          </>
+        ) : (
+          <p className="text-xs text-slate-500 font-mono">{alt.cum_destino}</p>
+        )}
+        {alt.componentes_compartidos.length > 0 && tipo !== 'MISMO_PRINCIPIO_ACTIVO' && tipo !== 'SUSTITUTO_DIRECTO' && (
+          <p className="text-xs text-emerald-600 mt-1.5 font-medium">
+            Compartido: {alt.componentes_compartidos.join(', ')}
+          </p>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
@@ -166,7 +203,7 @@ function PanelAlternativas({
         </div>
       </div>
 
-      <div className="p-4">
+      <div className="p-4 space-y-5">
         {cargando && (
           <div className="py-10 text-center">
             <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
@@ -180,26 +217,25 @@ function PanelAlternativas({
           </p>
         )}
 
-        {!cargando && ALT_ORDEN.map(tipo => {
-          const lista = porTipo[tipo]
-          if (!lista?.length) return null
-          const cfg = ALT_CFG[tipo]
-
-          // A0: render compacto — tabla de laboratorios
-          if (tipo === 'MISMO_PRODUCTO_DIFERENTE_LAB') {
-            return (
-              <div key={tipo} className="mb-5 last:mb-0">
-                <div className={`flex items-start gap-2 px-2.5 py-2 rounded-lg border mb-1 ${cfg.color}`}>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold">{cfg.label} ({lista.length})</p>
-                    <p className="text-xs opacity-70 mt-0.5">{cfg.desc}</p>
-                  </div>
+        {!cargando && (
+          <>
+            {/* SECCIÓN 1 — Sustitutos directos */}
+            {sustitutos.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                  <p className="text-xs font-bold text-emerald-800 uppercase tracking-wide">
+                    Sustitutos directos — {sustitutos.length}
+                  </p>
                 </div>
-                <div className="border border-emerald-100 rounded-lg overflow-hidden">
-                  {lista.map((alt, i) => {
+                <p className="text-xs text-slate-500 mb-2 pl-4">
+                  Mismo principio activo · misma concentración · misma forma farmacéutica. Intercambiables directamente.
+                </p>
+                <div className="border border-emerald-200 rounded-lg overflow-hidden">
+                  {sustitutos.map((alt, i) => {
                     const dest = alt.medicamento_destino
                     return (
-                      <div key={i} className="flex items-center gap-3 px-3 py-2 border-b border-emerald-50 last:border-0 hover:bg-emerald-50 transition-colors">
+                      <div key={i} className="flex items-center gap-3 px-3 py-2.5 border-b border-emerald-50 last:border-0 hover:bg-emerald-50 transition-colors">
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-slate-800 truncate">{dest?.nombre_comercial ?? alt.cum_destino}</p>
                           {dest?.concentracion_display && (
@@ -207,7 +243,7 @@ function PanelAlternativas({
                           )}
                         </div>
                         <div className="shrink-0 text-right">
-                          <p className="text-xs text-slate-600 font-medium">{dest?.laboratorio}</p>
+                          <p className="text-xs text-slate-600 font-medium truncate max-w-[120px]">{dest?.laboratorio}</p>
                           {dest && (
                             <span className={`text-xs px-1.5 py-0.5 rounded-full ${
                               dest.estado_cum === 'Activo'
@@ -223,88 +259,93 @@ function PanelAlternativas({
                   })}
                 </div>
               </div>
-            )
-          }
+            )}
 
-          // Resto de categorías: render estándar
-          return (
-            <div key={tipo} className="mb-5 last:mb-0">
-              <div className={`flex items-start gap-2 px-2.5 py-2 rounded-lg border mb-2 ${cfg.color}`}>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold">{cfg.label} ({lista.length})</p>
-                  <p className="text-xs opacity-70 mt-0.5">{cfg.desc}</p>
-                </div>
-              </div>
-              {/* Advertencia específica para inyectables en A1 */}
-              {tipo === 'MISMO_PRINCIPIO_ACTIVO' && inyectable && (
-                <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2">
-                  <svg className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-                  </svg>
-                  <p className="text-xs text-amber-700 leading-relaxed">
-                    <strong>Inyectables:</strong> la comparación usa el contenido total del envase (mcg o mg por ampolla), no la concentración por mL. Un vial de 250 mcg/5 mL y uno de 500 mcg/10 mL son la <strong>misma concentración</strong> (50 mcg/mL). Verifique mcg/mL antes de concluir que son dosis diferentes.
+            {/* SECCIÓN 2 — Misma molécula, diferente concentración */}
+            {mismaConc.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-2 h-2 rounded-full bg-teal-400 shrink-0" />
+                  <p className="text-xs font-bold text-teal-800 uppercase tracking-wide">
+                    Misma molécula — diferente concentración ({mismaConc.length})
                   </p>
                 </div>
-              )}
-              <div className="space-y-2">
-                {lista.map((alt, i) => {
-                  const dest = alt.medicamento_destino
-                  return (
-                    <div key={i} className="border border-slate-100 rounded-lg p-3 bg-slate-50">
-                      {dest ? (
-                        <>
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="font-medium text-sm text-slate-900">{dest.nombre_comercial}</p>
-                            <BadgeFormula tipo={dest.tipo_formula} />
-                          </div>
-                          <div className="flex flex-wrap gap-1 my-1.5">
-                            {dest.principios_dci.map((dci, j) => (
-                              <TagDCI
-                                key={j}
-                                dci={dci}
-                                highlight={alt.componentes_compartidos.includes(dci)}
-                              />
-                            ))}
-                          </div>
-                          <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400">
-                            <span>{dest.forma_farmaceutica}</span>
-                            <span className="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded uppercase text-[10px] font-semibold tracking-wide text-slate-500">
-                              {dest.via_administracion}
-                            </span>
-                            {dest.concentracion_display && (
-                              <span className="font-mono font-semibold text-slate-600 bg-white border border-slate-200 px-1.5 py-0.5 rounded">
-                                {dest.concentracion_display}
-                              </span>
-                            )}
-                            <span>· {dest.laboratorio}</span>
-                          </div>
-                        </>
-                      ) : (
-                        <p className="text-xs text-slate-500 font-mono">{alt.cum_destino}</p>
-                      )}
-                      {alt.componentes_compartidos.length > 0 && tipo !== 'MISMO_PRINCIPIO_ACTIVO' && (
-                        <p className="text-xs text-emerald-600 mt-1.5 font-medium">
-                          Compartido: {alt.componentes_compartidos.join(', ')}
-                        </p>
-                      )}
-                    </div>
-                  )
-                })}
+                <p className="text-xs text-slate-500 mb-2 pl-4">
+                  Mismo principio activo y vía. La dosis varía — requiere ajuste por el profesional.
+                </p>
+                {inyectable && (
+                  <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2">
+                    <svg className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                    </svg>
+                    <p className="text-xs text-amber-700 leading-relaxed">
+                      <strong>Inyectables:</strong> el CUM registra mg/mcg por envase, no por mL. Un vial de 250 mcg/5 mL y uno de 500 mcg/10 mL son la <strong>misma concentración</strong> (50 mcg/mL). Verifique mcg/mL antes de concluir que son dosis diferentes.
+                    </p>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  {mismaConc.map((alt, i) => renderAlternativa(alt, i, 'MISMO_PRINCIPIO_ACTIVO'))}
+                </div>
               </div>
-            </div>
-          )
-        })}
+            )}
 
-        {/* Nota si solo hay A0 y ninguna otra */}
-        {!cargando && mismoProd.length > 0 && alternativas.length === mismoProd.length && (
-          <p className="text-xs text-slate-400 text-center pt-2">
-            Solo se encontraron sustitutos del mismo producto. No hay alternativas terapéuticas en el CUM para esta clase.
-          </p>
+            {/* SECCIÓN 3 — Alternativas terapéuticas (colapsable) */}
+            {terapeuticas.length > 0 && (
+              <div>
+                <button
+                  onClick={() => setTerapExpanded(v => !v)}
+                  className="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-slate-400 shrink-0" />
+                    <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                      Alternativas terapéuticas — {terapeuticas.length}
+                    </p>
+                  </div>
+                  <svg className={`w-4 h-4 text-slate-400 transition-transform ${terapExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m19 9-7 7-7-7" />
+                  </svg>
+                </button>
+                <p className="text-xs text-slate-400 mt-1 px-1">
+                  Misma clase farmacológica (ATC). Molécula distinta — requieren evaluación clínica.
+                </p>
+                {terapExpanded && (
+                  <div className="space-y-4 mt-3">
+                    {TIPOS_TERAPEUTICOS.map(tipo => {
+                      const lista = porTipo[tipo]
+                      if (!lista?.length) return null
+                      const cfg = ALT_CFG[tipo]
+                      return (
+                        <div key={tipo}>
+                          <div className={`flex items-start gap-2 px-2.5 py-2 rounded-lg border mb-2 ${cfg.color}`}>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold">{cfg.label} ({lista.length})</p>
+                              <p className="text-xs opacity-70 mt-0.5">{cfg.desc}</p>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            {lista.map((alt, i) => renderAlternativa(alt, i, tipo))}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Nota cuando solo hay sustitutos directos */}
+            {sustitutos.length > 0 && mismaConc.length === 0 && terapeuticas.length === 0 && (
+              <p className="text-xs text-slate-400 text-center pt-1">
+                Solo hay sustitutos directos registrados. No se encontraron alternativas en la misma clase ATC.
+              </p>
+            )}
+          </>
         )}
 
-        {/* Disclaimer de fuente y limitaciones */}
+        {/* Disclaimer */}
         {!cargando && alternativas.length > 0 && (
-          <div className="mt-4 pt-3 border-t border-slate-100 flex gap-2">
+          <div className="pt-3 border-t border-slate-100 flex gap-2">
             <svg className="w-3.5 h-3.5 text-slate-300 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zm-9-3.75h.008v.008H12V8.25z" />
             </svg>
@@ -474,7 +515,7 @@ export default function BuscadorMedicamentos() {
             <div className="bg-white border border-dashed border-slate-300 rounded-xl flex items-center justify-center py-16 text-center hidden lg:flex">
               <div>
                 <p className="text-sm text-slate-400">Selecciona un medicamento</p>
-                <p className="text-xs text-slate-300 mt-1">para ver sus alternativas terapéuticas</p>
+                <p className="text-xs text-slate-300 mt-1">para ver sus sustitutos y alternativas</p>
               </div>
             </div>
           )}
