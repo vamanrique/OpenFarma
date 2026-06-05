@@ -118,6 +118,41 @@ function esInyectable(med: MedicamentoLive): boolean {
   )
 }
 
+// Medicamentos de Margen Terapéutico Estrecho (MTE)
+// Fuente: criterios FDA NTI + consenso farmacológico colombiano
+const NTI_DCIS = new Set([
+  'WARFARINA', 'ACENOCUMAROL',
+  'DIGOXINA',
+  'AMIODARONA', 'FLECAINIDA', 'PROCAINAMIDA', 'QUINIDINA',
+  'FENITOINA',
+  'CARBAMAZEPINA',
+  'ACIDO VALPROICO', 'VALPROATO',
+  'FENOBARBITAL', 'LAMOTRIGINA',
+  'CICLOSPORINA',
+  'TACROLIMUS', 'SIROLIMUS', 'EVEROLIMUS',
+  'LITIO',
+  'CLOZAPINA',
+  'TEOFILINA', 'AMINOFILINA',
+  'GENTAMICINA', 'AMIKACINA', 'TOBRAMICINA', 'NETILMICINA',
+  'VANCOMICINA',
+  'LEVOTIROXINA',
+  'METOTREXATO', 'MERCAPTOPURINA',
+])
+
+function esNTI(dcis: string[]): boolean {
+  return dcis.some(dci =>
+    [...NTI_DCIS].some(nti => dci.toUpperCase().includes(nti))
+  )
+}
+
+function BadgeNTI() {
+  return (
+    <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-200 uppercase tracking-wide shrink-0">
+      MTE
+    </span>
+  )
+}
+
 function PanelAlternativas({
   medicamento, alternativas, cargando, error,
 }: {
@@ -127,6 +162,7 @@ function PanelAlternativas({
   error: string
 }) {
   const inyectable = esInyectable(medicamento)
+  const esMedNTI   = esNTI(medicamento.principios_dci)
   const [terapExpanded, setTerapExpanded] = useState(false)
 
   const sustitutos   = useMemo(() => alternativas.filter(a => a.tipo === 'SUSTITUTO_DIRECTO'),       [alternativas])
@@ -144,7 +180,10 @@ function PanelAlternativas({
         {dest ? (
           <>
             <div className="flex items-start justify-between gap-2">
-              <p className="font-medium text-sm text-slate-900">{dest.nombre_comercial}</p>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <p className="font-medium text-sm text-slate-900 truncate">{dest.nombre_comercial}</p>
+                {esNTI(dest.principios_dci) && <BadgeNTI />}
+              </div>
               <BadgeFormula tipo={dest.tipo_formula} />
             </div>
             <div className="flex flex-wrap gap-1 my-1.5">
@@ -217,6 +256,21 @@ function PanelAlternativas({
           </p>
         )}
 
+        {/* Banner MTE — medicamento de margen terapéutico estrecho */}
+        {!cargando && esMedNTI && (
+          <div className="flex gap-3 bg-red-50 border border-red-200 rounded-lg px-3 py-3">
+            <svg className="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+            </svg>
+            <div>
+              <p className="text-xs font-bold text-red-800 mb-0.5">Margen terapéutico estrecho (MTE)</p>
+              <p className="text-xs text-red-700 leading-relaxed">
+                Pequeñas diferencias en la dosis o en la biodisponibilidad pueden causar falla terapéutica o toxicidad. Toda sustitución de este medicamento requiere monitoreo clínico estricto y, en muchos casos, ajuste de dosis individualizado. No intercambiar sin supervisión del médico o farmacéutico.
+              </p>
+            </div>
+          </div>
+        )}
+
         {!cargando && (
           <>
             {/* SECCIÓN 1 — Sustitutos directos */}
@@ -237,7 +291,10 @@ function PanelAlternativas({
                     return (
                       <div key={i} className="flex items-center gap-3 px-3 py-2.5 border-b border-emerald-50 last:border-0 hover:bg-emerald-50 transition-colors">
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-slate-800 truncate">{dest?.nombre_comercial ?? alt.cum_destino}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-sm font-medium text-slate-800 truncate">{dest?.nombre_comercial ?? alt.cum_destino}</p>
+                            {dest && esNTI(dest.principios_dci) && <BadgeNTI />}
+                          </div>
                           {dest?.concentracion_display && (
                             <p className="text-xs font-mono text-slate-500 truncate">{dest.concentracion_display}</p>
                           )}
