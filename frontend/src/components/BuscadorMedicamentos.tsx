@@ -11,9 +11,10 @@ const FORMULA_CFG: Record<string, { label: string; color: string }> = {
 
 // ─── Configuración de alternativas ───────────────────────────────────────────
 const ALT_CFG: Record<string, { color: string; label: string; desc: string }> = {
-  SUSTITUTO_DIRECTO:               { color: 'bg-emerald-50 text-emerald-800 border-emerald-200', label: 'Sustituto directo', desc: 'Mismo principio activo, misma concentración, misma forma. Solo cambia el titular.' },
-  MISMO_PRINCIPIO_ACTIVO:          { color: 'bg-teal-50 text-teal-800 border-teal-200',          label: 'Misma molécula — diferente concentración', desc: 'Misma molécula y forma, distinta dosis.' },
-  MISMO_PRINCIPIO_DIFERENTE_FORMA: { color: 'bg-sky-50 text-sky-800 border-sky-200',             label: 'Misma molécula · misma concentración · diferente forma', desc: 'Mismo PA y dosis, pero distinta forma farmacéutica (ej. tableta convencional vs liberación prolongada). Requiere evaluación clínica por diferencias farmacocinéticas.' },
+  SUSTITUTO_DIRECTO:               { color: 'bg-emerald-50 text-emerald-800 border-emerald-200', label: 'Sustituto directo', desc: 'Mismo principio activo, misma concentración, misma presentación y misma forma. Solo cambia el titular del registro.' },
+  MISMA_CONC_DIFERENTE_CANTIDAD:   { color: 'bg-lime-50 text-lime-800 border-lime-200',          label: 'Misma molécula · misma concentración · diferente cantidad', desc: 'Misma concentración y forma farmacéutica, pero distinto volumen o número de dosis por envase.' },
+  MISMA_CONC_DIFERENTE_FORMA:      { color: 'bg-sky-50 text-sky-800 border-sky-200',             label: 'Misma molécula · misma concentración · diferente forma', desc: 'Mismo PA y dosis, pero distinta forma farmacéutica (ej. tableta convencional vs liberación prolongada). Requiere evaluación clínica por diferencias farmacocinéticas.' },
+  DIFERENTE_CONCENTRACION:         { color: 'bg-teal-50 text-teal-800 border-teal-200',          label: 'Misma molécula — diferente concentración', desc: 'Misma molécula y forma farmacéutica, distinta dosis. Requieren ajuste de posología por parte del profesional de salud.' },
   EQUIVALENTE_EXACTO:              { color: 'bg-blue-50 text-blue-800 border-blue-200',           label: 'Equivalente exacto (sales / ésteres)', desc: 'Mismo ATC-7, misma forma. Distinta sal o éster del mismo compuesto.' },
   EQUIVALENTE_CLASE:               { color: 'bg-indigo-50 text-indigo-800 border-indigo-200',     label: 'Equivalente terapéutico — misma clase ATC', desc: 'Misma clase farmacológica ATC-5, misma forma. Molécula distinta.' },
   COMPONENTE_COMPARTIDO:           { color: 'bg-purple-50 text-purple-800 border-purple-200',     label: 'Combinado con componente en común', desc: 'Comparte al menos un principio activo.' },
@@ -231,10 +232,11 @@ function PanelAlternativas({ medicamento, alternativas, cargando, error }: {
   const esMedNTI    = esNTI(medicamento.principios_dci)
   const [terapExpanded, setTerapExpanded] = useState(false)
 
-  const sustitutos    = useMemo(() => alternativas.filter(a => a.tipo === 'SUSTITUTO_DIRECTO'),               [alternativas])
-  const mismaConc     = useMemo(() => alternativas.filter(a => a.tipo === 'MISMO_PRINCIPIO_ACTIVO'),           [alternativas])
-  const diferenteForma = useMemo(() => alternativas.filter(a => a.tipo === 'MISMO_PRINCIPIO_DIFERENTE_FORMA'), [alternativas])
-  const terapeuticas  = useMemo(() => alternativas.filter(a => TIPOS_TERAPEUTICOS.includes(a.tipo)),           [alternativas])
+  const sustitutos          = useMemo(() => alternativas.filter(a => a.tipo === 'SUSTITUTO_DIRECTO'),              [alternativas])
+  const distCantidad        = useMemo(() => alternativas.filter(a => a.tipo === 'MISMA_CONC_DIFERENTE_CANTIDAD'), [alternativas])
+  const distForma           = useMemo(() => alternativas.filter(a => a.tipo === 'MISMA_CONC_DIFERENTE_FORMA'),    [alternativas])
+  const distConcentracion   = useMemo(() => alternativas.filter(a => a.tipo === 'DIFERENTE_CONCENTRACION'),       [alternativas])
+  const terapeuticas        = useMemo(() => alternativas.filter(a => TIPOS_TERAPEUTICOS.includes(a.tipo)),        [alternativas])
   const porTipo      = useMemo(() => TIPOS_TERAPEUTICOS.reduce<Record<string, AlternativaLive[]>>((acc, t) => {
     acc[t] = alternativas.filter(a => a.tipo === t)
     return acc
@@ -277,7 +279,7 @@ function PanelAlternativas({ medicamento, alternativas, cargando, error }: {
         ) : (
           <p className="text-xs text-slate-500 font-mono">{alt.cum_destino}</p>
         )}
-        {alt.componentes_compartidos.length > 0 && tipo !== 'MISMO_PRINCIPIO_ACTIVO' && tipo !== 'SUSTITUTO_DIRECTO' && (
+        {alt.componentes_compartidos.length > 0 && tipo !== 'DIFERENTE_CONCENTRACION' && tipo !== 'SUSTITUTO_DIRECTO' && tipo !== 'MISMA_CONC_DIFERENTE_CANTIDAD' && (
           <p className="text-xs text-emerald-600 mt-1.5 font-medium">
             Compartido: {alt.componentes_compartidos.join(', ')}
           </p>
@@ -357,7 +359,7 @@ function PanelAlternativas({ medicamento, alternativas, cargando, error }: {
                   </p>
                 </div>
                 <p className="text-xs text-slate-500 mb-2 pl-4">
-                  Mismo PA · misma concentración · misma forma. Intercambiables directamente.
+                  Mismo PA · misma concentración · misma cantidad · misma forma. Intercambiables directamente.
                 </p>
                 <div className="border border-emerald-200 rounded-lg overflow-hidden">
                   {sustitutos.map((alt, i) => {
@@ -370,7 +372,10 @@ function PanelAlternativas({ medicamento, alternativas, cargando, error }: {
                             {dest && esNTI(dest.principios_dci) && <BadgeNTI />}
                           </div>
                           {dest?.concentracion_display && (
-                            <p className="text-xs font-mono text-slate-500 truncate">{dest.concentracion_display}</p>
+                            <p className="text-xs font-mono text-slate-500 truncate">
+                              {dest.concentracion_display}
+                              {dest.presentacion && <span className="text-slate-400"> · {dest.presentacion}</span>}
+                            </p>
                           )}
                         </div>
                         <div className="shrink-0 text-right">
@@ -384,48 +389,56 @@ function PanelAlternativas({ medicamento, alternativas, cargando, error }: {
               </div>
             )}
 
-            {/* Sección 2 — Misma molécula, misma concentración, diferente forma */}
-            {diferenteForma.length > 0 && (
+            {/* Sección 2 — Misma concentración, diferente cantidad */}
+            {distCantidad.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-2 h-2 rounded-full bg-lime-500 shrink-0" />
+                  <p className="text-xs font-bold text-lime-800 uppercase tracking-wide">
+                    Misma molécula · misma concentración · diferente cantidad ({distCantidad.length})
+                  </p>
+                </div>
+                <p className="text-xs text-slate-500 mb-2 pl-4">
+                  Misma concentración y forma farmacéutica, distinto volumen o número de dosis por envase.
+                </p>
+                <div className="space-y-2">
+                  {distCantidad.map((alt, i) => renderAlternativa(alt, i, 'MISMA_CONC_DIFERENTE_CANTIDAD'))}
+                </div>
+              </div>
+            )}
+
+            {/* Sección 3 — Misma concentración, diferente forma */}
+            {distForma.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <div className="w-2 h-2 rounded-full bg-sky-400 shrink-0" />
                   <p className="text-xs font-bold text-sky-800 uppercase tracking-wide">
-                    Misma molécula · misma concentración · diferente forma ({diferenteForma.length})
+                    Misma molécula · misma concentración · diferente forma ({distForma.length})
                   </p>
                 </div>
                 <p className="text-xs text-slate-500 mb-2 pl-4">
                   Mismo PA y dosis. La forma farmacéutica varía (ej. convencional vs liberación prolongada). Requiere evaluación clínica.
                 </p>
                 <div className="space-y-2">
-                  {diferenteForma.map((alt, i) => renderAlternativa(alt, i, 'MISMO_PRINCIPIO_DIFERENTE_FORMA'))}
+                  {distForma.map((alt, i) => renderAlternativa(alt, i, 'MISMA_CONC_DIFERENTE_FORMA'))}
                 </div>
               </div>
             )}
 
-            {/* Sección 3 — Misma molécula, diferente concentración */}
-            {mismaConc.length > 0 && (
+            {/* Sección 4 — Diferente concentración */}
+            {distConcentracion.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <div className="w-2 h-2 rounded-full bg-teal-400 shrink-0" />
                   <p className="text-xs font-bold text-teal-800 uppercase tracking-wide">
-                    Misma molécula — diferente concentración ({mismaConc.length})
+                    Misma molécula — diferente concentración ({distConcentracion.length})
                   </p>
                 </div>
                 <p className="text-xs text-slate-500 mb-2 pl-4">
-                  Mismo PA y vía. La dosis varía — requiere ajuste profesional.
+                  Mismo PA y vía. La dosis varía — requiere ajuste de posología por el profesional de salud.
                 </p>
-                {inyectable && (
-                  <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2">
-                    <svg className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-                    </svg>
-                    <p className="text-xs text-amber-700 leading-relaxed">
-                      <strong>Inyectables:</strong> el CUM registra mg/mcg por envase, no por mL. Verifique mcg/mL antes de concluir que las dosis son diferentes.
-                    </p>
-                  </div>
-                )}
                 <div className="space-y-2">
-                  {mismaConc.map((alt, i) => renderAlternativa(alt, i, 'MISMO_PRINCIPIO_ACTIVO'))}
+                  {distConcentracion.map((alt, i) => renderAlternativa(alt, i, 'DIFERENTE_CONCENTRACION'))}
                 </div>
               </div>
             )}
@@ -480,7 +493,7 @@ function PanelAlternativas({ medicamento, alternativas, cargando, error }: {
               </div>
             )}
 
-            {sustitutos.length > 0 && mismaConc.length === 0 && terapeuticas.length === 0 && (
+            {sustitutos.length > 0 && distCantidad.length === 0 && distForma.length === 0 && distConcentracion.length === 0 && terapeuticas.length === 0 && (
               <p className="text-xs text-slate-400 text-center pt-1">
                 Solo hay sustitutos directos. No se encontraron alternativas en la misma clase ATC.
               </p>
@@ -738,7 +751,16 @@ export default function BuscadorMedicamentos() {
                 <div>
                   <p className="text-xs font-bold text-emerald-800">Sustituto directo</p>
                   <p className="text-xs text-emerald-700 mt-0.5">
-                    Mismo principio activo · misma concentración · misma forma farmacéutica. Solo difiere el titular del registro. Son intercambiables directamente en la dispensación.
+                    Mismo principio activo · misma concentración · misma cantidad por envase · misma forma farmacéutica. Solo difiere el titular del registro. Son intercambiables directamente en la dispensación.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3 items-start p-3 rounded-lg border border-lime-200 bg-lime-50">
+                <div className="w-2.5 h-2.5 rounded-full bg-lime-500 shrink-0 mt-1" />
+                <div>
+                  <p className="text-xs font-bold text-lime-800">Misma molécula · misma concentración · diferente cantidad</p>
+                  <p className="text-xs text-lime-700 mt-0.5">
+                    Misma concentración y forma farmacéutica, pero distinto volumen o número de dosis por envase (ej. midazolam 5 mg/mL en ampolla de 3 mL vs 10 mL).
                   </p>
                 </div>
               </div>
@@ -769,10 +791,10 @@ export default function BuscadorMedicamentos() {
                   </p>
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {[
-                      { color: 'bg-blue-100 text-blue-800 border-blue-200',   label: 'Equivalente exacto',        hint: 'misma ATC-7, distinta sal/éster' },
-                      { color: 'bg-indigo-100 text-indigo-800 border-indigo-200', label: 'Equivalente clase ATC', hint: 'misma ATC-5, molécula distinta' },
-                      { color: 'bg-purple-100 text-purple-800 border-purple-200', label: 'Componente compartido', hint: 'combinado con al menos un PA en común' },
-                      { color: 'bg-amber-100 text-amber-800 border-amber-200',   label: 'Diferente vía/forma',    hint: 'oral vs inyectable, etc.' },
+                      { color: 'bg-blue-100 text-blue-800 border-blue-200',       label: 'Equivalente exacto',        hint: 'misma ATC-7, distinta sal/éster' },
+                      { color: 'bg-indigo-100 text-indigo-800 border-indigo-200', label: 'Equivalente clase ATC',     hint: 'misma ATC-5, molécula distinta' },
+                      { color: 'bg-purple-100 text-purple-800 border-purple-200', label: 'Componente compartido',     hint: 'combinado con al menos un PA en común' },
+                      { color: 'bg-amber-100 text-amber-800 border-amber-200',    label: 'Diferente vía/forma',       hint: 'oral vs inyectable, etc.' },
                     ].map(({ color, label, hint }) => (
                       <span key={label} className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${color}`} title={hint}>
                         {label}
