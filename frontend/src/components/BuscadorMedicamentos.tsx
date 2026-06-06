@@ -457,28 +457,6 @@ function PanelAlternativas({ medicamento, alternativas, cargando, error }: {
   )
 }
 
-// ─── Chip de filtro ───────────────────────────────────────────────────────────
-function ChipFiltro({ label, count, activo, onClick }: {
-  label: string; count: number; activo: boolean; onClick: () => void
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium transition-colors whitespace-nowrap ${
-        activo
-          ? 'bg-blue-600 border-blue-600 text-white'
-          : 'bg-white border-slate-200 text-slate-600 hover:border-blue-300 hover:text-blue-700'
-      }`}
-    >
-      {label}
-      <span className={`text-[10px] font-bold px-1 py-0.5 rounded-full ${
-        activo ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-500'
-      }`}>
-        {count}
-      </span>
-    </button>
-  )
-}
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function BuscadorMedicamentos() {
@@ -598,58 +576,51 @@ export default function BuscadorMedicamentos() {
 
         {/* Filtros — solo cuando hay resultados */}
         {resultados.length > 0 && !buscando && (
-          <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
-            {/* Filtro forma farmacéutica */}
+          <div className="mt-3 pt-3 border-t border-slate-100">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide shrink-0">Forma</span>
-              {grupos.map(([g, n]) => (
-                <ChipFiltro
-                  key={g}
-                  label={labelGrupo(g)}
-                  count={n}
-                  activo={filtroGrupo === g}
-                  onClick={() => setFiltroGrupo(filtroGrupo === g ? null : g)}
-                />
-              ))}
-            </div>
+              <select
+                value={filtroGrupo ?? ''}
+                onChange={e => setFiltroGrupo(e.target.value || null)}
+                className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400 cursor-pointer"
+              >
+                <option value="">Todas las formas ({resultados.length})</option>
+                {grupos.map(([g, n]) => (
+                  <option key={g} value={g}>{labelGrupo(g)} ({n})</option>
+                ))}
+              </select>
 
-            {/* Filtro concentración */}
-            {concentraciones.length > 1 && (
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide shrink-0">Conc.</span>
-                <div className="flex gap-1.5 flex-wrap">
+              {concentraciones.length > 1 && (
+                <select
+                  value={filtroConc ?? ''}
+                  onChange={e => setFiltroConc(e.target.value || null)}
+                  className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400 cursor-pointer"
+                >
+                  <option value="">Todas las concentraciones</option>
                   {concentraciones.map(([c, n]) => (
-                    <ChipFiltro
-                      key={c}
-                      label={c}
-                      count={n}
-                      activo={filtroConc === c}
-                      onClick={() => setFiltroConc(filtroConc === c ? null : c)}
-                    />
+                    <option key={c} value={c}>{c}{n > 1 ? ` (${n})` : ''}</option>
                   ))}
-                </div>
-              </div>
-            )}
+                </select>
+              )}
 
-            {/* Resumen + limpiar */}
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-500">
-                {hayFiltros
-                  ? <><strong>{resultadosFiltrados.length}</strong> de {resultados.length} resultados</>
-                  : <><strong>{resultados.length}</strong> resultados</>
-                }
-                {medSeleccionado && (
-                  <span className="ml-2 text-blue-600">· viendo <strong>{medSeleccionado.nombre_comercial}</strong></span>
-                )}
-              </span>
               {hayFiltros && (
                 <button
-                  onClick={() => { setFiltroGrupo(null) }}
-                  className="text-xs text-slate-400 hover:text-slate-600 underline"
+                  onClick={() => setFiltroGrupo(null)}
+                  className="text-xs text-slate-400 hover:text-red-500 transition-colors px-1"
+                  title="Limpiar filtros"
                 >
-                  Limpiar filtros
+                  × limpiar
                 </button>
               )}
+
+              <span className="text-xs text-slate-400 ml-auto">
+                {hayFiltros
+                  ? <>{resultadosFiltrados.length} <span className="text-slate-300">de {resultados.length}</span></>
+                  : resultados.length
+                } resultados
+                {medSeleccionado && (
+                  <span className="ml-2 text-blue-500">· {medSeleccionado.nombre_comercial}</span>
+                )}
+              </span>
             </div>
           </div>
         )}

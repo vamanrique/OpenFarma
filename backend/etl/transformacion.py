@@ -43,6 +43,23 @@ _CONCENTRACION_INCRUSTADA = re.compile(
     re.IGNORECASE,
 )
 
+# Sinónimos INN: grafías en inglés o variantes presentes en el CUM → DCI en español
+_SINONIMOS: dict[str, str] = {
+    "METOTREXATE":    "METOTREXATO",
+    "METHOTREXATE":   "METOTREXATO",
+    "DEXAMETHASONE":  "DEXAMETASONA",
+    "PREDNISOLONE":   "PREDNISOLONA",
+    "HYDROCORTISONE": "HIDROCORTISONA",
+    "TESTOSTERONE":   "TESTOSTERONA",
+    "PROGESTERONE":   "PROGESTERONA",
+    "FLUOROURACIL":   "FLUOROURACILO",
+    "VINCRISTINE":    "VINCRISTINA",
+    "VINBLASTINE":    "VINBLASTINA",
+    "CYCLOPHOSPHAMIDE": "CICLOFOSFAMIDA",
+    "CHLORAMBUCIL":   "CLORAMBUCILO",
+    "MERCAPTOPURINE": "MERCAPTOPURINA",
+}
+
 
 def normalizar_principio(principio: str) -> str:
     """
@@ -72,6 +89,9 @@ def normalizar_principio(principio: str) -> str:
 
     # Limpiar espacios múltiples
     p = re.sub(r"\s{2,}", " ", p).strip()
+
+    # Unificar grafías inglés→español para DCI de un solo token (metotrexate → metotrexato)
+    p = _SINONIMOS.get(p, p)
 
     return p
 
@@ -168,13 +188,17 @@ def agrupar_y_transformar(df: pd.DataFrame) -> list[MedicamentoTransformado]:
                 concentraciones.append(c)
 
         # Texto de concentración para mostrar
-        if len(principios_dci_uniq) == len(concentraciones):
+        # Monocomponente: solo la concentración (el DCI ya se muestra en otro campo)
+        # Multicomponente: "DCI1 conc1 + DCI2 conc2" para distinguir cuál dosis es cuál
+        if not concentraciones:
+            concentracion_display = ""
+        elif len(principios_dci_uniq) == 1:
+            concentracion_display = concentraciones[0]
+        elif len(principios_dci_uniq) == len(concentraciones):
             partes = [f"{dci} {c}" for dci, c in zip(principios_dci_uniq, concentraciones)]
             concentracion_display = " + ".join(partes)
-        elif concentraciones:
-            concentracion_display = " + ".join(concentraciones)
         else:
-            concentracion_display = ""
+            concentracion_display = " + ".join(concentraciones)
 
         # Valor numérico de la dosis del primer componente (para comparar exacto en alternativas)
         dosis_numerica: float | None = None
