@@ -27,6 +27,18 @@ _SUFIJOS_SAL = re.compile(
 # Extrae el primer valor numérico de un string de concentración ("25 mg" → 25.0)
 _NUM_DOSIS = re.compile(r'(\d+(?:[.,]\d+)?)')
 
+# Extrae volumen de referencias del CUM: "AMPOLLA POR 3 ML", "1ML", "FRASCO 100 ML"
+_VOL_EN_REF = re.compile(r'(\d+(?:[.,]\d+)?)\s*(ml|dl|l)\b', re.IGNORECASE)
+
+# Extrae ratio de concentración del nombre del producto como fallback:
+# "DORMICUM® 15MG/3ML" → (15, mg, 3, ml) → "5 mg/mL"
+# "BENZOSED® 5MG/ML"   → (5, mg, None, ml) → "5 mg/mL" (denominador implícito = 1)
+_CONC_EN_NOMBRE = re.compile(
+    r'(\d+(?:[.,]\d+)?)\s*(mg|g|mcg|µg|ug|ui|iu|meq|mmol)'
+    r'\s*/\s*(?:(\d+(?:[.,]\d+)?)\s*)?(ml|dl|l)\b',
+    re.IGNORECASE,
+)
+
 # Patrón para extraer el DCI de "NOMBRE EQUIVALENTE A DCI" — tolera espacio faltante antes del DCI
 # cubre tanto "EQUIVALENTE A FENTANILO" como "EQUIVALENTE AFENTANILO" (sin espacio, frecuente en CUM)
 _EQUIV_PATRON = re.compile(
@@ -127,10 +139,205 @@ def terminos_busqueda(query: str) -> list[str]:
     return list(terms)
 
 
+_UNIDADES_MASA = {"MG", "G", "MCG", "µG", "UG", "MEQ", "MMOL", "UI", "IU", "U"}
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Formas farmacéuticas agrupadas por equivalencia de intercambio.
+# La vía de administración tiene precedencia sobre el nombre de forma
+# (capsula oral ≠ capsula vaginal aunque el nombre de forma sea igual).
+# Definidas aquí para ser compartidas con alternativas.py (importa desde aquí).
+# ──────────────────────────────────────────────────────────────────────────────
+FORMAS_EQUIVALENTES: dict[str, frozenset[str]] = {
+    # Sólidos orales: tabletas y cápsulas son intercambiables entre sí
+    "SOLIDO_ORAL": frozenset({
+        "TABLETA", "TABLETA RECUBIERTA", "TABLETA CUBIERTA CON PELICULA",
+        "TABLETA MASTICABLE", "COMPRIMIDO", "GRAGEA",
+        "CAPSULA", "CAPSULA DURA", "CAPSULA BLANDA", "CAPSULA GELATINOSA",
+    }),
+    # Sólidos orales de liberación prolongada/controlada/modificada/sostenida
+    # Tableta LP y Cápsula LP del mismo PA y dosis son intercambiables entre sí
+    # NO son intercambiables con la forma de liberación inmediata (SOLIDO_ORAL)
+    "SOLIDO_ORAL_LP": frozenset({
+        "TABLETA DE LIBERACION PROLONGADA", "TABLETA DE LIBERACION CONTROLADA",
+        "TABLETA DE LIBERACION MODIFICADA", "TABLETA DE LIBERACION SOSTENIDA",
+        "TABLETA DE LIBERACION RETARDADA", "TABLETA DE ACCION PROLONGADA",
+        "CAPSULA DE LIBERACION PROLONGADA", "CAPSULA DE LIBERACION CONTROLADA",
+        "CAPSULA DE LIBERACION MODIFICADA", "CAPSULA DE LIBERACION SOSTENIDA",
+        "CAPSULA DE LIBERACION RETARDADA", "CAPSULA DE ACCION PROLONGADA",
+        "COMPRIMIDO DE LIBERACION PROLONGADA", "COMPRIMIDO DE LIBERACION CONTROLADA",
+    }),
+    # Dispersables/efervescentes: misma molécula pero preparación diferente
+    "ORAL_DISPERSABLE": frozenset({
+        "TABLETA DISPERSABLE", "TABLETA EFERVESCENTE",
+        "POLVO PARA SUSPENSION ORAL", "GRANULADO ORAL",
+    }),
+    # Líquidos orales
+    "LIQUIDO_ORAL": frozenset({
+        "JARABE", "SOLUCION ORAL", "SUSPENSION ORAL", "ELIXIR",
+        "GOTAS ORALES", "SOLUCION", "SUSPENSION", "EMULSION ORAL",
+    }),
+    # Sublingual/bucal
+    "SUBLINGUAL": frozenset({
+        "TABLETA SUBLINGUAL", "COMPRIMIDO SUBLINGUAL",
+        "TABLETA BUCODISPERSABLE", "FILM SUBLINGUAL",
+    }),
+    # Parenterales (todas las vías inyectables son intercambiables a nivel de dispensación)
+    "INYECTABLE": frozenset({
+        "SOLUCION INYECTABLE", "POLVO PARA SOLUCION INYECTABLE",
+        "SOLUCION PARA INYECCION", "INYECTABLE",
+        "POLVO LIOFILIZADO PARA RECONSTITUIR A SOLUCION INYECTABLE",
+        "CONCENTRADO PARA SOLUCION PARA PERFUSION",
+        "SUSPENSION INYECTABLE", "EMULSION INYECTABLE",
+    }),
+    # Tópicos cutáneos
+    "TOPICO": frozenset({
+        "CREMA", "UNGÜENTO", "GEL", "LOCION", "POMADA", "EMULSION", "ESPUMA",
+    }),
+    # Inhalados
+    "INHALADO": frozenset({
+        "AEROSOL PARA INHALACION", "POLVO PARA INHALACION",
+        "SOLUCION PARA INHALACION", "INHALADOR",
+    }),
+    # Oftálmicos
+    "OFTALMICO": frozenset({
+        "COLIRIO", "SOLUCION OFTALMICA", "GOTAS OFTALMICAS",
+        "POMADA OFTALMICA", "GEL OFTALMICO",
+    }),
+    # Vaginales — NO intercambiables con orales aunque tengan el mismo nombre de forma
+    "VAGINAL": frozenset({
+        "OVULO", "OVULOS", "CAPSULA VAGINAL", "TABLETA VAGINAL",
+        "COMPRIMIDO VAGINAL", "CREMA VAGINAL", "GEL VAGINAL",
+        "SOLUCION VAGINAL", "ESPUMA VAGINAL",
+    }),
+    # Rectales
+    "RECTAL": frozenset({
+        "SUPOSITORIO", "SUPOSITORIOS", "ENEMA", "CREMA RECTAL",
+        "GEL RECTAL", "SOLUCION RECTAL",
+    }),
+    # Transdérmicos
+    "TRANSDERMICO": frozenset({
+        "PARCHE TRANSDERMICO", "PARCHE", "GEL TRANSDERMICO",
+    }),
+    # Óticos
+    "OTICO": frozenset({"GOTAS OTICAS", "GOTAS ÓTICAS", "SOLUCION OTICA"}),
+    # Nasales
+    "NASAL": frozenset({
+        "SPRAY NASAL", "GOTAS NASALES", "SOLUCION NASAL", "GEL NASAL",
+    }),
+}
+
+_FORMA_A_GRUPO: dict[str, str] = {
+    f: g for g, fs in FORMAS_EQUIVALENTES.items() for f in fs
+}
+
+# La vía de administración tiene precedencia: capsula VAGINAL → VAGINAL,
+# aunque la forma farmacéutica "CAPSULA" normalmente mapee a SOLIDO_ORAL.
+_VIA_A_GRUPO: dict[str, str] = {
+    'VAGINAL': 'VAGINAL',
+    'RECTAL': 'RECTAL',
+    'SUBLINGUAL': 'SUBLINGUAL',
+    'BUCAL': 'SUBLINGUAL',
+    'SUBLINGUAL - BUCAL': 'SUBLINGUAL',
+    'OFTALMICA': 'OFTALMICO',
+    'OCULAR': 'OFTALMICO',
+    'OTICA': 'OTICO',
+    'AUDITIVA': 'OTICO',
+    'NASAL': 'NASAL',
+    'INTRANASAL': 'NASAL',
+    'INHALATORIA': 'INHALADO',
+    'PULMONAR': 'INHALADO',
+    'INHALACION': 'INHALADO',
+    'TRANSDERMICA': 'TRANSDERMICO',
+    'CUTANEA': 'TRANSDERMICO',
+    'INTRAVENOSA': 'INYECTABLE',
+    'INTRAMUSCULAR': 'INYECTABLE',
+    'SUBCUTANEA': 'INYECTABLE',
+    'PARENTERAL': 'INYECTABLE',
+    'INTRAARTICULAR': 'INYECTABLE',
+    'INTRATECAL': 'INYECTABLE',
+    'INTRAPERITONEAL': 'INYECTABLE',
+}
+
+
+def _grupo_forma(forma: str, via: str = '') -> str:
+    """Clasifica una forma farmacéutica en un grupo de equivalencia.
+    La vía de administración tiene precedencia para evitar que, por ejemplo,
+    una cápsula vaginal quede en el mismo grupo que una cápsula oral.
+    """
+    via_u = via.strip().upper()
+    if via_u in _VIA_A_GRUPO:
+        return _VIA_A_GRUPO[via_u]
+    return _FORMA_A_GRUPO.get(forma.strip().upper(), forma.strip().upper())
+
+
+# Grupos que se normalizan a concentración por mL
+_GRUPOS_NORM_ML = frozenset({'INYECTABLE', 'LIQUIDO_ORAL'})
+# Grupos donde la unidad de referencia es "por dosis"
+_GRUPOS_NORM_DOSIS = frozenset({'INHALADO', 'NASAL'})
+
+
+def _conc_desde_nombre(nombre: str) -> str:
+    """
+    Extrae concentración por mL desde el nombre del producto como último recurso.
+    "DORMICUM® 15MG/3ML"        → "5 mg/mL"
+    "BENZOSED® 5MG/ML"          → "5 mg/mL"
+    "DORMICUM 5 MG/5 ML"        → "1 mg/mL"
+    "METFORMINA 500MG TABLETA"  → ""  (no denominator in mL → sin resultado)
+    """
+    m = _CONC_EN_NOMBRE.search(nombre)
+    if not m:
+        return ""
+    try:
+        qty = float(m.group(1).replace(',', '.'))
+        unit = m.group(2)
+        vol = float(m.group(3).replace(',', '.')) if m.group(3) else 1.0
+        vol_unit = m.group(4).lower()
+        if vol == 0:
+            return ""
+        if vol_unit == 'dl':
+            vol *= 100
+        elif vol_unit == 'l':
+            vol *= 1000
+        ratio = qty / vol
+        u = "UI" if unit.upper() in ("UI", "IU") else unit.lower()
+        return f"{ratio:g} {u}/mL"
+    except (ValueError, ZeroDivisionError):
+        return ""
+
+
+def _normalizar_por_forma(conc: str, g_forma: str, nombre_prod: str) -> str:
+    """
+    Normaliza la concentración según el grupo farmacéutico:
+    - INYECTABLE / LIQUIDO_ORAL → ratio /mL; si no se puede calcular desde campos
+      estructurados, intenta extraerlo del nombre del producto.
+    - INHALADO / NASAL → primer valor+unidad con /dosis (excepto nebulizables
+      que ya devuelven /mL desde construir_concentracion).
+    - Otros grupos (sólidos orales, tópicos, vaginales…) → sin cambio.
+    """
+    if g_forma in _GRUPOS_NORM_ML:
+        if '/mL' in conc or '/ml' in conc:
+            return conc
+        c_fb = _conc_desde_nombre(nombre_prod)
+        return c_fb if c_fb else conc
+    if g_forma in _GRUPOS_NORM_DOSIS:
+        # nebulizables ya vienen como X mg/mL — conservar
+        if '/dosis' in conc.lower() or '/mL' in conc or '/ml' in conc:
+            return conc
+        m = re.match(r'^(\d+(?:[.,]\d+)?)\s*(\S+)', conc)
+        if m:
+            return f"{m.group(1)} {m.group(2)}/dosis"
+        return conc
+    return conc
+
+
 def construir_concentracion(row: pd.Series) -> str:
     """
     Construye la concentración real a partir de cantidad + unidad + unidadreferencia.
     El campo 'concentracion' del API contiene letras (A/B/S), no valores.
+
+    Para líquidos/inyectables, normaliza a concentración por mL cuando la referencia
+    contiene un volumen: "15 mg / AMPOLLA POR 3 ML" → "5 mg/mL" (=5 mg/mL).
+    Esto permite comparar correctamente 15mg/3mL, 50mg/10mL y 5mg/1mL como idénticos.
     """
     cantidad = str(row.get("cantidad", "")).strip()
     unidad = str(row.get("unidad", "")).strip()
@@ -147,6 +354,31 @@ def construir_concentracion(row: pd.Series) -> str:
     unidad_real = unidad_medida if unidad_medida.upper() not in _INVALIDOS else unidad
     if unidad_real.upper() in _INVALIDOS:
         unidad_real = "mg"  # default para sólidos orales
+
+    # Normalizar a por-mL cuando unidad_ref contiene un volumen numérico y la unidad
+    # es de masa (mg, mcg, UI…). Ejemplos:
+    #   "15 mg" + "AMPOLLA POR 3 ML"  → 15/3 = 5   → "5 mg/mL"
+    #   "50 mg" + "AMPOLLA POR 10 ML" → 50/10 = 5  → "5 mg/mL"
+    #   " 5 mg" + "1 ML DE SOLUCION"  → 5/1  = 5   → "5 mg/mL"
+    #   " 1 mg" + "1ML"               → 1/1  = 1   → "1 mg/mL"
+    if (unidad_ref and unidad_ref.upper() not in _INVALIDOS
+            and unidad_real.upper() in _UNIDADES_MASA):
+        vol_m = _VOL_EN_REF.search(unidad_ref)
+        if vol_m:
+            try:
+                qty = float(cantidad.replace(',', '.'))
+                vol = float(vol_m.group(1).replace(',', '.'))
+                vol_unit = vol_m.group(2).lower()
+                if vol > 0:
+                    if vol_unit == 'dl':
+                        vol *= 100
+                    elif vol_unit == 'l':
+                        vol *= 1000
+                    ratio = qty / vol
+                    u = "UI" if unidad_real.upper() in ("UI", "IU") else unidad_real.lower()
+                    return f"{ratio:g} {u}/mL"
+            except (ValueError, ZeroDivisionError):
+                pass
 
     base = f"{cantidad} {unidad_real}"
 
@@ -197,6 +429,8 @@ def agrupar_y_transformar(df: pd.DataFrame) -> list[MedicamentoTransformado]:
 
     grupo_cols = ["expedientecum", "consecutivocum"]
     for (exped, consec), grupo in df.groupby(grupo_cols):
+        primera = grupo.iloc[0]
+
         # Deduplicar por principio activo (hay filas duplicadas por fabricante/importador)
         grupo_uniq = grupo.drop_duplicates(subset=["principioactivo"])
 
@@ -216,12 +450,18 @@ def agrupar_y_transformar(df: pd.DataFrame) -> list[MedicamentoTransformado]:
         n = len(principios_dci_uniq)
         tipo = _TIPO_FORMULA.get(n, "tetraconjugado" if n >= 4 else "monocomponente")
 
-        # Concentraciones por componente
+        nombre_prod = str(primera.get("producto", "")).strip()
+        g_forma = _grupo_forma(
+            str(primera.get("formafarmaceutica", "")).strip().upper(),
+            str(primera.get("viaadministracion", "")).strip().upper(),
+        )
+
+        # Concentraciones por componente, normalizadas según forma farmacéutica
         concentraciones: list[str] = []
         for _, fila in grupo_uniq.iterrows():
             c = construir_concentracion(fila)
             if c:
-                concentraciones.append(c)
+                concentraciones.append(_normalizar_por_forma(c, g_forma, nombre_prod))
 
         # Texto de concentración para mostrar
         # Monocomponente: solo la concentración (el DCI ya se muestra en otro campo)
@@ -246,13 +486,11 @@ def agrupar_y_transformar(df: pd.DataFrame) -> list[MedicamentoTransformado]:
                 except ValueError:
                     pass
 
-        primera = grupo.iloc[0]
-
         resultados.append(MedicamentoTransformado(
             cum_id=f"{exped}-{consec}",
             expedientecum=str(exped),
             consecutivocum=str(consec),
-            nombre_comercial=str(primera.get("producto", "")).strip(),
+            nombre_comercial=nombre_prod,
             principios_activos_raw=principios_raw_uniq,
             principios_dci=principios_dci_uniq,
             tipo_formula=tipo,

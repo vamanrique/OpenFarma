@@ -15,132 +15,13 @@ from itertools import combinations
 from collections import defaultdict
 from dataclasses import dataclass
 
-from etl.transformacion import MedicamentoTransformado
-
-# Formas farmacéuticas agrupadas por equivalencia de intercambio.
-# La vía de administración tiene precedencia sobre el nombre de forma
-# (capsula oral ≠ capsula vaginal aunque el nombre de forma sea igual).
-FORMAS_EQUIVALENTES: dict[str, frozenset[str]] = {
-    # Sólidos orales: tabletas y cápsulas son intercambiables entre sí
-    "SOLIDO_ORAL": frozenset({
-        "TABLETA", "TABLETA RECUBIERTA", "TABLETA CUBIERTA CON PELICULA",
-        "TABLETA MASTICABLE", "COMPRIMIDO", "GRAGEA",
-        "CAPSULA", "CAPSULA DURA", "CAPSULA BLANDA", "CAPSULA GELATINOSA",
-    }),
-    # Sólidos orales de liberación prolongada/controlada/modificada/sostenida
-    # Tableta LP y Cápsula LP del mismo PA y dosis son intercambiables entre sí
-    # NO son intercambiables con la forma de liberación inmediata (SOLIDO_ORAL)
-    "SOLIDO_ORAL_LP": frozenset({
-        "TABLETA DE LIBERACION PROLONGADA", "TABLETA DE LIBERACION CONTROLADA",
-        "TABLETA DE LIBERACION MODIFICADA", "TABLETA DE LIBERACION SOSTENIDA",
-        "TABLETA DE LIBERACION RETARDADA", "TABLETA DE ACCION PROLONGADA",
-        "CAPSULA DE LIBERACION PROLONGADA", "CAPSULA DE LIBERACION CONTROLADA",
-        "CAPSULA DE LIBERACION MODIFICADA", "CAPSULA DE LIBERACION SOSTENIDA",
-        "CAPSULA DE LIBERACION RETARDADA", "CAPSULA DE ACCION PROLONGADA",
-        "COMPRIMIDO DE LIBERACION PROLONGADA", "COMPRIMIDO DE LIBERACION CONTROLADA",
-    }),
-    # Dispersables/efervescentes: misma molécula pero preparación diferente
-    "ORAL_DISPERSABLE": frozenset({
-        "TABLETA DISPERSABLE", "TABLETA EFERVESCENTE",
-        "POLVO PARA SUSPENSION ORAL", "GRANULADO ORAL",
-    }),
-    # Líquidos orales
-    "LIQUIDO_ORAL": frozenset({
-        "JARABE", "SOLUCION ORAL", "SUSPENSION ORAL", "ELIXIR",
-        "GOTAS ORALES", "SOLUCION", "SUSPENSION", "EMULSION ORAL",
-    }),
-    # Sublingual/bucal
-    "SUBLINGUAL": frozenset({
-        "TABLETA SUBLINGUAL", "COMPRIMIDO SUBLINGUAL",
-        "TABLETA BUCODISPERSABLE", "FILM SUBLINGUAL",
-    }),
-    # Parenterales (todas las vías inyectables son intercambiables a nivel de dispensación)
-    "INYECTABLE": frozenset({
-        "SOLUCION INYECTABLE", "POLVO PARA SOLUCION INYECTABLE",
-        "SOLUCION PARA INYECCION", "INYECTABLE",
-        "POLVO LIOFILIZADO PARA RECONSTITUIR A SOLUCION INYECTABLE",
-        "CONCENTRADO PARA SOLUCION PARA PERFUSION",
-        "SUSPENSION INYECTABLE", "EMULSION INYECTABLE",
-    }),
-    # Tópicos cutáneos
-    "TOPICO": frozenset({
-        "CREMA", "UNGÜENTO", "GEL", "LOCION", "POMADA", "EMULSION", "ESPUMA",
-    }),
-    # Inhalados
-    "INHALADO": frozenset({
-        "AEROSOL PARA INHALACION", "POLVO PARA INHALACION",
-        "SOLUCION PARA INHALACION", "INHALADOR",
-    }),
-    # Oftálmicos
-    "OFTALMICO": frozenset({
-        "COLIRIO", "SOLUCION OFTALMICA", "GOTAS OFTALMICAS",
-        "POMADA OFTALMICA", "GEL OFTALMICO",
-    }),
-    # Vaginales — NO intercambiables con orales aunque tengan el mismo nombre de forma
-    "VAGINAL": frozenset({
-        "OVULO", "OVULOS", "CAPSULA VAGINAL", "TABLETA VAGINAL",
-        "COMPRIMIDO VAGINAL", "CREMA VAGINAL", "GEL VAGINAL",
-        "SOLUCION VAGINAL", "ESPUMA VAGINAL",
-    }),
-    # Rectales
-    "RECTAL": frozenset({
-        "SUPOSITORIO", "SUPOSITORIOS", "ENEMA", "CREMA RECTAL",
-        "GEL RECTAL", "SOLUCION RECTAL",
-    }),
-    # Transdérmicos
-    "TRANSDERMICO": frozenset({
-        "PARCHE TRANSDERMICO", "PARCHE", "GEL TRANSDERMICO",
-    }),
-    # Óticos
-    "OTICO": frozenset({"GOTAS OTICAS", "GOTAS ÓTICAS", "SOLUCION OTICA"}),
-    # Nasales
-    "NASAL": frozenset({
-        "SPRAY NASAL", "GOTAS NASALES", "SOLUCION NASAL", "GEL NASAL",
-    }),
-}
-
-_FORMA_A_GRUPO: dict[str, str] = {
-    f: g for g, fs in FORMAS_EQUIVALENTES.items() for f in fs
-}
-
-# La vía de administración tiene precedencia: capsula VAGINAL → VAGINAL,
-# aunque la forma farmacéutica "CAPSULA" normalmente mapee a SOLIDO_ORAL.
-_VIA_A_GRUPO: dict[str, str] = {
-    'VAGINAL': 'VAGINAL',
-    'RECTAL': 'RECTAL',
-    'SUBLINGUAL': 'SUBLINGUAL',
-    'BUCAL': 'SUBLINGUAL',
-    'SUBLINGUAL - BUCAL': 'SUBLINGUAL',
-    'OFTALMICA': 'OFTALMICO',
-    'OCULAR': 'OFTALMICO',
-    'OTICA': 'OTICO',
-    'AUDITIVA': 'OTICO',
-    'NASAL': 'NASAL',
-    'INTRANASAL': 'NASAL',
-    'INHALATORIA': 'INHALADO',
-    'PULMONAR': 'INHALADO',
-    'INHALACION': 'INHALADO',
-    'TRANSDERMICA': 'TRANSDERMICO',
-    'CUTANEA': 'TRANSDERMICO',
-    'INTRAVENOSA': 'INYECTABLE',
-    'INTRAMUSCULAR': 'INYECTABLE',
-    'SUBCUTANEA': 'INYECTABLE',
-    'PARENTERAL': 'INYECTABLE',
-    'INTRAARTICULAR': 'INYECTABLE',
-    'INTRATECAL': 'INYECTABLE',
-    'INTRAPERITONEAL': 'INYECTABLE',
-}
-
-
-def _grupo_forma(forma: str, via: str = '') -> str:
-    """Clasifica una forma farmacéutica en un grupo de equivalencia.
-    La vía de administración tiene precedencia para evitar que, por ejemplo,
-    una cápsula vaginal quede en el mismo grupo que una cápsula oral.
-    """
-    via_u = via.strip().upper()
-    if via_u in _VIA_A_GRUPO:
-        return _VIA_A_GRUPO[via_u]
-    return _FORMA_A_GRUPO.get(forma.strip().upper(), forma.strip().upper())
+from etl.transformacion import (
+    MedicamentoTransformado,
+    FORMAS_EQUIVALENTES,
+    _FORMA_A_GRUPO,
+    _VIA_A_GRUPO,
+    _grupo_forma,
+)
 
 
 @dataclass

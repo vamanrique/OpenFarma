@@ -55,7 +55,8 @@ const FORMA_A_GRUPO: Record<string, string> = {
   'POLVO PARA SUSPENSION ORAL': 'ORAL_DISPERSABLE', 'GRANULADO ORAL': 'ORAL_DISPERSABLE',
   'JARABE': 'LIQUIDO_ORAL', 'SOLUCION ORAL': 'LIQUIDO_ORAL',
   'SUSPENSION ORAL': 'LIQUIDO_ORAL', 'ELIXIR': 'LIQUIDO_ORAL',
-  'GOTAS ORALES': 'LIQUIDO_ORAL', 'SOLUCION': 'LIQUIDO_ORAL', 'SUSPENSION': 'LIQUIDO_ORAL',
+  'GOTAS ORALES': 'LIQUIDO_ORAL', 'SOLUCION': 'LIQUIDO_ORAL',
+  'SUSPENSION': 'LIQUIDO_ORAL', 'EMULSION ORAL': 'LIQUIDO_ORAL',
   'TABLETA SUBLINGUAL': 'SUBLINGUAL', 'COMPRIMIDO SUBLINGUAL': 'SUBLINGUAL',
   'TABLETA BUCODISPERSABLE': 'SUBLINGUAL', 'FILM SUBLINGUAL': 'SUBLINGUAL',
   'SOLUCION INYECTABLE': 'INYECTABLE', 'POLVO PARA SOLUCION INYECTABLE': 'INYECTABLE',
@@ -64,17 +65,20 @@ const FORMA_A_GRUPO: Record<string, string> = {
   'CONCENTRADO PARA SOLUCION PARA PERFUSION': 'INYECTABLE',
   'SUSPENSION INYECTABLE': 'INYECTABLE', 'EMULSION INYECTABLE': 'INYECTABLE',
   'CREMA': 'TOPICO', 'UNGÜENTO': 'TOPICO', 'GEL': 'TOPICO',
-  'LOCION': 'TOPICO', 'POMADA': 'TOPICO', 'ESPUMA': 'TOPICO',
+  'LOCION': 'TOPICO', 'POMADA': 'TOPICO', 'EMULSION': 'TOPICO', 'ESPUMA': 'TOPICO',
   'AEROSOL PARA INHALACION': 'INHALADO', 'POLVO PARA INHALACION': 'INHALADO',
   'SOLUCION PARA INHALACION': 'INHALADO', 'INHALADOR': 'INHALADO',
   'COLIRIO': 'OFTALMICO', 'SOLUCION OFTALMICA': 'OFTALMICO',
-  'GOTAS OFTALMICAS': 'OFTALMICO', 'POMADA OFTALMICA': 'OFTALMICO',
+  'GOTAS OFTALMICAS': 'OFTALMICO', 'POMADA OFTALMICA': 'OFTALMICO', 'GEL OFTALMICO': 'OFTALMICO',
   'OVULO': 'VAGINAL', 'OVULOS': 'VAGINAL', 'CAPSULA VAGINAL': 'VAGINAL',
-  'TABLETA VAGINAL': 'VAGINAL', 'CREMA VAGINAL': 'VAGINAL', 'GEL VAGINAL': 'VAGINAL',
+  'TABLETA VAGINAL': 'VAGINAL', 'COMPRIMIDO VAGINAL': 'VAGINAL',
+  'CREMA VAGINAL': 'VAGINAL', 'GEL VAGINAL': 'VAGINAL',
+  'SOLUCION VAGINAL': 'VAGINAL', 'ESPUMA VAGINAL': 'VAGINAL',
   'SUPOSITORIO': 'RECTAL', 'SUPOSITORIOS': 'RECTAL', 'ENEMA': 'RECTAL',
-  'PARCHE TRANSDERMICO': 'TRANSDERMICO', 'PARCHE': 'TRANSDERMICO',
+  'CREMA RECTAL': 'RECTAL', 'GEL RECTAL': 'RECTAL', 'SOLUCION RECTAL': 'RECTAL',
+  'PARCHE TRANSDERMICO': 'TRANSDERMICO', 'PARCHE': 'TRANSDERMICO', 'GEL TRANSDERMICO': 'TRANSDERMICO',
   'GOTAS OTICAS': 'OTICO', 'GOTAS ÓTICAS': 'OTICO', 'SOLUCION OTICA': 'OTICO',
-  'SPRAY NASAL': 'NASAL', 'GOTAS NASALES': 'NASAL', 'SOLUCION NASAL': 'NASAL',
+  'SPRAY NASAL': 'NASAL', 'GOTAS NASALES': 'NASAL', 'SOLUCION NASAL': 'NASAL', 'GEL NASAL': 'NASAL',
 }
 
 const GRUPO_LABEL: Record<string, string> = {
@@ -370,7 +374,25 @@ function PanelAlternativas({ medicamento, alternativas, cargando, error }: {
               </div>
             )}
 
-            {/* Sección 2 — Misma molécula, diferente concentración */}
+            {/* Sección 2 — Misma molécula, misma concentración, diferente forma */}
+            {diferenteForma.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-2 h-2 rounded-full bg-sky-400 shrink-0" />
+                  <p className="text-xs font-bold text-sky-800 uppercase tracking-wide">
+                    Misma molécula · misma concentración · diferente forma ({diferenteForma.length})
+                  </p>
+                </div>
+                <p className="text-xs text-slate-500 mb-2 pl-4">
+                  Mismo PA y dosis. La forma farmacéutica varía (ej. convencional vs liberación prolongada). Requiere evaluación clínica.
+                </p>
+                <div className="space-y-2">
+                  {diferenteForma.map((alt, i) => renderAlternativa(alt, i, 'MISMO_PRINCIPIO_DIFERENTE_FORMA'))}
+                </div>
+              </div>
+            )}
+
+            {/* Sección 3 — Misma molécula, diferente concentración */}
             {mismaConc.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 mb-1">
@@ -394,24 +416,6 @@ function PanelAlternativas({ medicamento, alternativas, cargando, error }: {
                 )}
                 <div className="space-y-2">
                   {mismaConc.map((alt, i) => renderAlternativa(alt, i, 'MISMO_PRINCIPIO_ACTIVO'))}
-                </div>
-              </div>
-            )}
-
-            {/* Sección 3 — Misma molécula, misma concentración, diferente forma */}
-            {diferenteForma.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="w-2 h-2 rounded-full bg-sky-400 shrink-0" />
-                  <p className="text-xs font-bold text-sky-800 uppercase tracking-wide">
-                    Misma molécula · misma concentración · diferente forma ({diferenteForma.length})
-                  </p>
-                </div>
-                <p className="text-xs text-slate-500 mb-2 pl-4">
-                  Mismo PA y dosis. La forma farmacéutica varía (ej. convencional vs liberación prolongada). Requiere evaluación clínica.
-                </p>
-                <div className="space-y-2">
-                  {diferenteForma.map((alt, i) => renderAlternativa(alt, i, 'MISMO_PRINCIPIO_DIFERENTE_FORMA'))}
                 </div>
               </div>
             )}
@@ -728,21 +732,21 @@ export default function BuscadorMedicamentos() {
                   </p>
                 </div>
               </div>
-              <div className="flex gap-3 items-start p-3 rounded-lg border border-teal-200 bg-teal-50">
-                <div className="w-2.5 h-2.5 rounded-full bg-teal-400 shrink-0 mt-1" />
-                <div>
-                  <p className="text-xs font-bold text-teal-800">Misma molécula — diferente concentración</p>
-                  <p className="text-xs text-teal-700 mt-0.5">
-                    Mismo principio activo y vía de administración, pero distinta dosis. Requieren ajuste de posología por parte del profesional de salud.
-                  </p>
-                </div>
-              </div>
               <div className="flex gap-3 items-start p-3 rounded-lg border border-sky-200 bg-sky-50">
                 <div className="w-2.5 h-2.5 rounded-full bg-sky-400 shrink-0 mt-1" />
                 <div>
                   <p className="text-xs font-bold text-sky-800">Misma molécula · misma concentración · diferente forma</p>
                   <p className="text-xs text-sky-700 mt-0.5">
                     Mismo principio activo y dosis, pero distinta forma farmacéutica (ej. tableta convencional vs tableta de liberación prolongada). No son directamente intercambiables — el perfil farmacocinético difiere. Requieren evaluación clínica.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3 items-start p-3 rounded-lg border border-teal-200 bg-teal-50">
+                <div className="w-2.5 h-2.5 rounded-full bg-teal-400 shrink-0 mt-1" />
+                <div>
+                  <p className="text-xs font-bold text-teal-800">Misma molécula — diferente concentración</p>
+                  <p className="text-xs text-teal-700 mt-0.5">
+                    Mismo principio activo y vía de administración, pero distinta dosis. Requieren ajuste de posología por parte del profesional de salud.
                   </p>
                 </div>
               </div>
