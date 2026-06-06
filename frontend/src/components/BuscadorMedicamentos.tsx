@@ -163,10 +163,10 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
 }) {
   const esMedNTI    = grupoMeds.some(m => esNTI(m.principios_dci)) || esNTI(medicamento.principios_dci)
   const [terapExpanded, setTerapExpanded] = useState(false)
-  // DCI canónico: del representante o inferido desde el grupo
   const dcis = medicamento.principios_dci.length > 0
     ? medicamento.principios_dci
     : [...new Set(grupoMeds.flatMap(m => m.principios_dci))]
+  const totalSeleccionado = computeTotal(medicamento.concentracion_display || '', medicamento.presentacion || '')
 
   const sustitutos          = useMemo(() => alternativas.filter(a => a.tipo === 'SUSTITUTO_DIRECTO'),              [alternativas])
   const distCantidad        = useMemo(() => alternativas.filter(a => a.tipo === 'MISMA_CONC_DIFERENTE_CANTIDAD'), [alternativas])
@@ -180,42 +180,52 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
 
   const renderAlternativa = (alt: AlternativaLive, i: number, tipo: string) => {
     const dest = alt.medicamento_destino
+    if (!dest) return (
+      <div key={i} className="border border-slate-100 rounded-lg px-3 py-2 bg-slate-50">
+        <p className="text-xs text-slate-400 font-mono">{alt.cum_destino}</p>
+      </div>
+    )
+    const totalDest = computeTotal(dest.concentracion_display || '', dest.presentacion || '')
+    const concDetail = dest.concentracion_display
+      ? (dest.presentacion ? `${dest.concentracion_display} · ${dest.presentacion}` : dest.concentracion_display)
+      : ''
+    const mostrarCompartidos = alt.componentes_compartidos.length > 0
+      && !['SUSTITUTO_DIRECTO', 'MISMA_CONC_DIFERENTE_CANTIDAD', 'DIFERENTE_CONCENTRACION'].includes(tipo)
     return (
-      <div key={i} className="border border-slate-100 rounded-lg p-3 bg-slate-50">
-        {dest ? (
-          <>
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <p className="font-medium text-sm text-slate-900 truncate">{dest.nombre_comercial}</p>
-                {esNTI(dest.principios_dci) && <BadgeNTI />}
-              </div>
-              <BadgeFormula tipo={dest.tipo_formula} />
-            </div>
-            <div className="flex flex-wrap gap-1 my-1.5">
-              {dest.principios_dci.map((dci, j) => (
-                <TagDCI key={j} dci={dci} highlight={alt.componentes_compartidos.includes(dci)} />
-              ))}
-            </div>
-            <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400">
-              <span>{dest.forma_farmaceutica}</span>
-              <span className="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded uppercase text-[10px] font-semibold tracking-wide text-slate-500">
-                {dest.via_administracion}
-              </span>
-              {dest.concentracion_display && (
-                <span className="font-mono font-semibold text-slate-600 bg-white border border-slate-200 px-1.5 py-0.5 rounded">
-                  {dest.concentracion_display}
-                  {dest.presentacion && (
-                    <span className="text-slate-400 font-normal"> · {dest.presentacion}</span>
-                  )}
-                </span>
-              )}
-              <span>· {dest.laboratorio}</span>
-            </div>
-          </>
-        ) : (
-          <p className="text-xs text-slate-500 font-mono">{alt.cum_destino}</p>
-        )}
-        {alt.componentes_compartidos.length > 0 && tipo !== 'DIFERENTE_CONCENTRACION' && tipo !== 'SUSTITUTO_DIRECTO' && tipo !== 'MISMA_CONC_DIFERENTE_CANTIDAD' && (
+      <div key={i} className="border border-slate-100 rounded-lg p-3 bg-slate-50 hover:bg-white transition-colors">
+        {/* Fila 1: DCIs + fórmula + NTI | total clínico */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+            {dest.principios_dci.length > 0
+              ? dest.principios_dci.map((dci, j) => (
+                  <TagDCI key={j} dci={dci} highlight={alt.componentes_compartidos.includes(dci)} />
+                ))
+              : <span className="text-xs text-slate-600 font-medium">{dest.nombre_comercial}</span>
+            }
+            <BadgeFormula tipo={dest.tipo_formula} />
+            {esNTI(dest.principios_dci) && <BadgeNTI />}
+          </div>
+          {totalDest && (
+            <span className="shrink-0 text-sm font-bold font-mono text-slate-800 leading-tight">{totalDest.label}</span>
+          )}
+        </div>
+        {/* Fila 2: marca · lab · estado */}
+        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+          <span className="text-xs text-slate-600 font-medium truncate max-w-[160px]">{dest.nombre_comercial}</span>
+          <span className="text-slate-300 text-xs">·</span>
+          <span className="text-xs text-slate-400 truncate max-w-[130px]">{dest.laboratorio}</span>
+          <BadgeEstado estado={dest.estado_cum} />
+        </div>
+        {/* Fila 3: forma + detalle técnico (secundario) */}
+        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+          <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+            {labelGrupo(grupoForma(dest.forma_farmaceutica, dest.via_administracion))}
+          </span>
+          {concDetail && (
+            <span className="text-[10px] text-slate-400 font-mono">{concDetail}</span>
+          )}
+        </div>
+        {mostrarCompartidos && (
           <p className="text-xs text-emerald-600 mt-1.5 font-medium">
             Compartido: {alt.componentes_compartidos.join(', ')}
           </p>
@@ -239,19 +249,28 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
           <BadgeFormula tipo={medicamento.tipo_formula} />
           {esMedNTI && <BadgeNTI />}
         </div>
-        {/* Fila 2: forma + concentración + presentación */}
+        {/* Fila 2: forma + total clínico (+ detalle técnico secundario) */}
         <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
           <span className="text-xs bg-white border border-slate-200 rounded-full px-2 py-0.5 text-slate-500">
             {labelGrupo(grupoForma(medicamento.forma_farmaceutica, medicamento.via_administracion))}
           </span>
-          {medicamento.concentracion_display && (
+          {totalSeleccionado ? (
+            <span className="text-xs bg-white border border-slate-200 rounded-full px-2 py-0.5 font-mono font-bold text-slate-800">
+              {totalSeleccionado.label}
+              {(medicamento.concentracion_display || medicamento.presentacion) && (
+                <span className="text-slate-400 font-normal ml-1.5 text-[10px]">
+                  {[medicamento.concentracion_display, medicamento.presentacion].filter(Boolean).join(' · ')}
+                </span>
+              )}
+            </span>
+          ) : medicamento.concentracion_display ? (
             <span className="text-xs bg-white border border-slate-200 rounded-full px-2 py-0.5 font-mono font-semibold text-slate-700">
               {medicamento.concentracion_display}
               {medicamento.presentacion && (
                 <span className="text-slate-400 font-normal"> · {medicamento.presentacion}</span>
               )}
             </span>
-          )}
+          ) : null}
           {!cargando && alternativas.length > 0 && (
             <span className="text-xs text-slate-400 ml-auto">{alternativas.length} alternativas</span>
           )}
@@ -350,14 +369,43 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
                 <div className="flex items-center gap-2 mb-1">
                   <div className="w-2 h-2 rounded-full bg-lime-500 shrink-0" />
                   <p className="text-xs font-bold text-lime-800 uppercase tracking-wide">
-                    Misma molécula · misma concentración · diferente cantidad ({distCantidad.length})
+                    Misma concentración · diferente cantidad ({distCantidad.length})
                   </p>
                 </div>
                 <p className="text-xs text-slate-500 mb-2 pl-4">
                   Misma concentración y forma farmacéutica, distinto volumen o número de dosis por envase.
                 </p>
-                <div className="space-y-2">
-                  {distCantidad.map((alt, i) => renderAlternativa(alt, i, 'MISMA_CONC_DIFERENTE_CANTIDAD'))}
+                <div className="border border-lime-200 rounded-lg overflow-hidden">
+                  {distCantidad.map((alt, i) => {
+                    const dest = alt.medicamento_destino
+                    if (!dest) return (
+                      <div key={i} className="px-3 py-2 border-b border-lime-50 last:border-0 text-xs text-slate-400 font-mono">{alt.cum_destino}</div>
+                    )
+                    const totalDest = computeTotal(dest.concentracion_display || '', dest.presentacion || '')
+                    return (
+                      <div key={i} className="flex items-center gap-3 px-3 py-2.5 border-b border-lime-50 last:border-0 hover:bg-lime-50 transition-colors">
+                        {/* Cantidad total — lo que diferencia */}
+                        <div className="shrink-0 text-right min-w-[56px]">
+                          {totalDest
+                            ? <p className="text-sm font-bold font-mono text-lime-700 leading-tight">{totalDest.label}</p>
+                            : <p className="text-xs font-mono text-slate-600">{dest.concentracion_display}</p>
+                          }
+                          {dest.presentacion && (
+                            <p className="text-[10px] text-slate-400 font-mono mt-0.5">{dest.presentacion}</p>
+                          )}
+                        </div>
+                        <div className="w-px self-stretch bg-lime-100 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-medium text-slate-700 truncate">{dest.nombre_comercial}</p>
+                            {esNTI(dest.principios_dci) && <BadgeNTI />}
+                          </div>
+                          <p className="text-[11px] text-slate-400 truncate mt-0.5">{dest.laboratorio}</p>
+                        </div>
+                        <BadgeEstado estado={dest.estado_cum} />
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             )}
@@ -392,8 +440,42 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
                 <p className="text-xs text-slate-500 mb-2 pl-4">
                   Mismo PA y vía. La dosis varía — requiere ajuste de posología por el profesional de salud.
                 </p>
-                <div className="space-y-2">
-                  {distConcentracion.map((alt, i) => renderAlternativa(alt, i, 'DIFERENTE_CONCENTRACION'))}
+                <div className="border border-teal-200 rounded-lg overflow-hidden">
+                  {distConcentracion.map((alt, i) => {
+                    const dest = alt.medicamento_destino
+                    if (!dest) return (
+                      <div key={i} className="px-3 py-2 border-b border-teal-50 last:border-0 text-xs text-slate-400 font-mono">{alt.cum_destino}</div>
+                    )
+                    const totalDest = computeTotal(dest.concentracion_display || '', dest.presentacion || '')
+                    return (
+                      <div key={i} className="flex items-center gap-3 px-3 py-2.5 border-b border-teal-50 last:border-0 hover:bg-teal-50 transition-colors">
+                        {/* Concentración diferente — comparación con la seleccionada */}
+                        <div className="shrink-0 text-right min-w-[72px]">
+                          {totalDest
+                            ? <p className="text-sm font-bold font-mono text-teal-700 leading-tight">{totalDest.label}</p>
+                            : <p className="text-xs font-mono text-slate-600">{dest.concentracion_display}</p>
+                          }
+                          {dest.concentracion_display && (
+                            <p className="text-[10px] text-slate-400 font-mono mt-0.5">{dest.concentracion_display}</p>
+                          )}
+                        </div>
+                        <div className="w-px self-stretch bg-teal-100 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-medium text-slate-700 truncate">{dest.nombre_comercial}</p>
+                            {esNTI(dest.principios_dci) && <BadgeNTI />}
+                          </div>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <span className="text-[10px] text-slate-400 bg-slate-100 px-1 py-0.5 rounded">
+                              {labelGrupo(grupoForma(dest.forma_farmaceutica, dest.via_administracion))}
+                            </span>
+                            <span className="text-[11px] text-slate-400 truncate">{dest.laboratorio}</span>
+                          </div>
+                        </div>
+                        <BadgeEstado estado={dest.estado_cum} />
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             )}
@@ -952,9 +1034,11 @@ export default function BuscadorMedicamentos() {
 
                     {/* Filas seleccionables por cantidad total */}
                     {rows.map(row => {
-                      const sel    = selectedGroupKey === row.key
-                      const hasNTI = row.meds.some(m => esNTI(m.principios_dci))
-                      const labs   = row.meds
+                      const sel      = selectedGroupKey === row.key
+                      const hasNTI   = row.meds.some(m => esNTI(m.principios_dci))
+                      const dcisGrupo = [...new Set(row.meds.flatMap(m => m.principios_dci))].slice(0, 3)
+                      const tiposDistinct = [...new Set(row.meds.map(m => m.tipo_formula))]
+                      const labs = row.meds
                         .slice(0, 3)
                         .map(m => m.laboratorio.split(/[\s(]/)[0])
                         .join(', ')
@@ -980,16 +1064,22 @@ export default function BuscadorMedicamentos() {
                           {/* Separador */}
                           <div className={`w-px self-stretch shrink-0 ${sel ? 'bg-blue-200' : 'bg-slate-100'}`} />
 
-                          {/* Productos y laboratorios */}
+                          {/* DCIs + badges + laboratorios */}
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className={`text-xs font-semibold ${sel ? 'text-blue-700' : 'text-slate-600'}`}>
-                                {row.meds.length} {row.meds.length === 1 ? 'producto' : 'productos'}
-                              </span>
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {dcisGrupo.length > 0
+                                ? dcisGrupo.map((dci, j) => (
+                                    <span key={j} className={`text-xs font-semibold ${sel ? 'text-blue-800' : 'text-slate-700'}`}>{dci}</span>
+                                  ))
+                                : <span className={`text-xs font-semibold ${sel ? 'text-blue-700' : 'text-slate-500'}`}>
+                                    {row.meds[0]?.nombre_comercial ?? '—'}
+                                  </span>
+                              }
                               {hasNTI && <BadgeNTI />}
+                              {tiposDistinct.length === 1 && <BadgeFormula tipo={tiposDistinct[0]} />}
                             </div>
                             <p className="text-[11px] text-slate-400 truncate mt-0.5">
-                              {labs}{more}
+                              {row.meds.length} {row.meds.length === 1 ? 'producto' : 'productos'} · {labs}{more}
                             </p>
                           </div>
 
