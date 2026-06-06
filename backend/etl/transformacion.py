@@ -119,8 +119,13 @@ def construir_concentracion(row: pd.Series) -> str:
 
     base = f"{cantidad} {unidad_real}"
 
-    # Agregar referencia de presentación si aporta contexto (ej. "AMPOLLA POR 5 ML")
-    if unidad_ref and unidad_ref.upper() not in _INVALIDOS and unidad_ref.upper() != unidad_real.upper():
+    # Agregar referencia de presentación SOLO si contiene un valor numérico,
+    # lo que indica volumen/cantidad real (ej. "AMPOLLA POR 5 ML", "FRASCO 100 ML").
+    # Si no tiene dígitos es solo el nombre de la forma farmacéutica (ej. "TABLETA RECUBIERTA",
+    # "COMPRIMIDO") que ya está en forma_farmaceutica y no aporta al filtro de concentración.
+    if (unidad_ref and unidad_ref.upper() not in _INVALIDOS
+            and unidad_ref.upper() != unidad_real.upper()
+            and re.search(r'\d', unidad_ref)):
         base = f"{base}/{unidad_ref}"
 
     return base.strip()
