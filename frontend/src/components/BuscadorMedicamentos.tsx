@@ -634,15 +634,145 @@ export default function BuscadorMedicamentos() {
         )}
       </div>
 
-      {/* Empty state */}
+      {/* Guía de uso — visible antes de la primera búsqueda */}
       {!hasBuscado && (
-        <div className="bg-white border border-slate-200 rounded-xl py-14 text-center shadow-sm">
-          <svg className="w-10 h-10 text-slate-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0 1 12 15a9.065 9.065 0 0 1-6.23-.693L4.2 15.3m15.6 0 1.004 4.014A1.5 1.5 0 0 1 19.35 21H4.65a1.5 1.5 0 0 1-1.454-1.686L4.2 15.3" />
-          </svg>
-          <p className="text-sm font-medium text-slate-600">Busca un medicamento</p>
-          <p className="text-xs text-slate-400 mt-1">Principio activo (DCI), nombre comercial o código ATC</p>
-          <p className="text-xs text-slate-300 mt-3">Datos en tiempo real desde INVIMA · datos.gov.co</p>
+        <div className="space-y-3">
+
+          {/* Pasos */}
+          <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">Cómo usar esta herramienta</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[
+                {
+                  n: '1',
+                  title: 'Busca el medicamento',
+                  body: 'Escribe el principio activo (DCI), el nombre comercial o el código ATC. La búsqueda consulta los 65 000+ registros del CUM-INVIMA en tiempo real.',
+                  icon: (
+                    <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607z" />
+                    </svg>
+                  ),
+                },
+                {
+                  n: '2',
+                  title: 'Filtra la presentación',
+                  body: 'Si hay varias formas farmacéuticas (tableta, inyectable, jarabe…) o concentraciones, usa los filtros desplegables para quedarte solo con la presentación que te interesa.',
+                  icon: (
+                    <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591L15 12.75v6.177a.75.75 0 0 1-.448.686l-3 1.5a.75.75 0 0 1-1.052-.686V12.75L4.659 7.409A2.25 2.25 0 0 1 4 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3z" />
+                    </svg>
+                  ),
+                },
+                {
+                  n: '3',
+                  title: 'Selecciona y consulta alternativas',
+                  body: 'Haz clic en cualquier resultado para ver sus alternativas ordenadas por grado de intercambiabilidad: desde sustitutos directos hasta alternativas terapéuticas de la misma clase ATC.',
+                  icon: (
+                    <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.042 21.672 13.684 16.6m0 0-2.51 2.225.569-9.47 5.227 7.917-3.286-.672Zm-7.518-.267A8.25 8.25 0 1 1 20.25 10.5M8.288 14.212A5.25 5.25 0 1 1 17.25 10.5" />
+                    </svg>
+                  ),
+                },
+              ].map(({ n, title, body, icon }) => (
+                <div key={n} className="flex gap-3">
+                  <div className="w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+                    {n}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      {icon}
+                      <p className="text-sm font-semibold text-slate-800">{title}</p>
+                    </div>
+                    <p className="text-xs text-slate-500 leading-relaxed">{body}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Niveles de alternativas */}
+          <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Niveles de alternativas</p>
+            <div className="space-y-2">
+              <div className="flex gap-3 items-start p-3 rounded-lg border border-emerald-200 bg-emerald-50">
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0 mt-1" />
+                <div>
+                  <p className="text-xs font-bold text-emerald-800">Sustituto directo</p>
+                  <p className="text-xs text-emerald-700 mt-0.5">
+                    Mismo principio activo · misma concentración · misma forma farmacéutica. Solo difiere el titular del registro. Son intercambiables directamente en la dispensación.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3 items-start p-3 rounded-lg border border-teal-200 bg-teal-50">
+                <div className="w-2.5 h-2.5 rounded-full bg-teal-400 shrink-0 mt-1" />
+                <div>
+                  <p className="text-xs font-bold text-teal-800">Misma molécula — diferente concentración</p>
+                  <p className="text-xs text-teal-700 mt-0.5">
+                    Mismo principio activo y vía de administración, pero distinta dosis. Requieren ajuste de posología por parte del profesional de salud.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3 items-start p-3 rounded-lg border border-slate-200 bg-slate-50">
+                <div className="w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0 mt-1" />
+                <div>
+                  <p className="text-xs font-bold text-slate-700">Alternativas terapéuticas</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Misma clase farmacológica según la clasificación ATC (anatómica, terapéutica, química). Pueden ser la misma molécula en forma diferente, una sal distinta del mismo compuesto, o una molécula distinta con efecto clínico similar. Siempre requieren evaluación clínica.
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {[
+                      { color: 'bg-blue-100 text-blue-800 border-blue-200',   label: 'Equivalente exacto',        hint: 'misma ATC-7, distinta sal/éster' },
+                      { color: 'bg-indigo-100 text-indigo-800 border-indigo-200', label: 'Equivalente clase ATC', hint: 'misma ATC-5, molécula distinta' },
+                      { color: 'bg-purple-100 text-purple-800 border-purple-200', label: 'Componente compartido', hint: 'combinado con al menos un PA en común' },
+                      { color: 'bg-amber-100 text-amber-800 border-amber-200',   label: 'Diferente vía/forma',    hint: 'oral vs inyectable, etc.' },
+                    ].map(({ color, label, hint }) => (
+                      <span key={label} className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${color}`} title={hint}>
+                        {label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Indicadores */}
+          <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Indicadores en los resultados</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+              <div className="flex items-start gap-2">
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-200 shrink-0 mt-0.5">MTE</span>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  <strong className="text-slate-700">Margen Terapéutico Estrecho.</strong> Pequeñas diferencias de dosis o biodisponibilidad pueden causar falla terapéutica o toxicidad. Toda sustitución requiere monitoreo clínico estricto (ej. warfarina, digoxina, ciclosporina, litio).
+                </p>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 shrink-0 mt-0.5">Mono</span>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  <strong className="text-slate-700">Tipo de fórmula:</strong> Mono = un solo principio activo · Bi = dos · Tri = tres · Tetra = cuatro o más. Útil para identificar combinaciones fijas.
+                </p>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 mt-1" />
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  <strong className="text-slate-700">Estado CUM Activo/Inactivo:</strong> refleja el estado actual del registro en el CUM-INVIMA. Un registro Inactivo no significa necesariamente desabastecimiento, pero es una señal de alerta.
+                </p>
+              </div>
+              <div className="flex items-start gap-2">
+                <svg className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6z" />
+                </svg>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  <strong className="text-slate-700">DCI resaltado en verde</strong> en el panel de alternativas indica los principios activos compartidos entre el medicamento consultado y la alternativa.
+                </p>
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-300 mt-4 pt-3 border-t border-slate-100">
+              Fuente: Código Único de Medicamentos (CUM) · INVIMA · datos.gov.co — actualización en tiempo real con cada consulta.
+            </p>
+          </div>
+
         </div>
       )}
 
