@@ -55,6 +55,17 @@ _CONCENTRACION_INCRUSTADA = re.compile(
     re.IGNORECASE,
 )
 
+# Patrón CUM frecuente: "5 MG DE MIDAZOLAM", "0.5MG DE ALPRAZOLAM CADA TABLETA"
+# La DCI real es la parte posterior a "DE".
+_DOSIS_DE_INN = re.compile(
+    r"^\d[\d.,]*\s*(?:MG|G|MCG|UI|IU|ML|%)\s+DE\s+(.+)$",
+    re.IGNORECASE,
+)
+
+# Agrega espacio entre letra y dígito cuando van pegados en nombres del CUM:
+# "INYECTABLE5" → "INYECTABLE 5", "DORMICUM5MG" → "DORMICUM 5MG"
+_LETRA_DIGITO = re.compile(r'([A-Za-zÁÉÍÓÚÀÈÌÒÙáéíóúàèìòùÑñ])(\d)')
+
 # Sinónimos INN: grafías en inglés, variantes -ina/-ino u otras presentes en el CUM → DCI canónico
 _SINONIMOS: dict[str, str] = {
     # Variantes inglés → español
@@ -95,6 +106,13 @@ def normalizar_principio(principio: str) -> str:
       "LEVODOPA" → "LEVODOPA"
     """
     p = str(principio).strip().upper()
+
+    # Patrón "5 MG DE MIDAZOLAM [CADA AMPOLLA]" → extraer solo el INN
+    m_de = _DOSIS_DE_INN.match(p)
+    if m_de:
+        p = m_de.group(1).strip()
+        # Quitar sufijos descriptivos como "CADA AMPOLLA", "POR TABLETA", etc.
+        p = re.sub(r'\s+(?:CADA|POR)\s+\w+$', '', p).strip()
 
     # Si hay "EQUIVALENTE [A] X", tomar la parte posterior (tolera espacio faltante)
     m = _EQUIV_PATRON.search(p)
@@ -511,12 +529,12 @@ def agrupar_y_transformar(df: pd.DataFrame) -> list[MedicamentoTransformado]:
         principios_raw = grupo_uniq["principioactivo"].dropna().tolist()
         principios_dci = [normalizar_principio(p) for p in principios_raw]
 
-        # Eliminar vacíos o repetidos tras normalización
+        # Eliminar vacíos, repetidos, y valores basura del CUM (códigos de 1-2 chars como "A", "S")
         vistos: set[str] = set()
         principios_dci_uniq: list[str] = []
         principios_raw_uniq: list[str] = []
         for raw, dci in zip(principios_raw, principios_dci):
-            if dci and dci not in vistos:
+            if dci and len(dci) >= 3 and dci not in vistos:
                 vistos.add(dci)
                 principios_dci_uniq.append(dci)
                 principios_raw_uniq.append(raw)
@@ -524,7 +542,8 @@ def agrupar_y_transformar(df: pd.DataFrame) -> list[MedicamentoTransformado]:
         n = len(principios_dci_uniq)
         tipo = _TIPO_FORMULA.get(n, "tetraconjugado" if n >= 4 else "monocomponente")
 
-        nombre_prod = str(primera.get("producto", "")).strip()
+        nombre_prod = _LETRA_DIGITO.sub(r'\1 \2', str(primera.get("producto", "")).strip())
+        nombre_prod = re.sub(r' {2,}', ' ', nombre_prod).strip()
         g_forma = _grupo_forma(
             str(primera.get("formafarmaceutica", "")).strip().upper(),
             str(primera.get("viaadministracion", "")).strip().upper(),
