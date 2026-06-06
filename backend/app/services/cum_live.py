@@ -5,7 +5,7 @@ Siempre consulta el JSON en línea — nunca lee archivos locales.
 import httpx
 import pandas as pd
 from typing import Optional
-from etl.transformacion import agrupar_y_transformar, MedicamentoTransformado
+from etl.transformacion import agrupar_y_transformar, MedicamentoTransformado, terminos_busqueda
 from etl.alternativas import generar_alternativas, ParAlternativa
 
 API_URL = "https://www.datos.gov.co/resource/i7cb-raxc.json"
@@ -29,9 +29,13 @@ async def buscar_medicamentos(
     Agrupa las filas por expedientecum+consecutivocum para reconstruir combinados.
     """
     q_upper = query.strip().upper()
-    where_parts = [
-        f"(upper(producto) like '%{q_upper}%' OR upper(principioactivo) like '%{q_upper}%')"
-    ]
+    # Ampliar la búsqueda con sinónimos conocidos (ej. NIFEDIPINO → también NIFEDIPINA)
+    terms = terminos_busqueda(q_upper)
+    cond_terms = " OR ".join(
+        f"(upper(producto) like '%{t}%' OR upper(principioactivo) like '%{t}%')"
+        for t in terms
+    )
+    where_parts = [f"({cond_terms})"]
     if solo_activos:
         where_parts.append("estadocum='Activo'")
 

@@ -107,6 +107,26 @@ def normalizar_principio(principio: str) -> str:
     return p
 
 
+def terminos_busqueda(query: str) -> list[str]:
+    """
+    Devuelve el término de búsqueda original más sus sinónimos conocidos,
+    para ampliar la query al API y no perder productos con grafías alternativas.
+
+    Ejemplo: "NIFEDIPINO" → ["NIFEDIPINO", "NIFEDIPINA"]
+             "NIFEDIPINA" → ["NIFEDIPINA", "NIFEDIPINO"]
+    """
+    q = query.strip().upper()
+    terms: set[str] = {q}
+    # Si el término es directamente un sinónimo, agregar la forma canónica
+    if q in _SINONIMOS:
+        terms.add(_SINONIMOS[q])
+    # Si el término es la forma canónica, agregar todas las variantes que apuntan a él
+    for variante, canonico in _SINONIMOS.items():
+        if canonico == q:
+            terms.add(variante)
+    return list(terms)
+
+
 def construir_concentracion(row: pd.Series) -> str:
     """
     Construye la concentración real a partir de cantidad + unidad + unidadreferencia.
