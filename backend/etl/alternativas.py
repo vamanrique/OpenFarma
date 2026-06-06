@@ -50,6 +50,23 @@ def generar_alternativas(meds: list[MedicamentoTransformado]) -> list[ParAlterna
     Recibe lista de MedicamentoTransformado (ya agrupados y normalizados)
     y devuelve pares de alternativas.
     """
+    # Inferir DCIs faltantes desde ATC-7: si otro producto del mismo ATC-7 tiene DCI conocido,
+    # usarlo como proxy de molécula para productos cuyo CUM no registra DCI válido (ej. "A").
+    atc7_to_dci: dict[str, tuple] = {}
+    for m in meds:
+        if m.principios_dci and m.atc and len(m.atc) >= 7:
+            k = tuple(sorted(m.principios_dci))
+            if m.atc not in atc7_to_dci:
+                atc7_to_dci[m.atc] = k
+
+    def mol_key(m: MedicamentoTransformado) -> tuple:
+        """DCI conocido, o inferido desde ATC-7, o tupla vacía si desconocido."""
+        if m.principios_dci:
+            return tuple(sorted(m.principios_dci))
+        if m.atc and m.atc in atc7_to_dci:
+            return atc7_to_dci[m.atc]
+        return ()
+
     por_directo:    dict[tuple, list] = defaultdict(list)  # A0
     por_misma_conc: dict[tuple, list] = defaultdict(list)  # A1 (misma conc + forma, diferente pres)
     por_dci_dosis:  dict[tuple, list] = defaultdict(list)  # A2 (misma conc, diferente forma)
@@ -62,19 +79,20 @@ def generar_alternativas(meds: list[MedicamentoTransformado]) -> list[ParAlterna
         if not m.atc or m.atc in ("nan", "None", ""):
             continue
         g_forma  = _grupo_forma(m.forma_farmaceutica, m.via_administracion)
-        dci_key  = tuple(sorted(m.principios_dci))
+        dci      = mol_key(m)
 
-        por_dci_forma[(dci_key, g_forma)].append(m)
+        if dci:  # solo indexar en A0-A3 cuando se conoce (o infiere) la molécula
+            por_dci_forma[(dci, g_forma)].append(m)
+            if m.dosis_numerica is not None:
+                dosis_key = round(m.dosis_numerica, 1)
+                pres_key  = _pres_key(m.presentacion)
+                por_directo[(dci, dosis_key, pres_key, g_forma)].append(m)
+                por_misma_conc[(dci, dosis_key, g_forma)].append(m)
+                por_dci_dosis[(dci, dosis_key)].append(m)
+
         por_atc7_forma[(m.atc, g_forma)].append(m)
         por_atc5_forma[(m.atc[:5], g_forma)].append(m)
         por_atc5[m.atc[:5]].append(m)
-
-        if m.dosis_numerica is not None:
-            dosis_key = round(m.dosis_numerica, 1)
-            pres_key  = _pres_key(m.presentacion)
-            por_directo[(dci_key, dosis_key, pres_key, g_forma)].append(m)
-            por_misma_conc[(dci_key, dosis_key, g_forma)].append(m)
-            por_dci_dosis[(dci_key, dosis_key)].append(m)
 
     pares_vistos: set[tuple[str, str]] = set()
     resultado: list[ParAlternativa] = []
@@ -93,48 +111,54 @@ def generar_alternativas(meds: list[MedicamentoTransformado]) -> list[ParAlterna
             ))
 
     # A0 — Sustituto directo: mismo DCI + misma conc + misma presentación + misma forma
-    for (dci_key, dosis, pres, _), grupo in por_directo.items():
+    for (dci, dosis, pres, _), grupo in por_directo.items():
+        dci_str = ', '.join(dci) if dci else '(DCI no registrado)'
         for a, b in combinations(grupo, 2):
-            dci_str  = ', '.join(dci_key)
             pres_str = f" · {a.presentacion}" if a.presentacion else ""
             agregar(a, b, "SUSTITUTO_DIRECTO",
                     f"Mismo principio activo ({dci_str}), concentración ({dosis} mg/mL){pres_str}, misma forma. Solo difiere el laboratorio.",
-                    list(dci_key))
+                    list(dci))
 
     # A1 — Misma conc + misma forma + diferente presentación (cantidad total distinta)
-    for (dci_key, dosis, g_forma), grupo in por_misma_conc.items():
+    for (dci, dosis, g_forma), grupo in por_misma_conc.items():
+        dci_str = ', '.join(dci) if dci else '(DCI no registrado)'
         for a, b in combinations(grupo, 2):
             if _pres_key(a.presentacion) != _pres_key(b.presentacion):
                 pres_a = a.presentacion or "sin especificar"
                 pres_b = b.presentacion or "sin especificar"
                 agregar(a, b, "MISMA_CONC_DIFERENTE_CANTIDAD",
-                        f"Mismo principio activo ({', '.join(dci_key)}) y concentración ({dosis} mg/mL), diferente cantidad: {pres_a} vs {pres_b}",
-                        list(dci_key))
+                        f"Mismo principio activo ({dci_str}) y concentración ({dosis} mg/mL), diferente cantidad: {pres_a} vs {pres_b}",
+                        list(dci))
 
     # A2 — Misma conc + diferente forma/vía
-    for (dci_key, dosis), grupo in por_dci_dosis.items():
+    for (dci, dosis), grupo in por_dci_dosis.items():
+        dci_str = ', '.join(dci) if dci else '(DCI no registrado)'
         for a, b in combinations(grupo, 2):
             ga = _grupo_forma(a.forma_farmaceutica, a.via_administracion)
             gb = _grupo_forma(b.forma_farmaceutica, b.via_administracion)
             if ga != gb:
                 agregar(a, b, "MISMA_CONC_DIFERENTE_FORMA",
-                        f"Mismo principio activo ({', '.join(dci_key)}) y concentración ({dosis} mg/mL), diferente forma farmacéutica ({ga} vs {gb})",
-                        list(dci_key))
+                        f"Mismo principio activo ({dci_str}) y concentración ({dosis} mg/mL), diferente forma farmacéutica ({ga} vs {gb})",
+                        list(dci))
 
     # A3 — Misma forma + diferente concentración
-    for (dci_key, g_forma), grupo in por_dci_forma.items():
+    for (dci, g_forma), grupo in por_dci_forma.items():
+        dci_str = ', '.join(dci) if dci else '(DCI no registrado)'
         for a, b in combinations(grupo, 2):
             dosis_a = round(a.dosis_numerica, 1) if a.dosis_numerica is not None else None
             dosis_b = round(b.dosis_numerica, 1) if b.dosis_numerica is not None else None
             if dosis_a != dosis_b:
                 agregar(a, b, "DIFERENTE_CONCENTRACION",
-                        f"Mismo principio activo ({', '.join(dci_key)}) y forma farmacéutica, diferente concentración",
-                        list(dci_key))
+                        f"Mismo principio activo ({dci_str}) y forma farmacéutica, diferente concentración",
+                        list(dci))
 
     # A4 — Mismo ATC7 + misma forma + distintos DCI (sales del mismo compuesto)
+    # Solo cuando AMBOS tienen DCI conocido (evita falsos positivos con DCI vacío por datos CUM)
     for (atc7, gf), grupo in por_atc7_forma.items():
         for a, b in combinations(grupo, 2):
-            if tuple(sorted(a.principios_dci)) != tuple(sorted(b.principios_dci)):
+            dci_a = tuple(sorted(a.principios_dci))
+            dci_b = tuple(sorted(b.principios_dci))
+            if dci_a and dci_b and dci_a != dci_b:
                 agregar(a, b, "EQUIVALENTE_EXACTO",
                         f"Mismo ATC ({atc7}) y forma, distinto principio activo (sales/ésteres)",
                         list(set(a.principios_dci) & set(b.principios_dci)))
