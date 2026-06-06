@@ -2,13 +2,14 @@
 Genera relaciones de alternativas farmacológicas usando MedicamentoTransformado.
 Soporta principios activos mono/bi/tri/tetraconjugados.
 
-Criterios:
-  A0 — SUSTITUTO_DIRECTO            : mismo DCI + misma dosis + misma forma+vía, distinto lab
-  A1 — MISMO_PRINCIPIO_ACTIVO       : mismo DCI + misma forma+vía + distinta dosis
-  A2 — EQUIVALENTE_EXACTO           : mismo ATC-7 + misma forma+vía + distintos DCI (sales)
-  A3 — EQUIVALENTE_CLASE            : mismo ATC-5 + misma forma+vía + distinto ATC-7
-  A4 — COMPONENTE_COMPARTIDO        : combinados que comparten ≥1 DCI + misma clase ATC-5
-  A5 — ALTERNATIVA_DIFERENTE_FORMA  : mismo ATC-5 + distinta forma/vía
+Criterios (en orden de prioridad — cada par se clasifica una sola vez):
+  A0  — SUSTITUTO_DIRECTO             : mismo DCI + misma dosis + misma forma+vía, distinto lab
+  A0b — MISMO_PRINCIPIO_DIFERENTE_FORMA: mismo DCI + misma dosis + distinta forma/vía
+  A1  — MISMO_PRINCIPIO_ACTIVO        : mismo DCI + misma forma+vía + distinta dosis
+  A2  — EQUIVALENTE_EXACTO            : mismo ATC-7 + misma forma+vía + distintos DCI (sales)
+  A3  — EQUIVALENTE_CLASE             : mismo ATC-5 + misma forma+vía + distinto ATC-7
+  A4  — COMPONENTE_COMPARTIDO         : combinados que comparten ≥1 DCI + misma clase ATC-5
+  A5  — ALTERNATIVA_DIFERENTE_FORMA   : mismo ATC-5 + distinta forma/vía
 """
 from itertools import combinations
 from collections import defaultdict
@@ -158,6 +159,7 @@ def generar_alternativas(meds: list[MedicamentoTransformado]) -> list[ParAlterna
     """
     # Índices de búsqueda
     por_producto: dict[tuple, list[MedicamentoTransformado]] = defaultdict(list)   # A0
+    por_dci_dosis: dict[tuple, list[MedicamentoTransformado]] = defaultdict(list)  # A0b
     por_dci_forma: dict[tuple, list[MedicamentoTransformado]] = defaultdict(list)
     por_atc7_forma: dict[tuple, list[MedicamentoTransformado]] = defaultdict(list)
     por_atc5_forma: dict[tuple, list[MedicamentoTransformado]] = defaultdict(list)
@@ -178,13 +180,16 @@ def generar_alternativas(meds: list[MedicamentoTransformado]) -> list[ParAlterna
         if m.dosis_numerica is not None:
             dosis_key = round(m.dosis_numerica, 1)
             por_producto[(dci_key, dosis_key, g_forma)].append(m)
+            por_dci_dosis[(dci_key, dosis_key)].append(m)
 
-    pares_vistos: set[tuple[str, str, str]] = set()
+    # Cada par se clasifica con el criterio más específico; sin tipo en la clave
+    # para evitar duplicados entre criterios que se solapan (ej. A0b y A5).
+    pares_vistos: set[tuple[str, str]] = set()
     resultado: list[ParAlternativa] = []
 
     def agregar(a: MedicamentoTransformado, b: MedicamentoTransformado,
                 tipo: str, desc: str, compartidos: list[str]):
-        key = (min(a.cum_id, b.cum_id), max(a.cum_id, b.cum_id), tipo)
+        key = (min(a.cum_id, b.cum_id), max(a.cum_id, b.cum_id))
         if key not in pares_vistos and a.cum_id != b.cum_id:
             pares_vistos.add(key)
             resultado.append(ParAlternativa(
@@ -201,6 +206,16 @@ def generar_alternativas(meds: list[MedicamentoTransformado]) -> list[ParAlterna
             agregar(a, b, "SUSTITUTO_DIRECTO",
                     f"Mismo principio activo ({', '.join(dci_key)}) y concentración ({dosis} mg), diferente laboratorio",
                     list(dci_key))
+
+    # A0b — Mismo DCI + misma dosis + DISTINTA forma (ej. tableta convencional vs LP)
+    for (dci_key, dosis), grupo in por_dci_dosis.items():
+        for a, b in combinations(grupo, 2):
+            ga = _grupo_forma(a.forma_farmaceutica, a.via_administracion)
+            gb = _grupo_forma(b.forma_farmaceutica, b.via_administracion)
+            if ga != gb:
+                agregar(a, b, "MISMO_PRINCIPIO_DIFERENTE_FORMA",
+                        f"Mismo principio activo ({', '.join(dci_key)}) y concentración ({dosis} mg), diferente forma farmacéutica ({ga} vs {gb})",
+                        list(dci_key))
 
     # A1 — Mismos DCI + misma forma + DIFERENTE dosis (antes mezclaba todo; A0 cubre la misma dosis)
     for (dci_key, _), grupo in por_dci_forma.items():

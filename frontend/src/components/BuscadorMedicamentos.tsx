@@ -11,12 +11,13 @@ const FORMULA_CFG: Record<string, { label: string; color: string }> = {
 
 // ─── Configuración de alternativas ───────────────────────────────────────────
 const ALT_CFG: Record<string, { color: string; label: string; desc: string }> = {
-  SUSTITUTO_DIRECTO:            { color: 'bg-emerald-50 text-emerald-800 border-emerald-200', label: 'Sustituto directo', desc: 'Mismo principio activo, misma concentración, misma forma. Solo cambia el titular.' },
-  MISMO_PRINCIPIO_ACTIVO:       { color: 'bg-teal-50 text-teal-800 border-teal-200',          label: 'Misma molécula — diferente concentración', desc: 'Misma molécula y forma, distinta dosis.' },
-  EQUIVALENTE_EXACTO:           { color: 'bg-blue-50 text-blue-800 border-blue-200',           label: 'Equivalente exacto (sales / ésteres)', desc: 'Mismo ATC-7, misma forma. Distinta sal o éster del mismo compuesto.' },
-  EQUIVALENTE_CLASE:            { color: 'bg-indigo-50 text-indigo-800 border-indigo-200',     label: 'Equivalente terapéutico — misma clase ATC', desc: 'Misma clase farmacológica ATC-5, misma forma. Molécula distinta.' },
-  COMPONENTE_COMPARTIDO:        { color: 'bg-purple-50 text-purple-800 border-purple-200',     label: 'Combinado con componente en común', desc: 'Comparte al menos un principio activo.' },
-  ALTERNATIVA_DIFERENTE_FORMA:  { color: 'bg-amber-50 text-amber-800 border-amber-200',        label: 'Misma molécula o clase — diferente vía/forma', desc: 'Oral vs vaginal, tableta vs inyectable, etc. Requiere evaluación clínica.' },
+  SUSTITUTO_DIRECTO:               { color: 'bg-emerald-50 text-emerald-800 border-emerald-200', label: 'Sustituto directo', desc: 'Mismo principio activo, misma concentración, misma forma. Solo cambia el titular.' },
+  MISMO_PRINCIPIO_ACTIVO:          { color: 'bg-teal-50 text-teal-800 border-teal-200',          label: 'Misma molécula — diferente concentración', desc: 'Misma molécula y forma, distinta dosis.' },
+  MISMO_PRINCIPIO_DIFERENTE_FORMA: { color: 'bg-sky-50 text-sky-800 border-sky-200',             label: 'Misma molécula · misma concentración · diferente forma', desc: 'Mismo PA y dosis, pero distinta forma farmacéutica (ej. tableta convencional vs liberación prolongada). Requiere evaluación clínica por diferencias farmacocinéticas.' },
+  EQUIVALENTE_EXACTO:              { color: 'bg-blue-50 text-blue-800 border-blue-200',           label: 'Equivalente exacto (sales / ésteres)', desc: 'Mismo ATC-7, misma forma. Distinta sal o éster del mismo compuesto.' },
+  EQUIVALENTE_CLASE:               { color: 'bg-indigo-50 text-indigo-800 border-indigo-200',     label: 'Equivalente terapéutico — misma clase ATC', desc: 'Misma clase farmacológica ATC-5, misma forma. Molécula distinta.' },
+  COMPONENTE_COMPARTIDO:           { color: 'bg-purple-50 text-purple-800 border-purple-200',     label: 'Combinado con componente en común', desc: 'Comparte al menos un principio activo.' },
+  ALTERNATIVA_DIFERENTE_FORMA:     { color: 'bg-amber-50 text-amber-800 border-amber-200',        label: 'Misma molécula o clase — diferente vía/forma', desc: 'Oral vs vaginal, tableta vs inyectable, etc. Requiere evaluación clínica.' },
 }
 
 const TIPOS_TERAPEUTICOS = [
@@ -222,9 +223,10 @@ function PanelAlternativas({ medicamento, alternativas, cargando, error }: {
   const esMedNTI    = esNTI(medicamento.principios_dci)
   const [terapExpanded, setTerapExpanded] = useState(false)
 
-  const sustitutos   = useMemo(() => alternativas.filter(a => a.tipo === 'SUSTITUTO_DIRECTO'),      [alternativas])
-  const mismaConc    = useMemo(() => alternativas.filter(a => a.tipo === 'MISMO_PRINCIPIO_ACTIVO'),  [alternativas])
-  const terapeuticas = useMemo(() => alternativas.filter(a => TIPOS_TERAPEUTICOS.includes(a.tipo)), [alternativas])
+  const sustitutos    = useMemo(() => alternativas.filter(a => a.tipo === 'SUSTITUTO_DIRECTO'),               [alternativas])
+  const mismaConc     = useMemo(() => alternativas.filter(a => a.tipo === 'MISMO_PRINCIPIO_ACTIVO'),           [alternativas])
+  const diferenteForma = useMemo(() => alternativas.filter(a => a.tipo === 'MISMO_PRINCIPIO_DIFERENTE_FORMA'), [alternativas])
+  const terapeuticas  = useMemo(() => alternativas.filter(a => TIPOS_TERAPEUTICOS.includes(a.tipo)),           [alternativas])
   const porTipo      = useMemo(() => TIPOS_TERAPEUTICOS.reduce<Record<string, AlternativaLive[]>>((acc, t) => {
     acc[t] = alternativas.filter(a => a.tipo === t)
     return acc
@@ -396,7 +398,25 @@ function PanelAlternativas({ medicamento, alternativas, cargando, error }: {
               </div>
             )}
 
-            {/* Sección 3 — Alternativas terapéuticas (colapsable) */}
+            {/* Sección 3 — Misma molécula, misma concentración, diferente forma */}
+            {diferenteForma.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-2 h-2 rounded-full bg-sky-400 shrink-0" />
+                  <p className="text-xs font-bold text-sky-800 uppercase tracking-wide">
+                    Misma molécula · misma concentración · diferente forma ({diferenteForma.length})
+                  </p>
+                </div>
+                <p className="text-xs text-slate-500 mb-2 pl-4">
+                  Mismo PA y dosis. La forma farmacéutica varía (ej. convencional vs liberación prolongada). Requiere evaluación clínica.
+                </p>
+                <div className="space-y-2">
+                  {diferenteForma.map((alt, i) => renderAlternativa(alt, i, 'MISMO_PRINCIPIO_DIFERENTE_FORMA'))}
+                </div>
+              </div>
+            )}
+
+            {/* Sección 4 — Alternativas terapéuticas (colapsable) */}
             {terapeuticas.length > 0 && (
               <div>
                 <button
@@ -709,6 +729,15 @@ export default function BuscadorMedicamentos() {
                   <p className="text-xs font-bold text-teal-800">Misma molécula — diferente concentración</p>
                   <p className="text-xs text-teal-700 mt-0.5">
                     Mismo principio activo y vía de administración, pero distinta dosis. Requieren ajuste de posología por parte del profesional de salud.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3 items-start p-3 rounded-lg border border-sky-200 bg-sky-50">
+                <div className="w-2.5 h-2.5 rounded-full bg-sky-400 shrink-0 mt-1" />
+                <div>
+                  <p className="text-xs font-bold text-sky-800">Misma molécula · misma concentración · diferente forma</p>
+                  <p className="text-xs text-sky-700 mt-0.5">
+                    Mismo principio activo y dosis, pero distinta forma farmacéutica (ej. tableta convencional vs tableta de liberación prolongada). No son directamente intercambiables — el perfil farmacocinético difiere. Requieren evaluación clínica.
                   </p>
                 </div>
               </div>
