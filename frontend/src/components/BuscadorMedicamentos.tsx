@@ -669,8 +669,11 @@ export default function BuscadorMedicamentos() {
     const rowMap = new Map<string, { totalLabel: string; totalValor: number; detalles: string; meds: MedicamentoLive[] }>()
     for (const med of resultadosFiltrados) {
       const forma  = grupoForma(med.forma_farmaceutica, med.via_administracion)
-      const conc   = med.concentracion_display || ''
       const pres   = med.presentacion || ''
+      // Normalizar componentes "+": "B+A" → "A+B" para que el orden del CUM no rompa el agrupamiento
+      const conc = (med.concentracion_display || '').includes('+')
+        ? (med.concentracion_display || '').split('+').map(p => p.trim()).sort().join(' + ')
+        : (med.concentracion_display || '')
       const t      = computeTotal(conc, pres)
       const totalLabel = t?.label ?? ([conc, pres].filter(Boolean).join(' · ') || '—')
       const totalValor = t?.valor ?? parseFloat(conc) ?? 0
