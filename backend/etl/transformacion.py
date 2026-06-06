@@ -43,21 +43,32 @@ _CONCENTRACION_INCRUSTADA = re.compile(
     re.IGNORECASE,
 )
 
-# Sinónimos INN: grafías en inglés o variantes presentes en el CUM → DCI en español
+# Sinónimos INN: grafías en inglés, variantes -ina/-ino u otras presentes en el CUM → DCI canónico
 _SINONIMOS: dict[str, str] = {
-    "METOTREXATE":    "METOTREXATO",
-    "METHOTREXATE":   "METOTREXATO",
-    "DEXAMETHASONE":  "DEXAMETASONA",
-    "PREDNISOLONE":   "PREDNISOLONA",
-    "HYDROCORTISONE": "HIDROCORTISONA",
-    "TESTOSTERONE":   "TESTOSTERONA",
-    "PROGESTERONE":   "PROGESTERONA",
-    "FLUOROURACIL":   "FLUOROURACILO",
-    "VINCRISTINE":    "VINCRISTINA",
-    "VINBLASTINE":    "VINBLASTINA",
+    # Variantes inglés → español
+    "METOTREXATE":      "METOTREXATO",
+    "METHOTREXATE":     "METOTREXATO",
+    "DEXAMETHASONE":    "DEXAMETASONA",
+    "PREDNISOLONE":     "PREDNISOLONA",
+    "HYDROCORTISONE":   "HIDROCORTISONA",
+    "TESTOSTERONE":     "TESTOSTERONA",
+    "PROGESTERONE":     "PROGESTERONA",
+    "FLUOROURACIL":     "FLUOROURACILO",
+    "VINCRISTINE":      "VINCRISTINA",
+    "VINBLASTINE":      "VINBLASTINA",
     "CYCLOPHOSPHAMIDE": "CICLOFOSFAMIDA",
-    "CHLORAMBUCIL":   "CLORAMBUCILO",
-    "MERCAPTOPURINE": "MERCAPTOPURINA",
+    "CHLORAMBUCIL":     "CLORAMBUCILO",
+    "MERCAPTOPURINE":   "MERCAPTOPURINA",
+    # Variantes -ina/-ino frecuentes en el CUM colombiano
+    "NIFEDIPINA":       "NIFEDIPINO",
+    "AMLODIPINA":       "AMLODIPINO",
+    "FELODIPINA":       "FELODIPINO",
+    "LERCANIDIPINA":    "LERCANIDIPINO",
+    "LACIDIPINA":       "LACIDIPINO",
+    "NISOLDIPINA":      "NISOLDIPINO",
+    "NIMODIPINA":       "NIMODIPINO",
+    "ISRADIPINA":       "ISRADIPINO",
+    "BARNIDIPINA":      "BARNIDIPINO",
 }
 
 

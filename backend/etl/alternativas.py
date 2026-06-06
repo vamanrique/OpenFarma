@@ -26,6 +26,18 @@ FORMAS_EQUIVALENTES: dict[str, frozenset[str]] = {
         "TABLETA MASTICABLE", "COMPRIMIDO", "GRAGEA",
         "CAPSULA", "CAPSULA DURA", "CAPSULA BLANDA", "CAPSULA GELATINOSA",
     }),
+    # Sólidos orales de liberación prolongada/controlada/modificada/sostenida
+    # Tableta LP y Cápsula LP del mismo PA y dosis son intercambiables entre sí
+    # NO son intercambiables con la forma de liberación inmediata (SOLIDO_ORAL)
+    "SOLIDO_ORAL_LP": frozenset({
+        "TABLETA DE LIBERACION PROLONGADA", "TABLETA DE LIBERACION CONTROLADA",
+        "TABLETA DE LIBERACION MODIFICADA", "TABLETA DE LIBERACION SOSTENIDA",
+        "TABLETA DE LIBERACION RETARDADA", "TABLETA DE ACCION PROLONGADA",
+        "CAPSULA DE LIBERACION PROLONGADA", "CAPSULA DE LIBERACION CONTROLADA",
+        "CAPSULA DE LIBERACION MODIFICADA", "CAPSULA DE LIBERACION SOSTENIDA",
+        "CAPSULA DE LIBERACION RETARDADA", "CAPSULA DE ACCION PROLONGADA",
+        "COMPRIMIDO DE LIBERACION PROLONGADA", "COMPRIMIDO DE LIBERACION CONTROLADA",
+    }),
     # Dispersables/efervescentes: misma molécula pero preparación diferente
     "ORAL_DISPERSABLE": frozenset({
         "TABLETA DISPERSABLE", "TABLETA EFERVESCENTE",
