@@ -222,15 +222,20 @@ function FilaMedicamento({ med, onVer, activa }: {
 }
 
 // ─── Panel de alternativas ────────────────────────────────────────────────────
-function PanelAlternativas({ medicamento, alternativas, cargando, error }: {
+function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, error }: {
   medicamento: MedicamentoLive
+  grupoMeds: MedicamentoLive[]
   alternativas: AlternativaLive[]
   cargando: boolean
   error: string
 }) {
   const inyectable  = esInyectable(medicamento)
-  const esMedNTI    = esNTI(medicamento.principios_dci)
+  const esMedNTI    = grupoMeds.some(m => esNTI(m.principios_dci)) || esNTI(medicamento.principios_dci)
   const [terapExpanded, setTerapExpanded] = useState(false)
+  // DCI canónico: del representante o inferido desde el grupo
+  const dcis = medicamento.principios_dci.length > 0
+    ? medicamento.principios_dci
+    : [...new Set(grupoMeds.flatMap(m => m.principios_dci))]
 
   const sustitutos          = useMemo(() => alternativas.filter(a => a.tipo === 'SUSTITUTO_DIRECTO'),              [alternativas])
   const distCantidad        = useMemo(() => alternativas.filter(a => a.tipo === 'MISMA_CONC_DIFERENTE_CANTIDAD'), [alternativas])
@@ -292,17 +297,21 @@ function PanelAlternativas({ medicamento, alternativas, cargando, error }: {
     <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
       {/* Header */}
       <div className="bg-slate-50 border-b border-slate-200 px-4 py-3">
-        <div className="flex items-center gap-2 flex-wrap">
-          <p className="font-semibold text-slate-900 text-sm">{medicamento.nombre_comercial}</p>
+        {/* Fila 1: DCIs + formula + NTI */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {dcis.length > 0
+            ? dcis.map((dci, i) => (
+                <span key={i} className="text-sm font-bold text-slate-900">{dci}</span>
+              ))
+            : <span className="text-sm font-semibold text-slate-500">{medicamento.nombre_comercial}</span>
+          }
           <BadgeFormula tipo={medicamento.tipo_formula} />
           {esMedNTI && <BadgeNTI />}
         </div>
-        <div className="flex flex-wrap gap-1 mt-1.5">
-          {medicamento.principios_dci.map((dci, i) => <TagDCI key={i} dci={dci} />)}
-        </div>
-        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-          <span className="text-xs bg-white border border-slate-200 rounded-full px-2 py-0.5 text-slate-600">
-            {medicamento.forma_farmaceutica}
+        {/* Fila 2: forma + concentración + presentación */}
+        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+          <span className="text-xs bg-white border border-slate-200 rounded-full px-2 py-0.5 text-slate-500">
+            {labelGrupo(grupoForma(medicamento.forma_farmaceutica, medicamento.via_administracion))}
           </span>
           {medicamento.concentracion_display && (
             <span className="text-xs bg-white border border-slate-200 rounded-full px-2 py-0.5 font-mono font-semibold text-slate-700">
@@ -316,6 +325,21 @@ function PanelAlternativas({ medicamento, alternativas, cargando, error }: {
             <span className="text-xs text-slate-400 ml-auto">{alternativas.length} alternativas</span>
           )}
         </div>
+        {/* Fila 3: productos en el grupo */}
+        {grupoMeds.length > 0 && (
+          <div className="mt-2 pt-2 border-t border-slate-200">
+            <p className="text-[10px] text-slate-400 uppercase tracking-wide font-semibold mb-1">
+              {grupoMeds.length} {grupoMeds.length === 1 ? 'producto' : 'productos'} con esta presentación
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {grupoMeds.map((m, i) => (
+                <span key={i} className="text-[11px] bg-white border border-slate-200 rounded px-1.5 py-0.5 text-slate-600 truncate max-w-[220px]" title={`${m.nombre_comercial} · ${m.laboratorio}`}>
+                  {m.nombre_comercial}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="p-4 space-y-4">
@@ -518,6 +542,18 @@ function PanelAlternativas({ medicamento, alternativas, cargando, error }: {
 }
 
 
+// ─── Tipos de agrupación ─────────────────────────────────────────────────────
+interface PresRow {
+  key: string
+  forma: string
+  concentracion: string
+  presentacion: string
+  meds: MedicamentoLive[]      // ordenados: con DCI primero, luego por lab
+}
+interface ConcSection { conc: string; rows: PresRow[] }
+interface FormaBlock  { forma: string; total: number; sections: ConcSection[] }
+
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function BuscadorMedicamentos() {
   const [query, setQuery]             = useState('')
@@ -526,17 +562,19 @@ export default function BuscadorMedicamentos() {
   const [errorBusq, setErrorBusq]     = useState('')
   const [hasBuscado, setHasBuscado]   = useState(false)
 
-  const [medSeleccionado, setMedSeleccionado] = useState<MedicamentoLive | null>(null)
-  const [alternativas, setAlternativas]       = useState<AlternativaLive[]>([])
-  const [cargandoAlt, setCargandoAlt]         = useState(false)
-  const [errorAlt, setErrorAlt]               = useState('')
+  const [medSeleccionado, setMedSeleccionado]     = useState<MedicamentoLive | null>(null)
+  const [selectedGroupKey, setSelectedGroupKey]   = useState<string | null>(null)
+  const [selectedGroupMeds, setSelectedGroupMeds] = useState<MedicamentoLive[]>([])
+  const [alternativas, setAlternativas]           = useState<AlternativaLive[]>([])
+  const [cargandoAlt, setCargandoAlt]             = useState(false)
+  const [errorAlt, setErrorAlt]                   = useState('')
 
   const [filtroGrupo, setFiltroGrupoRaw] = useState<string | null>(null)
   const [filtroConc, setFiltroConc]       = useState<string | null>(null)
 
   const setFiltroGrupo = (g: string | null) => { setFiltroGrupoRaw(g); setFiltroConc(null) }
 
-  // Conteo de grupos en resultados
+  // Conteo de formas para el selector de filtro
   const grupos = useMemo(() => {
     const counts = new Map<string, number>()
     for (const m of resultados) {
@@ -546,7 +584,7 @@ export default function BuscadorMedicamentos() {
     return [...counts.entries()].sort((a, b) => b[1] - a[1])
   }, [resultados])
 
-  // Concentraciones únicas (del grupo seleccionado o de todos)
+  // Concentraciones únicas para el selector de filtro
   const concentraciones = useMemo(() => {
     const base = filtroGrupo
       ? resultados.filter(m => grupoForma(m.forma_farmaceutica, m.via_administracion) === filtroGrupo)
@@ -555,7 +593,6 @@ export default function BuscadorMedicamentos() {
     for (const m of base) {
       if (m.concentracion_display) counts.set(m.concentracion_display, (counts.get(m.concentracion_display) ?? 0) + 1)
     }
-    // Ordenar por valor numérico cuando sea posible
     return [...counts.entries()].sort((a, b) => {
       const na = parseFloat(a[0]), nb = parseFloat(b[0])
       return isNaN(na) || isNaN(nb) ? a[0].localeCompare(b[0]) : na - nb
@@ -573,12 +610,59 @@ export default function BuscadorMedicamentos() {
 
   const hayFiltros = filtroGrupo !== null || filtroConc !== null
 
+  // Estructura jerárquica: forma → concentración → presentación
+  const agrupados = useMemo((): FormaBlock[] => {
+    const numSort = (a: string, b: string) => {
+      const na = parseFloat(a), nb = parseFloat(b)
+      return !isNaN(na) && !isNaN(nb) ? na - nb : a.localeCompare(b)
+    }
+    // Nivel 1: agrupar por (forma, conc, pres)
+    const presMap = new Map<string, MedicamentoLive[]>()
+    for (const med of resultadosFiltrados) {
+      const forma = grupoForma(med.forma_farmaceutica, med.via_administracion)
+      const conc  = med.concentracion_display || ''
+      const pres  = med.presentacion || ''
+      const key   = `${forma}\0${conc}\0${pres}`
+      const list  = presMap.get(key) ?? []
+      list.push(med)
+      presMap.set(key, list)
+    }
+    // Nivel 2: agrupar filas en secciones de concentración, dentro de bloques de forma
+    const formaMap = new Map<string, Map<string, PresRow[]>>()
+    for (const [key, rawMeds] of presMap) {
+      const [forma, conc, pres] = key.split('\0')
+      // Dentro del grupo, poner al frente los que tienen DCI conocido (mejor representante)
+      const meds = [...rawMeds].sort(
+        (a, b) => (b.principios_dci.length - a.principios_dci.length) || a.laboratorio.localeCompare(b.laboratorio)
+      )
+      if (!formaMap.has(forma)) formaMap.set(forma, new Map())
+      const concMap = formaMap.get(forma)!
+      if (!concMap.has(conc)) concMap.set(conc, [])
+      concMap.get(conc)!.push({ key, forma, concentracion: conc, presentacion: pres, meds })
+    }
+    // Ordenar: forma por total de productos desc; conc y pres numéricamente
+    return [...formaMap.entries()]
+      .map(([forma, concMap]) => {
+        const sections: ConcSection[] = [...concMap.entries()]
+          .sort(([a], [b]) => numSort(a, b))
+          .map(([conc, rows]) => ({
+            conc,
+            rows: rows.sort((a, b) => numSort(a.presentacion, b.presentacion)),
+          }))
+        const total = sections.reduce((s, sec) => s + sec.rows.reduce((r, row) => r + row.meds.length, 0), 0)
+        return { forma, total, sections }
+      })
+      .sort((a, b) => b.total - a.total)
+  }, [resultadosFiltrados])
+
   const buscar = async (e: React.FormEvent) => {
     e.preventDefault()
     if (query.trim().length < 2) return
     setBuscando(true)
     setErrorBusq('')
     setMedSeleccionado(null)
+    setSelectedGroupKey(null)
+    setSelectedGroupMeds([])
     setHasBuscado(true)
     setFiltroGrupo(null)
     try {
@@ -604,6 +688,12 @@ export default function BuscadorMedicamentos() {
     } finally {
       setCargandoAlt(false)
     }
+  }
+
+  const seleccionarGrupo = (row: PresRow) => {
+    setSelectedGroupKey(row.key)
+    setSelectedGroupMeds(row.meds)
+    verAlternativas(row.meds[0])
   }
 
   return (
@@ -677,8 +767,11 @@ export default function BuscadorMedicamentos() {
                   ? <>{resultadosFiltrados.length} <span className="text-slate-300">de {resultados.length}</span></>
                   : resultados.length
                 } resultados
-                {medSeleccionado && (
-                  <span className="ml-2 text-blue-500">· {medSeleccionado.nombre_comercial}</span>
+                {selectedGroupKey && medSeleccionado && (
+                  <span className="ml-2 text-blue-500">
+                    · {medSeleccionado.principios_dci[0] ?? medSeleccionado.nombre_comercial}
+                    {medSeleccionado.concentracion_display && ` ${medSeleccionado.concentracion_display}`}
+                  </span>
                 )}
               </span>
             </div>
@@ -850,7 +943,7 @@ export default function BuscadorMedicamentos() {
       {hasBuscado && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
 
-          {/* Lista de resultados */}
+          {/* Lista de resultados — agrupada por forma → concentración → presentación */}
           <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
             {buscando && (
               <div className="py-12 text-center">
@@ -858,7 +951,7 @@ export default function BuscadorMedicamentos() {
                 <p className="text-xs text-slate-400 mt-2">Consultando datos.gov.co...</p>
               </div>
             )}
-            {!buscando && resultadosFiltrados.length === 0 && (
+            {!buscando && agrupados.length === 0 && (
               <div className="py-10 text-center px-4">
                 <p className="text-sm text-slate-500">
                   {hayFiltros
@@ -873,15 +966,78 @@ export default function BuscadorMedicamentos() {
                 )}
               </div>
             )}
-            {!buscando && resultadosFiltrados.length > 0 && (
+            {!buscando && agrupados.length > 0 && (
               <div className="max-h-[70vh] overflow-y-auto">
-                {resultadosFiltrados.map(med => (
-                  <FilaMedicamento
-                    key={med.cum_id}
-                    med={med}
-                    onVer={verAlternativas}
-                    activa={medSeleccionado?.cum_id === med.cum_id}
-                  />
+                {agrupados.map(({ forma, total, sections }) => (
+                  <div key={forma}>
+                    {/* Cabecera de forma farmacéutica */}
+                    <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-200 sticky top-0 z-10 flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                        {labelGrupo(forma)}
+                      </span>
+                      <span className="text-[10px] text-slate-400">{total} productos</span>
+                    </div>
+
+                    {sections.map(({ conc, rows }) => (
+                      <div key={conc}>
+                        {/* Subencabezado de concentración */}
+                        <div className="px-4 py-1.5 border-b border-slate-100 bg-white flex items-center gap-2">
+                          <span className="text-xs font-mono font-semibold text-slate-700">
+                            {conc || '—'}
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            {rows.reduce((s, r) => s + r.meds.length, 0)} productos
+                          </span>
+                        </div>
+
+                        {/* Filas de presentación (seleccionables) */}
+                        {rows.map(row => {
+                          const sel    = selectedGroupKey === row.key
+                          const hasNTI = row.meds.some(m => esNTI(m.principios_dci))
+                          const labs   = row.meds.slice(0, 3).map(m => {
+                            // Nombre corto del laboratorio (primera palabra o hasta paréntesis)
+                            return m.laboratorio.split(/\s+/)[0]
+                          }).join(', ')
+                          const moreLabs = row.meds.length > 3 ? ` +${row.meds.length - 3}` : ''
+                          return (
+                            <button
+                              key={row.key}
+                              onClick={() => seleccionarGrupo(row)}
+                              className={`w-full flex items-center gap-3 px-5 py-2.5 border-b border-slate-50 last:border-0 transition-colors text-left ${
+                                sel
+                                  ? 'bg-blue-50 border-l-4 border-l-blue-500'
+                                  : 'hover:bg-slate-50 border-l-4 border-l-transparent'
+                              }`}
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`text-xs font-semibold ${sel ? 'text-blue-700' : 'text-slate-700'}`}>
+                                    {row.presentacion || 'por unidad'}
+                                  </span>
+                                  {hasNTI && <BadgeNTI />}
+                                </div>
+                                <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                                  <span className="text-[11px] text-slate-400">
+                                    {row.meds.length} {row.meds.length === 1 ? 'producto' : 'productos'}
+                                  </span>
+                                  <span className="text-[11px] text-slate-300">·</span>
+                                  <span className="text-[11px] text-slate-400 truncate">
+                                    {labs}{moreLabs}
+                                  </span>
+                                </div>
+                              </div>
+                              <svg
+                                className={`w-3.5 h-3.5 shrink-0 transition-colors ${sel ? 'text-blue-400' : 'text-slate-300'}`}
+                                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" />
+                              </svg>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    ))}
+                  </div>
                 ))}
               </div>
             )}
@@ -892,6 +1048,7 @@ export default function BuscadorMedicamentos() {
             <div className="max-h-[70vh] overflow-y-auto">
               <PanelAlternativas
                 medicamento={medSeleccionado}
+                grupoMeds={selectedGroupMeds}
                 alternativas={alternativas}
                 cargando={cargandoAlt}
                 error={errorAlt}
@@ -900,7 +1057,7 @@ export default function BuscadorMedicamentos() {
           ) : (
             <div className="hidden lg:flex bg-white border border-dashed border-slate-300 rounded-xl items-center justify-center py-16 text-center">
               <div>
-                <p className="text-sm text-slate-400">Selecciona un medicamento</p>
+                <p className="text-sm text-slate-400">Selecciona una presentación</p>
                 <p className="text-xs text-slate-300 mt-1">para ver sus sustitutos y alternativas</p>
               </div>
             </div>
