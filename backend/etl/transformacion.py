@@ -275,6 +275,12 @@ _GRUPOS_NORM_ML = frozenset({'INYECTABLE', 'LIQUIDO_ORAL'})
 # Grupos donde la unidad de referencia es "por dosis"
 _GRUPOS_NORM_DOSIS = frozenset({'INHALADO', 'NASAL'})
 
+# Extrae número de dosis/inhalaciones de la referencia: "200 DOSIS" → 200
+_NDOSIS_EN_REF = re.compile(
+    r'(\d+(?:[.,]\d+)?)\s*(?:dosis|inhalaciones|aplicaciones|sprays|pulsaciones)\b',
+    re.IGNORECASE,
+)
+
 
 def _conc_desde_nombre(nombre: str) -> str:
     """
@@ -339,6 +345,60 @@ def _normalizar_por_forma(conc: str, g_forma: str, nombre_prod: str) -> str:
     return conc
 
 
+def _extraer_presentacion(row: pd.Series, g_forma: str, nombre_prod: str) -> str:
+    """
+    Extrae la cantidad total por envase/unidad de dispensación.
+    Complementa la concentración: mientras la concentración describe cuánto
+    principio activo hay por unidad de volumen, la presentación describe el
+    tamaño total del envase o la unidad de dispensación.
+
+    Ejemplos:
+      INYECTABLE  "AMPOLLA POR 3 ML"      → "3 mL"
+      INYECTABLE  "AMPOLLA" + "15MG/3ML"  → "3 mL" (desde nombre)
+      INYECTABLE  "BENZOSED 5MG/ML"       → "1 mL" (denominador implícito)
+      LIQUIDO_ORAL "FRASCO 60 ML"         → "60 mL"
+      INHALADO    "200 DOSIS"             → "200 dosis"
+    """
+    unidad_ref = str(row.get("unidadreferencia", "")).strip()
+
+    if g_forma == 'INYECTABLE':
+        vol_m = _VOL_EN_REF.search(unidad_ref)
+        if vol_m:
+            vol = float(vol_m.group(1).replace(',', '.'))
+            vol_unit = vol_m.group(2).lower()
+            if vol_unit == 'dl': vol *= 100
+            elif vol_unit == 'l': vol *= 1000
+            return f"{vol:g} mL"
+        # Fallback: denominador del ratio en el nombre del producto
+        nm = _CONC_EN_NOMBRE.search(nombre_prod)
+        if nm:
+            vol = float(nm.group(3).replace(',', '.')) if nm.group(3) else 1.0
+            vol_unit = nm.group(4).lower() if nm.group(4) else 'ml'
+            if vol_unit == 'dl': vol *= 100
+            elif vol_unit == 'l': vol *= 1000
+            return f"{vol:g} mL"
+        return ""
+
+    if g_forma == 'LIQUIDO_ORAL':
+        vol_m = _VOL_EN_REF.search(unidad_ref)
+        if vol_m:
+            vol = float(vol_m.group(1).replace(',', '.'))
+            vol_unit = vol_m.group(2).lower()
+            if vol_unit == 'dl': vol *= 100
+            elif vol_unit == 'l': vol *= 1000
+            return f"{vol:g} mL"
+        return ""
+
+    if g_forma == 'INHALADO':
+        m_d = _NDOSIS_EN_REF.search(unidad_ref)
+        if m_d:
+            n = int(float(m_d.group(1).replace(',', '.')))
+            return f"{n} dosis"
+        return ""
+
+    return ""
+
+
 def construir_concentracion(row: pd.Series) -> str:
     """
     Construye la concentración real a partir de cantidad + unidad + unidadreferencia.
@@ -397,9 +457,11 @@ def construir_concentracion(row: pd.Series) -> str:
     # lo que indica volumen/cantidad real (ej. "AMPOLLA POR 5 ML", "FRASCO 100 ML").
     # Si no tiene dígitos es solo el nombre de la forma farmacéutica (ej. "TABLETA RECUBIERTA",
     # "COMPRIMIDO") que ya está en forma_farmaceutica y no aporta al filtro de concentración.
+    # Excluir conteos de dosis ("200 DOSIS", "120 INHALACIONES") — van a presentacion, no a concentración.
     if (unidad_ref and unidad_ref.upper() not in _INVALIDOS
             and unidad_ref.upper() != unidad_real.upper()
-            and re.search(r'\d', unidad_ref)):
+            and re.search(r'\d', unidad_ref)
+            and not _NDOSIS_EN_REF.search(unidad_ref)):
         base = f"{base}/{unidad_ref}"
 
     return base.strip()
@@ -417,6 +479,7 @@ class MedicamentoTransformado:
     concentraciones: list[str]           # una por componente
     concentracion_display: str           # para mostrar en UI
     dosis_numerica: float | None         # primer valor numérico de concentraciones[0] (para comparar exacto)
+    presentacion: str                    # tamaño del envase/unidad: "3 mL", "60 mL", "200 dosis", ""
     forma_farmaceutica: str
     via_administracion: str
     atc: str
@@ -512,6 +575,7 @@ def agrupar_y_transformar(df: pd.DataFrame) -> list[MedicamentoTransformado]:
             concentraciones=concentraciones,
             concentracion_display=concentracion_display,
             dosis_numerica=dosis_numerica,
+            presentacion=_extraer_presentacion(primera, g_forma, nombre_prod),
             forma_farmaceutica=str(primera.get("formafarmaceutica", "")).strip().upper(),
             via_administracion=str(primera.get("viaadministracion", "")).strip().upper(),
             atc=str(primera.get("atc", "")).strip().upper(),

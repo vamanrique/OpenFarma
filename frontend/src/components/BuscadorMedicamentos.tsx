@@ -200,11 +200,15 @@ function FilaMedicamento({ med, onVer, activa }: {
         </div>
       </div>
 
-      {/* Columna de concentración + forma */}
+      {/* Columna de concentración + presentación + forma */}
       <div className="shrink-0 text-right">
         {med.concentracion_display && (
-          <p className="text-xs font-mono font-semibold text-slate-700 truncate max-w-[130px]" title={med.concentracion_display}>
+          <p className="text-xs font-mono font-semibold text-slate-700 truncate max-w-[130px]"
+             title={med.presentacion ? `${med.concentracion_display} · ${med.presentacion}` : med.concentracion_display}>
             {med.concentracion_display}
+            {med.presentacion && (
+              <span className="text-slate-400 font-normal"> · {med.presentacion}</span>
+            )}
           </p>
         )}
         <div className="flex items-center justify-end gap-1 mt-0.5">
@@ -262,6 +266,9 @@ function PanelAlternativas({ medicamento, alternativas, cargando, error }: {
               {dest.concentracion_display && (
                 <span className="font-mono font-semibold text-slate-600 bg-white border border-slate-200 px-1.5 py-0.5 rounded">
                   {dest.concentracion_display}
+                  {dest.presentacion && (
+                    <span className="text-slate-400 font-normal"> · {dest.presentacion}</span>
+                  )}
                 </span>
               )}
               <span>· {dest.laboratorio}</span>
@@ -298,6 +305,9 @@ function PanelAlternativas({ medicamento, alternativas, cargando, error }: {
           {medicamento.concentracion_display && (
             <span className="text-xs bg-white border border-slate-200 rounded-full px-2 py-0.5 font-mono font-semibold text-slate-700">
               {medicamento.concentracion_display}
+              {medicamento.presentacion && (
+                <span className="text-slate-400 font-normal"> · {medicamento.presentacion}</span>
+              )}
             </span>
           )}
           {!cargando && alternativas.length > 0 && (

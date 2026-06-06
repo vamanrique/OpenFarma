@@ -8,6 +8,7 @@ export interface MedicamentoLive {
   principios_dci: string[]
   tipo_formula: string        // monocomponente | biconjugado | triconjugado | tetraconjugado
   concentracion_display: string
+  presentacion: string
   forma_farmaceutica: string
   via_administracion: string
   atc: string

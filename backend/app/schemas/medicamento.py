@@ -48,6 +48,7 @@ class MedicamentoLiveRead(BaseModel):
     principios_dci: list[str]
     tipo_formula: str
     concentracion_display: str
+    presentacion: str = ""
     forma_farmaceutica: str
     via_administracion: str
     atc: str
