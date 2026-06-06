@@ -20,6 +20,7 @@ Target:
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
+from etl.transformacion import normalizar_principio
 
 ATC_GRUPOS = list("ABCDEFGHJLMNPRSV")
 _ATC_ENC = {g: i for i, g in enumerate(ATC_GRUPOS)}
@@ -54,7 +55,7 @@ def construir_features(df_raw: pd.DataFrame) -> pd.DataFrame:
     df["atc_upper"] = df["atc"].str.strip().str.upper()
     df["atc5"] = df["atc_upper"].str[:5]
     df["atc_grupo"] = df["atc_upper"].str[:1]
-    df["principio_norm"] = df["principioactivo"].str.strip().str.upper()
+    df["principio_norm"] = df["principioactivo"].apply(normalizar_principio)
     df["forma_norm"] = df["formafarmaceutica"].str.strip().str.upper()
     df["estado_cum_low"] = df["estadocum"].str.strip().str.lower()
     df["estado_reg_low"] = df["estadoregistro"].str.strip().str.lower()
