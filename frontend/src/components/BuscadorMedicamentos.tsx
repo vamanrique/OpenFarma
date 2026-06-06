@@ -100,20 +100,6 @@ function labelGrupo(g: string): string {
   return GRUPO_LABEL[g] ?? g
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-const VIAS_PARENTERALES = new Set([
-  'INTRAVENOSA', 'INTRAMUSCULAR', 'SUBCUTANEA', 'PARENTERAL',
-  'INTRAARTICULAR', 'INTRATECAL', 'INTRAPERITONEAL',
-])
-
-function esInyectable(med: MedicamentoLive): boolean {
-  return (
-    VIAS_PARENTERALES.has(med.via_administracion.toUpperCase()) ||
-    med.forma_farmaceutica.toUpperCase().includes('INYECT') ||
-    med.forma_farmaceutica.toUpperCase().includes('LIOFILIZADO')
-  )
-}
-
 // ─── Margen Terapéutico Estrecho ──────────────────────────────────────────────
 const NTI_DCIS = new Set([
   'WARFARINA', 'ACENOCUMAROL', 'DIGOXINA',
@@ -167,60 +153,6 @@ function TagDCI({ dci, highlight }: { dci: string; highlight?: boolean }) {
   )
 }
 
-// ─── Fila de medicamento (compacta) ──────────────────────────────────────────
-function FilaMedicamento({ med, onVer, activa }: {
-  med: MedicamentoLive
-  onVer: (m: MedicamentoLive) => void
-  activa: boolean
-}) {
-  const nti = esNTI(med.principios_dci)
-  const grupo = grupoForma(med.forma_farmaceutica, med.via_administracion)
-
-  return (
-    <div
-      onClick={() => onVer(med)}
-      className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer border-b border-slate-100 last:border-0 transition-colors ${
-        activa
-          ? 'bg-blue-50 border-l-2 border-l-blue-500'
-          : 'hover:bg-slate-50 border-l-2 border-l-transparent'
-      }`}
-    >
-      {/* Columna principal */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {med.principios_dci.map((d, i) => (
-            <span key={i} className="text-xs font-semibold text-slate-800">{d}</span>
-          ))}
-          {nti && <BadgeNTI />}
-          <BadgeFormula tipo={med.tipo_formula} />
-        </div>
-        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-          <span className="text-xs text-slate-500 truncate max-w-[160px]">{med.nombre_comercial}</span>
-          <span className="text-slate-300">·</span>
-          <span className="text-xs text-slate-400 truncate max-w-[120px]">{med.laboratorio}</span>
-        </div>
-      </div>
-
-      {/* Columna de concentración + presentación + forma */}
-      <div className="shrink-0 text-right">
-        {med.concentracion_display && (
-          <p className="text-xs font-mono font-semibold text-slate-700 truncate max-w-[130px]"
-             title={med.presentacion ? `${med.concentracion_display} · ${med.presentacion}` : med.concentracion_display}>
-            {med.concentracion_display}
-            {med.presentacion && (
-              <span className="text-slate-400 font-normal"> · {med.presentacion}</span>
-            )}
-          </p>
-        )}
-        <div className="flex items-center justify-end gap-1 mt-0.5">
-          <span className="text-[10px] text-slate-400">{labelGrupo(grupo)}</span>
-          <BadgeEstado estado={med.estado_cum} />
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ─── Panel de alternativas ────────────────────────────────────────────────────
 function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, error }: {
   medicamento: MedicamentoLive
@@ -229,7 +161,6 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
   cargando: boolean
   error: string
 }) {
-  const inyectable  = esInyectable(medicamento)
   const esMedNTI    = grupoMeds.some(m => esNTI(m.principios_dci)) || esNTI(medicamento.principios_dci)
   const [terapExpanded, setTerapExpanded] = useState(false)
   // DCI canónico: del representante o inferido desde el grupo
