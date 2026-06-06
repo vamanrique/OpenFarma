@@ -315,6 +315,15 @@ def _normalizar_por_forma(conc: str, g_forma: str, nombre_prod: str) -> str:
     - Otros grupos (sólidos orales, tópicos, vaginales…) → sin cambio.
     """
     if g_forma in _GRUPOS_NORM_ML:
+        if g_forma == 'LIQUIDO_ORAL':
+            # Para líquidos orales el nombre del producto (ej. "AMOXICILINA 250MG/5ML")
+            # es más fiable que los campos estructurados: el CUM suele poner el volumen
+            # del frasco entero ("FRASCO 100 ML") en unidadreferencia, no la dosis.
+            c_fb = _conc_desde_nombre(nombre_prod)
+            if c_fb:
+                return c_fb
+        # Para inyectables (y líquidos orales sin ratio en el nombre):
+        # confiar en el /mL calculado desde campos estructurados, o intentar desde nombre.
         if '/mL' in conc or '/ml' in conc:
             return conc
         c_fb = _conc_desde_nombre(nombre_prod)
@@ -380,7 +389,9 @@ def construir_concentracion(row: pd.Series) -> str:
             except (ValueError, ZeroDivisionError):
                 pass
 
-    base = f"{cantidad} {unidad_real}"
+    # Casing consistente con el path normalizado: UI en mayúsculas, resto en minúsculas
+    unidad_display = "UI" if unidad_real.upper() in ("UI", "IU") else unidad_real.lower()
+    base = f"{cantidad} {unidad_display}"
 
     # Agregar referencia de presentación SOLO si contiene un valor numérico,
     # lo que indica volumen/cantidad real (ej. "AMPOLLA POR 5 ML", "FRASCO 100 ML").
@@ -458,10 +469,14 @@ def agrupar_y_transformar(df: pd.DataFrame) -> list[MedicamentoTransformado]:
 
         # Concentraciones por componente, normalizadas según forma farmacéutica
         concentraciones: list[str] = []
+        _conc_vistos: set[str] = set()
         for _, fila in grupo_uniq.iterrows():
             c = construir_concentracion(fila)
             if c:
-                concentraciones.append(_normalizar_por_forma(c, g_forma, nombre_prod))
+                c_norm = _normalizar_por_forma(c, g_forma, nombre_prod)
+                if c_norm not in _conc_vistos:
+                    _conc_vistos.add(c_norm)
+                    concentraciones.append(c_norm)
 
         # Texto de concentración para mostrar
         # Monocomponente: solo la concentración (el DCI ya se muestra en otro campo)
