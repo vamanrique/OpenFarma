@@ -542,16 +542,56 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
 }
 
 
+// ─── Cantidad total por unidad dispensada ────────────────────────────────────
+// Convierte (concentración normalizada, presentación) → "15 mg", "50 mg", "600 000 UI", etc.
+// Es la unidad clínica que el farmacéutico busca (ampolla de 15 mg, no "5 mg/mL × 3 mL").
+function computeTotal(conc: string, pres: string): { label: string; valor: number } | null {
+  const fmt = (n: number) =>
+    n >= 10_000
+      ? n.toLocaleString('es-CO', { maximumFractionDigits: 0 })
+      : n % 1 === 0
+        ? String(Math.round(n))
+        : String(parseFloat(n.toPrecision(3)))
+
+  // Concentración /mL × volumen en mL (inyectable / líquido normalizado)
+  const mConc = conc.match(/^(\d+(?:[.,]\d+)?)\s*(mg|mcg|µg|g|UI|IU|meq)\s*\/mL$/i)
+  const mVol  = pres.match(/^(\d+(?:[.,]\d+)?)\s*mL$/i)
+  if (mConc && mVol) {
+    const c = parseFloat(mConc[1].replace(',', '.'))
+    const v = parseFloat(mVol[1].replace(',', '.'))
+    const total = Math.round(c * v * 1000) / 1000
+    const u = /^(UI|IU)$/i.test(mConc[2]) ? 'UI' : mConc[2]
+    return { label: `${fmt(total)} ${u}`, valor: total }
+  }
+
+  // Inhalador /dosis → mostrar dosis por inhalación (no total del envase)
+  const mDosis = conc.match(/^(\d+(?:[.,]\d+)?)\s*(mcg|mg|µg)\s*\/dosis$/i)
+  if (mDosis) {
+    const c = parseFloat(mDosis[1].replace(',', '.'))
+    return { label: `${fmt(c)} ${mDosis[2]}`, valor: c }
+  }
+
+  // Ya es total por unidad: "500 mg", "15 mg", "600000 UI", "10 %"
+  const mTotal = conc.match(/^(\d+(?:[.,]\d+)?)\s*(mg|mcg|µg|g|UI|IU|meq|%)$/)
+  if (mTotal) {
+    const v = parseFloat(mTotal[1].replace(',', '.'))
+    const u = /^(UI|IU)$/i.test(mTotal[2]) ? 'UI' : mTotal[2]
+    return { label: `${fmt(v)} ${u}`, valor: v }
+  }
+
+  return null
+}
+
 // ─── Tipos de agrupación ─────────────────────────────────────────────────────
 interface PresRow {
   key: string
   forma: string
-  concentracion: string
-  presentacion: string
-  meds: MedicamentoLive[]      // ordenados: con DCI primero, luego por lab
+  totalLabel: string          // "15 mg" — label clínico primario
+  totalValor: number          // para ordenar numéricamente
+  detalles: string            // "5 mg/mL · 3 mL" — info técnica secundaria
+  meds: MedicamentoLive[]     // ordenados: con DCI primero, luego por lab
 }
-interface ConcSection { conc: string; rows: PresRow[] }
-interface FormaBlock  { forma: string; total: number; sections: ConcSection[] }
+interface FormaBlock { forma: string; total: number; rows: PresRow[] }
 
 
 // ─── Componente principal ─────────────────────────────────────────────────────
@@ -610,48 +650,49 @@ export default function BuscadorMedicamentos() {
 
   const hayFiltros = filtroGrupo !== null || filtroConc !== null
 
-  // Estructura jerárquica: forma → concentración → presentación
+  // Estructura: forma farmacéutica → cantidad total por unidad dispensada (15 mg, 5 mg, 50 mg)
   const agrupados = useMemo((): FormaBlock[] => {
-    const numSort = (a: string, b: string) => {
-      const na = parseFloat(a), nb = parseFloat(b)
-      return !isNaN(na) && !isNaN(nb) ? na - nb : a.localeCompare(b)
-    }
-    // Nivel 1: agrupar por (forma, conc, pres)
-    const presMap = new Map<string, MedicamentoLive[]>()
+    // Paso 1: agrupar por (forma, totalLabel)
+    const rowMap = new Map<string, { totalLabel: string; totalValor: number; detalles: string; meds: MedicamentoLive[] }>()
     for (const med of resultadosFiltrados) {
-      const forma = grupoForma(med.forma_farmaceutica, med.via_administracion)
-      const conc  = med.concentracion_display || ''
-      const pres  = med.presentacion || ''
-      const key   = `${forma}\0${conc}\0${pres}`
-      const list  = presMap.get(key) ?? []
-      list.push(med)
-      presMap.set(key, list)
+      const forma  = grupoForma(med.forma_farmaceutica, med.via_administracion)
+      const conc   = med.concentracion_display || ''
+      const pres   = med.presentacion || ''
+      const t      = computeTotal(conc, pres)
+      const totalLabel = t?.label ?? ([conc, pres].filter(Boolean).join(' · ') || '—')
+      const totalValor = t?.valor ?? parseFloat(conc) ?? 0
+      const detalles   = (conc && pres) ? `${conc} · ${pres}` : conc || pres || ''
+      const key = `${forma}\0${totalLabel}`
+      const prev = rowMap.get(key)
+      if (prev) {
+        prev.meds.push(med)
+      } else {
+        rowMap.set(key, { totalLabel, totalValor, detalles, meds: [med] })
+      }
     }
-    // Nivel 2: agrupar filas en secciones de concentración, dentro de bloques de forma
-    const formaMap = new Map<string, Map<string, PresRow[]>>()
-    for (const [key, rawMeds] of presMap) {
-      const [forma, conc, pres] = key.split('\0')
-      // Dentro del grupo, poner al frente los que tienen DCI conocido (mejor representante)
-      const meds = [...rawMeds].sort(
+
+    // Paso 2: ordenar meds dentro de cada fila (DCI conocido primero → laboratorio)
+    for (const row of rowMap.values()) {
+      row.meds.sort(
         (a, b) => (b.principios_dci.length - a.principios_dci.length) || a.laboratorio.localeCompare(b.laboratorio)
       )
-      if (!formaMap.has(forma)) formaMap.set(forma, new Map())
-      const concMap = formaMap.get(forma)!
-      if (!concMap.has(conc)) concMap.set(conc, [])
-      concMap.get(conc)!.push({ key, forma, concentracion: conc, presentacion: pres, meds })
     }
-    // Ordenar: forma por total de productos desc; conc y pres numéricamente
+
+    // Paso 3: construir bloques por forma, ordenados por totalValor asc
+    const formaMap = new Map<string, PresRow[]>()
+    for (const [key, { totalLabel, totalValor, detalles, meds }] of rowMap) {
+      const [forma] = key.split('\0')
+      const rows = formaMap.get(forma) ?? []
+      rows.push({ key, forma, totalLabel, totalValor, detalles, meds })
+      formaMap.set(forma, rows)
+    }
+
     return [...formaMap.entries()]
-      .map(([forma, concMap]) => {
-        const sections: ConcSection[] = [...concMap.entries()]
-          .sort(([a], [b]) => numSort(a, b))
-          .map(([conc, rows]) => ({
-            conc,
-            rows: rows.sort((a, b) => numSort(a.presentacion, b.presentacion)),
-          }))
-        const total = sections.reduce((s, sec) => s + sec.rows.reduce((r, row) => r + row.meds.length, 0), 0)
-        return { forma, total, sections }
-      })
+      .map(([forma, rows]) => ({
+        forma,
+        total: rows.reduce((s, r) => s + r.meds.length, 0),
+        rows: rows.sort((a, b) => a.totalValor - b.totalValor),
+      }))
       .sort((a, b) => b.total - a.total)
   }, [resultadosFiltrados])
 
@@ -968,75 +1009,68 @@ export default function BuscadorMedicamentos() {
             )}
             {!buscando && agrupados.length > 0 && (
               <div className="max-h-[70vh] overflow-y-auto">
-                {agrupados.map(({ forma, total, sections }) => (
+                {agrupados.map(({ forma, total, rows }) => (
                   <div key={forma}>
                     {/* Cabecera de forma farmacéutica */}
-                    <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-200 sticky top-0 z-10 flex items-center justify-between">
+                    <div className="px-3 py-2 bg-slate-50 border-b border-slate-200 sticky top-0 z-10 flex items-center justify-between">
                       <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                         {labelGrupo(forma)}
                       </span>
                       <span className="text-[10px] text-slate-400">{total} productos</span>
                     </div>
 
-                    {sections.map(({ conc, rows }) => (
-                      <div key={conc}>
-                        {/* Subencabezado de concentración */}
-                        <div className="px-4 py-1.5 border-b border-slate-100 bg-white flex items-center gap-2">
-                          <span className="text-xs font-mono font-semibold text-slate-700">
-                            {conc || '—'}
-                          </span>
-                          <span className="text-[10px] text-slate-400">
-                            {rows.reduce((s, r) => s + r.meds.length, 0)} productos
-                          </span>
-                        </div>
+                    {/* Filas seleccionables por cantidad total */}
+                    {rows.map(row => {
+                      const sel    = selectedGroupKey === row.key
+                      const hasNTI = row.meds.some(m => esNTI(m.principios_dci))
+                      const labs   = row.meds
+                        .slice(0, 3)
+                        .map(m => m.laboratorio.split(/[\s(]/)[0])
+                        .join(', ')
+                      const more = row.meds.length > 3 ? ` +${row.meds.length - 3}` : ''
+                      return (
+                        <button
+                          key={row.key}
+                          onClick={() => seleccionarGrupo(row)}
+                          className={`w-full flex items-center gap-3 px-4 py-3 border-b border-slate-50 last:border-0 transition-colors text-left ${
+                            sel
+                              ? 'bg-blue-50 border-l-4 border-l-blue-500'
+                              : 'hover:bg-slate-50 border-l-4 border-l-transparent'
+                          }`}
+                        >
+                          {/* Cantidad total — label clínico principal */}
+                          <div className={`shrink-0 text-right min-w-[60px] ${sel ? 'text-blue-700' : 'text-slate-800'}`}>
+                            <p className="text-sm font-bold font-mono leading-tight">{row.totalLabel}</p>
+                            {row.detalles && (
+                              <p className="text-[10px] text-slate-400 font-normal mt-0.5 leading-tight">{row.detalles}</p>
+                            )}
+                          </div>
 
-                        {/* Filas de presentación (seleccionables) */}
-                        {rows.map(row => {
-                          const sel    = selectedGroupKey === row.key
-                          const hasNTI = row.meds.some(m => esNTI(m.principios_dci))
-                          const labs   = row.meds.slice(0, 3).map(m => {
-                            // Nombre corto del laboratorio (primera palabra o hasta paréntesis)
-                            return m.laboratorio.split(/\s+/)[0]
-                          }).join(', ')
-                          const moreLabs = row.meds.length > 3 ? ` +${row.meds.length - 3}` : ''
-                          return (
-                            <button
-                              key={row.key}
-                              onClick={() => seleccionarGrupo(row)}
-                              className={`w-full flex items-center gap-3 px-5 py-2.5 border-b border-slate-50 last:border-0 transition-colors text-left ${
-                                sel
-                                  ? 'bg-blue-50 border-l-4 border-l-blue-500'
-                                  : 'hover:bg-slate-50 border-l-4 border-l-transparent'
-                              }`}
-                            >
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-1.5">
-                                  <span className={`text-xs font-semibold ${sel ? 'text-blue-700' : 'text-slate-700'}`}>
-                                    {row.presentacion || 'por unidad'}
-                                  </span>
-                                  {hasNTI && <BadgeNTI />}
-                                </div>
-                                <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-                                  <span className="text-[11px] text-slate-400">
-                                    {row.meds.length} {row.meds.length === 1 ? 'producto' : 'productos'}
-                                  </span>
-                                  <span className="text-[11px] text-slate-300">·</span>
-                                  <span className="text-[11px] text-slate-400 truncate">
-                                    {labs}{moreLabs}
-                                  </span>
-                                </div>
-                              </div>
-                              <svg
-                                className={`w-3.5 h-3.5 shrink-0 transition-colors ${sel ? 'text-blue-400' : 'text-slate-300'}`}
-                                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-                              >
-                                <path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" />
-                              </svg>
-                            </button>
-                          )
-                        })}
-                      </div>
-                    ))}
+                          {/* Separador */}
+                          <div className={`w-px self-stretch shrink-0 ${sel ? 'bg-blue-200' : 'bg-slate-100'}`} />
+
+                          {/* Productos y laboratorios */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className={`text-xs font-semibold ${sel ? 'text-blue-700' : 'text-slate-600'}`}>
+                                {row.meds.length} {row.meds.length === 1 ? 'producto' : 'productos'}
+                              </span>
+                              {hasNTI && <BadgeNTI />}
+                            </div>
+                            <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                              {labs}{more}
+                            </p>
+                          </div>
+
+                          <svg
+                            className={`w-3.5 h-3.5 shrink-0 ${sel ? 'text-blue-400' : 'text-slate-300'}`}
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" />
+                          </svg>
+                        </button>
+                      )
+                    })}
                   </div>
                 ))}
               </div>
