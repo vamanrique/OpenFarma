@@ -116,6 +116,12 @@ async def alternativas_para(
     if not filas:
         return [], {}
 
+    # Recuperar todas las filas del expediente para reconstruir correctamente
+    # los productos combinados cuyos componentes tienen ATCs distintos
+    # (ej. DOLEX: PARACETAMOL N02BE51 + CAFEINA N06BC01 — la cafeína no
+    # aparece en la query by ATC y sin ella el biconjugado se arma mal).
+    filas = await _completar_grupos(filas)
+
     df = pd.DataFrame(filas)
     todos_raw = agrupar_y_transformar(df)
     # Solo productos con registro sanitario vigente como posibles alternativas
