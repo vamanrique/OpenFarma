@@ -693,9 +693,43 @@ function computeTotal(conc: string, pres: string): { label: string; valor: numbe
   return null
 }
 
-// ─── Clave de combinación de DCIs ────────────────────────────────────────────
+// ─── Normalización y agrupación de DCIs ──────────────────────────────────────
+const EXCIPIENT_PREFIXES = [
+  'AGUA ', 'ACIDO LACTICO', 'COLOR:', 'CUBIERTA:', 'GELATINA',
+  'SOLUCION SORBITO', 'ALMIDO', 'CELULOSA ', 'POLIETILEN', 'POLIVINIL',
+  'TALCO', 'ESTEARATO', 'DIOXIDO', 'SACAROSA', 'LACTOSA', 'MANITOL',
+  'TITANIO', 'CARBOXIMETIL', 'CROSCARMELOS', 'CROSPOVIDON', 'HIPROMELOSA',
+  'MACROGOL', 'POLISORBATO', 'SORBITOL', 'GLICOLATO', 'POVIDONA',
+  'STEARATO', 'FOSFATO DE ',
+]
+
+function normalizeDCIName(raw: string): string {
+  return raw
+    // Strip trailing dose: "PARACETAMOL 325 mg" → "PARACETAMOL"
+    .replace(/\s+\d[\d.,]*\s*(mg|mcg|µg|g|UI|IU|mL|meq|%|mmol)(\s*\/[\s\S]*)?$/i, '')
+    // Strip INN synonym after " - ": "ACETAMINOFEN - PARACETAMOL" → "ACETAMINOFEN"
+    .replace(/\s+-\s+\w.*$/, '')
+    // Strip leading "DE ": "DE CODEINA" → "CODEINA"
+    .replace(/^DE\s+/, '')
+    .trim()
+    .toUpperCase()
+}
+
+function isExcipient(name: string): boolean {
+  if (name.length < 3) return true
+  return EXCIPIENT_PREFIXES.some(p => name.toUpperCase().startsWith(p)) || name.includes(':')
+}
+
 function dciKey(m: MedicamentoLive): string {
-  return m.principios_dci.length > 0 ? [...m.principios_dci].sort().join(' + ') : '(sin DCI)'
+  const dcis = m.principios_dci
+    .map(normalizeDCIName)
+    .filter(d => d.length >= 3 && !isExcipient(d))
+  const unique = [...new Set(dcis)].sort()
+  return unique.length > 0 ? unique.join(' + ') : '(sin DCI)'
+}
+
+function chipLabel(key: string, maxLen = 38): string {
+  return key.length > maxLen ? key.slice(0, maxLen - 1) + '…' : key
 }
 
 // ─── Tipos de agrupación ─────────────────────────────────────────────────────
@@ -726,6 +760,7 @@ export default function BuscadorMedicamentos() {
   const [errorAlt, setErrorAlt]                   = useState('')
 
   const [filtroDCI, setFiltroDCIRaw]     = useState<string | null>(null)
+  const [showAllDCI, setShowAllDCI]      = useState(false)
   const [filtroTipo, setFiltroTipoRaw]   = useState<string | null>(null)
   const [filtroGrupo, setFiltroGrupoRaw] = useState<string | null>(null)
   const [filtroConc, setFiltroConc]      = useState<string | null>(null)
@@ -866,6 +901,7 @@ export default function BuscadorMedicamentos() {
     setSelectedGroupMeds([])
     setHasBuscado(true)
     setFiltroDCI(null)
+    setShowAllDCI(false)
     try {
       const res = await medicamentosApi.buscar(query.trim(), true, 50)
       setResultados(res.data)
@@ -930,26 +966,62 @@ export default function BuscadorMedicamentos() {
           <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
 
             {/* Chips de principio activo — visible solo si hay múltiples combinaciones */}
-            {dciCombos.length > 1 && (
-              <div className="flex flex-wrap gap-1.5">
-                {dciCombos.map(([k, n]) => (
-                  <button
-                    key={k}
-                    onClick={() => setFiltroDCI(filtroDCI === k ? null : k)}
-                    className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-                      filtroDCI === k
-                        ? 'bg-blue-600 text-white border-blue-600 font-medium'
-                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400 hover:bg-slate-50'
-                    }`}
-                  >
-                    {k}
-                    <span className={`ml-1 ${filtroDCI === k ? 'text-blue-200' : 'text-slate-400'}`}>
-                      ({n})
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
+            {dciCombos.length > 1 && (() => {
+              const LIMIT = 8
+              const visible = showAllDCI ? dciCombos : dciCombos.slice(0, LIMIT)
+              const hasMore = dciCombos.length > LIMIT
+              return (
+                <div>
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5 select-none">
+                    Principio activo
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 items-center">
+                    {visible.map(([k, n]) => {
+                      const isMono = !k.includes(' + ')
+                      const sel    = filtroDCI === k
+                      return (
+                        <button
+                          key={k}
+                          title={k}
+                          onClick={() => setFiltroDCI(sel ? null : k)}
+                          className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border transition-all select-none ${
+                            sel
+                              ? 'bg-blue-600 text-white border-blue-600 font-semibold shadow-sm'
+                              : isMono
+                                ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:border-blue-400'
+                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-400'
+                          }`}
+                        >
+                          {isMono && (
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${sel ? 'bg-blue-200' : 'bg-blue-400'}`} />
+                          )}
+                          <span>{chipLabel(k)}</span>
+                          <span className={`text-[10px] tabular-nums shrink-0 ${sel ? 'text-blue-200' : 'text-slate-400'}`}>
+                            {n}
+                          </span>
+                        </button>
+                      )
+                    })}
+                    {hasMore && !showAllDCI && (
+                      <button
+                        onClick={() => setShowAllDCI(true)}
+                        className="text-xs text-slate-400 hover:text-blue-600 px-2 py-1 rounded-full border border-dashed border-slate-200 hover:border-blue-300 transition-colors"
+                      >
+                        +{dciCombos.length - LIMIT} más
+                      </button>
+                    )}
+                    {showAllDCI && dciCombos.length > LIMIT && (
+                      <button
+                        onClick={() => setShowAllDCI(false)}
+                        className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1 transition-colors"
+                      >
+                        Ver menos
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
 
             <div className="flex items-center gap-2 flex-wrap">
               {tipos.length > 1 && (
