@@ -179,6 +179,42 @@ _SINONIMOS: dict[str, str] = {
     "SALMETEROL":       "SALMETEROL",
 }
 
+# ─── Normalización de unidades ────────────────────────────────────────────────
+
+# Formas farmacéuticas que son polvos para reconstitución: el volumen que aparece
+# en unidadreferencia (ej. "VIAL POR 20 ML") es el del solvente, no del fármaco.
+# Dividir la masa por ese volumen daría una concentración errónea.
+_FORMAS_POLVO = ("POLVO", "LIOFILIZADO")
+
+# Factores de conversión a miligramos-equivalente para comparar homólogos.
+# UI/IU no tienen factor universal (depende del fármaco), se dejan como están.
+_UNIT_TO_MG: dict[str, float] = {
+    "mg": 1.0,
+    "g": 1000.0, "gr": 1000.0,
+    "mcg": 0.001, "µg": 0.001, "ug": 0.001,
+}
+
+# Convierte gramos a miligramos en strings de concentración para display uniforme.
+# Actúa sobre "N g" y "N gr" standalone; no toca "mg", "mcg", "g/mL", "gr/mL".
+_G_A_MG_RE = re.compile(
+    r'(\d+(?:[.,]\d+)?)\s+(?:g|gr)\b(?!/)',
+    re.IGNORECASE,
+)
+
+
+def _to_mg_equiv(valor: float, unidad: str) -> float:
+    """Convierte valor de concentración a mg-equivalente para comparación de homólogos."""
+    factor = _UNIT_TO_MG.get(unidad.lower(), None)
+    return round(valor * factor, 6) if factor is not None else valor
+
+
+def _normalizar_g_a_mg(conc: str) -> str:
+    """Convierte gramos a mg en string de concentración: '0.5 g' → '500 mg', '1 gr' → '1000 mg'."""
+    def repl(m: re.Match) -> str:
+        val = float(m.group(1).replace(',', '.'))
+        return f"{val * 1000:g} mg"
+    return _G_A_MG_RE.sub(repl, conc)
+
 
 def normalizar_principio(principio: str) -> str:
     """
@@ -414,7 +450,7 @@ def _conc_desde_nombre(nombre: str) -> str:
         return ""
 
 
-def _normalizar_por_forma(conc: str, g_forma: str, nombre_prod: str) -> str:
+def _normalizar_por_forma(conc: str, g_forma: str, nombre_prod: str, forma_raw: str = '') -> str:
     """
     Normaliza la concentración según el grupo farmacéutico:
     - INYECTABLE / LIQUIDO_ORAL → ratio /mL; si no se puede calcular desde campos
@@ -422,8 +458,14 @@ def _normalizar_por_forma(conc: str, g_forma: str, nombre_prod: str) -> str:
     - INHALADO / NASAL → primer valor+unidad con /dosis (excepto nebulizables
       que ya devuelven /mL desde construir_concentracion).
     - Otros grupos (sólidos orales, tópicos, vaginales…) → sin cambio.
+    - POLVO / LIOFILIZADO inyectable → sin normalización /mL (el volumen del CUM
+      es el del solvente de reconstitución, no de la solución final).
     """
     if g_forma in _GRUPOS_NORM_ML:
+        # Polvos para reconstitución: su concentración ya es correcta tal como viene
+        # (la masa total del fármaco por vial). No intentar extraer /mL del nombre.
+        if any(kw in forma_raw.upper() for kw in _FORMAS_POLVO):
+            return conc
         if g_forma == 'LIQUIDO_ORAL':
             # Para líquidos orales el nombre del producto (ej. "AMOXICILINA 250MG/5ML")
             # es más fiable que los campos estructurados: el CUM suele poner el volumen
@@ -533,7 +575,13 @@ def construir_concentracion(row: pd.Series) -> str:
     #   "50 mg" + "AMPOLLA POR 10 ML" → 50/10 = 5  → "5 mg/mL"
     #   " 5 mg" + "1 ML DE SOLUCION"  → 5/1  = 5   → "5 mg/mL"
     #   " 1 mg" + "1ML"               → 1/1  = 1   → "1 mg/mL"
-    if (unidad_ref and unidad_ref.upper() not in _INVALIDOS
+    # EXCEPCIÓN: polvos/liofilizados — el volumen es el del solvente de reconstitución,
+    # no de la solución final. "250 mg / VIAL 20 ML" NO es 12.5 mg/mL del fármaco.
+    forma_raw_conc = str(row.get("formafarmaceutica", "")).strip().upper()
+    es_polvo = any(kw in forma_raw_conc for kw in _FORMAS_POLVO)
+
+    if (not es_polvo
+            and unidad_ref and unidad_ref.upper() not in _INVALIDOS
             and unidad_real.upper() in _UNIDADES_MASA):
         vol_m = _VOL_EN_REF.search(unidad_ref)
         if vol_m:
@@ -558,7 +606,10 @@ def construir_concentracion(row: pd.Series) -> str:
 
     # Agregar referencia SOLO si contiene un valor numérico real (volumen, masa, etc.)
     # Excluir: nombres de forma farmacéutica sin dígitos, conteos de dosis.
-    if (unidad_ref and unidad_ref.upper() not in _INVALIDOS
+    # Para polvos/liofilizados, el volumen de unidadreferencia es el del solvente:
+    # no debe incorporarse a la concentración (ya queda en `presentacion`).
+    if (not es_polvo
+            and unidad_ref and unidad_ref.upper() not in _INVALIDOS
             and unidad_ref.upper() != unidad_real.upper()
             and re.search(r'\d', unidad_ref)
             and not _NDOSIS_EN_REF.search(unidad_ref)):
@@ -659,12 +710,15 @@ def agrupar_y_transformar(df: pd.DataFrame) -> list[MedicamentoTransformado]:
         )
 
         # Concentraciones por componente, normalizadas según forma farmacéutica
+        forma_cruda = str(primera.get("formafarmaceutica", "")).strip()
         concentraciones: list[str] = []
         _conc_vistos: set[str] = set()
         for _, fila in grupo_uniq.iterrows():
             c = construir_concentracion(fila)
             if c:
-                c_norm = _normalizar_por_forma(c, g_forma, nombre_prod)
+                c_norm = _normalizar_por_forma(c, g_forma, nombre_prod, forma_cruda)
+                # Normalizar gramos a miligramos para display uniforme ("0.5 g" → "500 mg")
+                c_norm = _normalizar_g_a_mg(c_norm)
                 if c_norm not in _conc_vistos:
                     _conc_vistos.add(c_norm)
                     concentraciones.append(c_norm)
@@ -682,15 +736,29 @@ def agrupar_y_transformar(df: pd.DataFrame) -> list[MedicamentoTransformado]:
         else:
             concentracion_display = " + ".join(concentraciones)
 
-        # Valor numérico de la dosis del primer componente (para comparar exacto en alternativas)
+        # Valor numérico de la dosis del primer componente normalizado a mg-equivalente.
+        # Esto permite comparar homólogos con diferentes unidades: "0.5 g" y "500 mg"
+        # producen dosis_numerica=500, "200 mcg" produce 0.2 (coincide con "0.2 mg").
         dosis_numerica: float | None = None
         if concentraciones:
-            m_num = _NUM_DOSIS.search(concentraciones[0])
-            if m_num:
+            _m_du = re.match(
+                r'^(\d+(?:[.,]\d+)?)\s*(mg|g|gr|mcg|µg|ug|ui|iu|meq|mmol|%)',
+                concentraciones[0], re.IGNORECASE,
+            )
+            if _m_du:
                 try:
-                    dosis_numerica = float(m_num.group(1).replace(',', '.'))
+                    dosis_numerica = _to_mg_equiv(
+                        float(_m_du.group(1).replace(',', '.')), _m_du.group(2)
+                    )
                 except ValueError:
                     pass
+            if dosis_numerica is None:
+                m_num = _NUM_DOSIS.search(concentraciones[0])
+                if m_num:
+                    try:
+                        dosis_numerica = float(m_num.group(1).replace(',', '.'))
+                    except ValueError:
+                        pass
 
         resultados.append(MedicamentoTransformado(
             cum_id=f"{exped}-{consec}",
