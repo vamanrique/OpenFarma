@@ -1,12 +1,10 @@
 import asyncio
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, and_
-from typing import List, Optional
+from typing import List
 
 from app.database import get_db
-from app.models.medicamento import Medicamento, Alternativa
-from app.schemas.medicamento import MedicamentoRead, AlternativaRead, MedicamentoLiveRead, AlternativaLiveRead
+from app.schemas.medicamento import MedicamentoLiveRead, AlternativaLiveRead
 from app.services import cum_live
 from etl.enriquecedor import enriquecer_con_llm
 from etl.transformacion import MedicamentoTransformado
@@ -122,33 +120,3 @@ async def obtener_alternativas_live(cum_id: str, db: Session = Depends(get_db)):
         ))
 
     return resultado
-
-
-# Endpoint de DB local (para cuando se haya cargado el ETL completo)
-@router.get("/db/buscar", response_model=List[MedicamentoRead])
-def buscar_en_db(
-    q: str = Query(..., min_length=2),
-    tipo_formula: Optional[str] = Query(None),
-    solo_vigentes: bool = Query(True),
-    limit: int = Query(20, le=100),
-    db: Session = Depends(get_db),
-):
-    filtros = [
-        or_(
-            Medicamento.nombre_comercial.ilike(f"%{q}%"),
-            Medicamento.nombre_generico.ilike(f"%{q}%"),
-            Medicamento.principio_activo.ilike(f"%{q}%"),
-            Medicamento.cum.ilike(f"%{q}%"),
-        )
-    ]
-    if solo_vigentes:
-        filtros.append(Medicamento.estado == "vigente")
-        filtros.append(Medicamento.estado_cum == "activo")
-    if tipo_formula:
-        filtros.append(Medicamento.tipo_formula == tipo_formula)
-    return db.query(Medicamento).filter(and_(*filtros)).limit(limit).all()
-
-
-@router.get("/db/{medicamento_id}/alternativas", response_model=List[AlternativaRead])
-def alternativas_db(medicamento_id: int, db: Session = Depends(get_db)):
-    return db.query(Alternativa).filter(Alternativa.medicamento_id == medicamento_id).all()

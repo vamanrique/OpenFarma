@@ -87,9 +87,4 @@ export const reportesApi = {
     api.get<{ total: number; por_tipo: Record<string, number> }>('/reportes/total'),
 }
 
-export const adminApi = {
-  validacion: () => api.get('/admin/validacion/reporte'),
-  estadisticasDb: () => api.get('/admin/estadisticas/db'),
-}
-
 export default api

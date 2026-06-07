@@ -30,21 +30,3 @@ def reporte_validacion():
         "resumen_por_regla": list(resumen.values()),
         "detalle": registros[:200],
     }
-
-
-@router.get("/estadisticas/db")
-def estadisticas_db():
-    from app.database import SessionLocal
-    from app.models.medicamento import Medicamento, Alternativa
-    from app.models.region import Region
-
-    db = SessionLocal()
-    try:
-        return {
-            "medicamentos": db.query(Medicamento).count(),
-            "medicamentos_vigentes": db.query(Medicamento).filter(Medicamento.estado == "vigente").count(),
-            "alternativas": db.query(Alternativa).count(),
-            "regiones": db.query(Region).count(),
-        }
-    finally:
-        db.close()

@@ -20,10 +20,17 @@ class ReportePayload(BaseModel):
 
 @router.post("/no-disponibilidad")
 def reportar_no_disponibilidad(reporte: ReportePayload, db: Session = Depends(get_db)):
-    from app.models.medicamento import Medicamento
+    from app.models.cum_normalizado import CumNormalizado
 
-    med = db.query(Medicamento).filter(Medicamento.cum == reporte.cum_id).first()
-    nombre = med.nombre_comercial if med else reporte.cum_id
+    partes = reporte.cum_id.split("-", 1)
+    nombre = reporte.cum_id
+    if len(partes) == 2:
+        cache = db.query(CumNormalizado).filter(
+            CumNormalizado.expediente_cum == partes[0],
+            CumNormalizado.consecutivo_cum == partes[1],
+        ).first()
+        if cache:
+            nombre = cache.nombre_comercial
 
     registro = ReporteNoDisponibilidad(
         cum_id=reporte.cum_id,
@@ -34,18 +41,6 @@ def reportar_no_disponibilidad(reporte: ReportePayload, db: Session = Depends(ge
         fecha=datetime.now(),
     )
     db.add(registro)
-
-    # También registra como ConsultaRegion para alimentar el modelo ML
-    if med:
-        consulta = ConsultaRegion(
-            region_id=reporte.region_id,
-            medicamento_id=med.id,
-            tipo="reporte_no_disponibilidad",
-            fecha=datetime.now(),
-            conteo=1,
-        )
-        db.add(consulta)
-
     db.commit()
     db.refresh(registro)
     return {"mensaje": "Reporte registrado exitosamente", "id": registro.id}

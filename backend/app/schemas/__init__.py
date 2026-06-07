@@ -1,3 +1,3 @@
-from .medicamento import MedicamentoBase, MedicamentoCreate, MedicamentoRead, MedicamentoLiveRead, AlternativaLiveRead
+from .medicamento import MedicamentoLiveRead, AlternativaLiveRead
 from .region import RegionRead
 from .prediccion import PrediccionRead
