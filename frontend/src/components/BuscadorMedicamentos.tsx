@@ -721,9 +721,21 @@ function isExcipient(name: string): boolean {
 }
 
 function dciKey(m: MedicamentoLive): string {
-  const dcis = m.principios_dci
+  let dcis = m.principios_dci
     .map(normalizeDCIName)
     .filter(d => d.length >= 3 && !isExcipient(d))
+
+  // Fallback: si principios_dci está vacío y concentracion_display contiene
+  // una fórmula combinada (empieza con letra, no con número), extraer los DCIs
+  if (dcis.length === 0) {
+    const c = m.concentracion_display?.trim() ?? ''
+    if (c && !/^\d/.test(c)) {
+      dcis = c.split('+')
+        .map(p => normalizeDCIName(p.trim()))
+        .filter(d => d.length >= 3 && !isExcipient(d))
+    }
+  }
+
   const unique = [...new Set(dcis)].sort()
   return unique.length > 0 ? unique.join(' + ') : '(sin DCI)'
 }
@@ -813,7 +825,9 @@ export default function BuscadorMedicamentos() {
       : resultadosPorTipo
     const counts = new Map<string, number>()
     for (const m of base) {
-      if (m.concentracion_display) counts.set(m.concentracion_display, (counts.get(m.concentracion_display) ?? 0) + 1)
+      const c = m.concentracion_display
+      // Excluir valores que son fórmulas DCI combinadas (empiezan con letra), no concentraciones reales
+      if (c && /^\d/.test(c.trim())) counts.set(c, (counts.get(c) ?? 0) + 1)
     }
     return [...counts.entries()].sort((a, b) => {
       const na = parseFloat(a[0]), nb = parseFloat(b[0])
