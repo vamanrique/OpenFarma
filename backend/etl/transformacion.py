@@ -706,7 +706,7 @@ def agrupar_y_transformar(df: pd.DataFrame) -> list[MedicamentoTransformado]:
             presentacion=_extraer_presentacion(primera, g_forma, nombre_prod),
             forma_farmaceutica=str(primera.get("formafarmaceutica", "")).strip().upper(),
             via_administracion=str(primera.get("viaadministracion", "")).strip().upper(),
-            atc=str(primera.get("atc", "")).strip().upper(),
+            atc=str(primera.get("atc", "")).strip().upper().replace(".", ""),
             descripcion_atc=str(primera.get("descripcionatc", "")).strip().upper(),
             laboratorio=str(primera.get("titular", primera.get("nombrerol", ""))).strip(),
             registro_sanitario=str(primera.get("registrosanitario", "")).strip(),

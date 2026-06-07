@@ -76,7 +76,7 @@ def generar_alternativas(meds: list[MedicamentoTransformado]) -> list[ParAlterna
     por_atc5:       dict[str, list]   = defaultdict(list)
 
     for m in meds:
-        if not m.atc or m.atc in ("nan", "None", ""):
+        if not m.atc or m.atc in ("nan", "None", "") or len(m.atc) < 5:
             continue
         g_forma  = _grupo_forma(m.forma_farmaceutica, m.via_administracion)
         dci      = mol_key(m)
