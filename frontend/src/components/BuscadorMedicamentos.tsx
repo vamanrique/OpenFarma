@@ -693,6 +693,11 @@ function computeTotal(conc: string, pres: string): { label: string; valor: numbe
   return null
 }
 
+// ─── Clave de combinación de DCIs ────────────────────────────────────────────
+function dciKey(m: MedicamentoLive): string {
+  return m.principios_dci.length > 0 ? [...m.principios_dci].sort().join(' + ') : '(sin DCI)'
+}
+
 // ─── Tipos de agrupación ─────────────────────────────────────────────────────
 interface PresRow {
   key: string
@@ -720,24 +725,41 @@ export default function BuscadorMedicamentos() {
   const [cargandoAlt, setCargandoAlt]             = useState(false)
   const [errorAlt, setErrorAlt]                   = useState('')
 
+  const [filtroDCI, setFiltroDCIRaw]     = useState<string | null>(null)
   const [filtroTipo, setFiltroTipoRaw]   = useState<string | null>(null)
   const [filtroGrupo, setFiltroGrupoRaw] = useState<string | null>(null)
   const [filtroConc, setFiltroConc]      = useState<string | null>(null)
 
-  // Cambiar tipo limpia forma y concentración
+  // Cambiar DCI limpia todo lo demás; cambiar tipo limpia forma y conc
+  const setFiltroDCI   = (d: string | null) => { setFiltroDCIRaw(d); setFiltroTipoRaw(null); setFiltroGrupoRaw(null); setFiltroConc(null) }
   const setFiltroTipo  = (t: string | null) => { setFiltroTipoRaw(t); setFiltroGrupoRaw(null); setFiltroConc(null) }
   const setFiltroGrupo = (g: string | null) => { setFiltroGrupoRaw(g); setFiltroConc(null) }
 
-  // Tipos presentes en los resultados (orden canónico)
-  const tipos = useMemo(() => {
-    const set = new Set(resultados.map(m => m.tipo_formula).filter(Boolean))
-    return TIPO_ORDEN.filter(t => set.has(t))
+  // Combos únicos de DCI (para chips de filtro)
+  const dciCombos = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const m of resultados) {
+      const k = dciKey(m)
+      counts.set(k, (counts.get(k) ?? 0) + 1)
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1])
   }, [resultados])
+
+  // Resultados filtrados solo por DCI (base para tipo, forma y conc)
+  const resultadosPorDCI = useMemo(() =>
+    filtroDCI ? resultados.filter(m => dciKey(m) === filtroDCI) : resultados
+  , [resultados, filtroDCI])
+
+  // Tipos presentes en los resultados (orden canónico), restringidos al DCI seleccionado
+  const tipos = useMemo(() => {
+    const set = new Set(resultadosPorDCI.map(m => m.tipo_formula).filter(Boolean))
+    return TIPO_ORDEN.filter(t => set.has(t))
+  }, [resultadosPorDCI])
 
   // Resultados filtrados solo por tipo (base para grupos y concentraciones)
   const resultadosPorTipo = useMemo(() =>
-    filtroTipo ? resultados.filter(m => m.tipo_formula === filtroTipo) : resultados
-  , [resultados, filtroTipo])
+    filtroTipo ? resultadosPorDCI.filter(m => m.tipo_formula === filtroTipo) : resultadosPorDCI
+  , [resultadosPorDCI, filtroTipo])
 
   // Conteo de formas para el selector de filtro
   const grupos = useMemo(() => {
@@ -764,17 +786,18 @@ export default function BuscadorMedicamentos() {
     })
   }, [resultadosPorTipo, filtroGrupo])
 
-  // Resultados filtrados (tipo → forma → concentración)
+  // Resultados filtrados (DCI → tipo → forma → concentración)
   const resultadosFiltrados = useMemo(() => {
     return resultados.filter(m => {
+      if (filtroDCI  && dciKey(m) !== filtroDCI) return false
       if (filtroTipo  && m.tipo_formula !== filtroTipo) return false
       if (filtroGrupo && grupoForma(m.forma_farmaceutica, m.via_administracion) !== filtroGrupo) return false
       if (filtroConc  && m.concentracion_display !== filtroConc) return false
       return true
     })
-  }, [resultados, filtroTipo, filtroGrupo, filtroConc])
+  }, [resultados, filtroDCI, filtroTipo, filtroGrupo, filtroConc])
 
-  const hayFiltros = filtroTipo !== null || filtroGrupo !== null || filtroConc !== null
+  const hayFiltros = filtroDCI !== null || filtroTipo !== null || filtroGrupo !== null || filtroConc !== null
 
   // Estructura: forma farmacéutica → cantidad total por unidad dispensada (15 mg, 5 mg, 50 mg)
   const agrupados = useMemo((): FormaBlock[] => {
@@ -842,8 +865,7 @@ export default function BuscadorMedicamentos() {
     setSelectedGroupKey(null)
     setSelectedGroupMeds([])
     setHasBuscado(true)
-    setFiltroTipo(null)
-    setFiltroGrupo(null)
+    setFiltroDCI(null)
     try {
       const res = await medicamentosApi.buscar(query.trim(), true, 50)
       setResultados(res.data)
@@ -905,7 +927,30 @@ export default function BuscadorMedicamentos() {
 
         {/* Filtros — solo cuando hay resultados */}
         {resultados.length > 0 && !buscando && (
-          <div className="mt-3 pt-3 border-t border-slate-100">
+          <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
+
+            {/* Chips de principio activo — visible solo si hay múltiples combinaciones */}
+            {dciCombos.length > 1 && (
+              <div className="flex flex-wrap gap-1.5">
+                {dciCombos.map(([k, n]) => (
+                  <button
+                    key={k}
+                    onClick={() => setFiltroDCI(filtroDCI === k ? null : k)}
+                    className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                      filtroDCI === k
+                        ? 'bg-blue-600 text-white border-blue-600 font-medium'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400 hover:bg-slate-50'
+                    }`}
+                  >
+                    {k}
+                    <span className={`ml-1 ${filtroDCI === k ? 'text-blue-200' : 'text-slate-400'}`}>
+                      ({n})
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className="flex items-center gap-2 flex-wrap">
               {tipos.length > 1 && (
                 <select
@@ -947,7 +992,7 @@ export default function BuscadorMedicamentos() {
 
               {hayFiltros && (
                 <button
-                  onClick={() => setFiltroTipo(null)}
+                  onClick={() => setFiltroDCI(null)}
                   className="text-xs text-slate-400 hover:text-red-500 transition-colors px-1"
                   title="Limpiar filtros"
                 >
