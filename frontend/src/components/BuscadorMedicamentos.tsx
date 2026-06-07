@@ -773,13 +773,11 @@ export default function BuscadorMedicamentos() {
 
   const [filtroDCI, setFiltroDCIRaw]     = useState<string | null>(null)
   const [showAllDCI, setShowAllDCI]      = useState(false)
-  const [filtroTipo, setFiltroTipoRaw]   = useState<string | null>(null)
   const [filtroGrupo, setFiltroGrupoRaw] = useState<string | null>(null)
   const [filtroConc, setFiltroConc]      = useState<string | null>(null)
 
-  // Cambiar DCI limpia todo lo demás; cambiar tipo limpia forma y conc
-  const setFiltroDCI   = (d: string | null) => { setFiltroDCIRaw(d); setFiltroTipoRaw(null); setFiltroGrupoRaw(null); setFiltroConc(null) }
-  const setFiltroTipo  = (t: string | null) => { setFiltroTipoRaw(t); setFiltroGrupoRaw(null); setFiltroConc(null) }
+  // Cambiar DCI limpia forma y conc; cambiar forma limpia solo conc
+  const setFiltroDCI   = (d: string | null) => { setFiltroDCIRaw(d); setFiltroGrupoRaw(null); setFiltroConc(null) }
   const setFiltroGrupo = (g: string | null) => { setFiltroGrupoRaw(g); setFiltroConc(null) }
 
   // Combos únicos de DCI (para chips de filtro)
@@ -797,56 +795,43 @@ export default function BuscadorMedicamentos() {
     filtroDCI ? resultados.filter(m => dciKey(m) === filtroDCI) : resultados
   , [resultados, filtroDCI])
 
-  // Tipos presentes en los resultados (orden canónico), restringidos al DCI seleccionado
-  const tipos = useMemo(() => {
-    const set = new Set(resultadosPorDCI.map(m => m.tipo_formula).filter(Boolean))
-    return TIPO_ORDEN.filter(t => set.has(t))
-  }, [resultadosPorDCI])
-
-  // Resultados filtrados solo por tipo (base para grupos y concentraciones)
-  const resultadosPorTipo = useMemo(() =>
-    filtroTipo ? resultadosPorDCI.filter(m => m.tipo_formula === filtroTipo) : resultadosPorDCI
-  , [resultadosPorDCI, filtroTipo])
-
-  // Conteo de formas para el selector de filtro
+  // Conteo de formas — restringido al DCI seleccionado
   const grupos = useMemo(() => {
     const counts = new Map<string, number>()
-    for (const m of resultadosPorTipo) {
+    for (const m of resultadosPorDCI) {
       const g = grupoForma(m.forma_farmaceutica, m.via_administracion)
       counts.set(g, (counts.get(g) ?? 0) + 1)
     }
     return [...counts.entries()].sort((a, b) => b[1] - a[1])
-  }, [resultadosPorTipo])
+  }, [resultadosPorDCI])
 
-  // Concentraciones únicas para el selector de filtro
+  // Concentraciones únicas reales (solo valores numéricos) — restringidas a DCI + forma
   const concentraciones = useMemo(() => {
     const base = filtroGrupo
-      ? resultadosPorTipo.filter(m => grupoForma(m.forma_farmaceutica, m.via_administracion) === filtroGrupo)
-      : resultadosPorTipo
+      ? resultadosPorDCI.filter(m => grupoForma(m.forma_farmaceutica, m.via_administracion) === filtroGrupo)
+      : resultadosPorDCI
     const counts = new Map<string, number>()
     for (const m of base) {
       const c = m.concentracion_display
-      // Excluir valores que son fórmulas DCI combinadas (empiezan con letra), no concentraciones reales
       if (c && /^\d/.test(c.trim())) counts.set(c, (counts.get(c) ?? 0) + 1)
     }
     return [...counts.entries()].sort((a, b) => {
       const na = parseFloat(a[0]), nb = parseFloat(b[0])
       return isNaN(na) || isNaN(nb) ? a[0].localeCompare(b[0]) : na - nb
     })
-  }, [resultadosPorTipo, filtroGrupo])
+  }, [resultadosPorDCI, filtroGrupo])
 
-  // Resultados filtrados (DCI → tipo → forma → concentración)
+  // Resultados filtrados: PA → forma/vía → concentración
   const resultadosFiltrados = useMemo(() => {
     return resultados.filter(m => {
       if (filtroDCI  && dciKey(m) !== filtroDCI) return false
-      if (filtroTipo  && m.tipo_formula !== filtroTipo) return false
       if (filtroGrupo && grupoForma(m.forma_farmaceutica, m.via_administracion) !== filtroGrupo) return false
       if (filtroConc  && m.concentracion_display !== filtroConc) return false
       return true
     })
-  }, [resultados, filtroDCI, filtroTipo, filtroGrupo, filtroConc])
+  }, [resultados, filtroDCI, filtroGrupo, filtroConc])
 
-  const hayFiltros = filtroDCI !== null || filtroTipo !== null || filtroGrupo !== null || filtroConc !== null
+  const hayFiltros = filtroDCI !== null || filtroGrupo !== null || filtroConc !== null
 
   // Estructura: forma farmacéutica → cantidad total por unidad dispensada (15 mg, 5 mg, 50 mg)
   const agrupados = useMemo((): FormaBlock[] => {
@@ -975,18 +960,18 @@ export default function BuscadorMedicamentos() {
         </form>
         {errorBusq && <p className="text-red-500 text-xs mt-2">{errorBusq}</p>}
 
-        {/* Filtros — solo cuando hay resultados */}
+        {/* Filtros */}
         {resultados.length > 0 && !buscando && (
-          <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
+          <div className="mt-3 pt-3 border-t border-slate-100 space-y-3">
 
-            {/* Chips de principio activo — visible solo si hay múltiples combinaciones */}
+            {/* ── Filtro 1: Principio activo ── */}
             {dciCombos.length > 1 && (() => {
               const LIMIT = 8
               const visible = showAllDCI ? dciCombos : dciCombos.slice(0, LIMIT)
               const hasMore = dciCombos.length > LIMIT
               return (
                 <div>
-                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5 select-none">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 select-none">
                     Principio activo
                   </p>
                   <div className="flex flex-wrap gap-1.5 items-center">
@@ -1010,9 +995,7 @@ export default function BuscadorMedicamentos() {
                             <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${sel ? 'bg-blue-200' : 'bg-blue-400'}`} />
                           )}
                           <span>{chipLabel(k)}</span>
-                          <span className={`text-[10px] tabular-nums shrink-0 ${sel ? 'text-blue-200' : 'text-slate-400'}`}>
-                            {n}
-                          </span>
+                          <span className={`text-[10px] tabular-nums shrink-0 ${sel ? 'text-blue-200' : 'text-slate-400'}`}>{n}</span>
                         </button>
                       )
                     })}
@@ -1037,68 +1020,61 @@ export default function BuscadorMedicamentos() {
               )
             })()}
 
-            <div className="flex items-center gap-2 flex-wrap">
-              {tipos.length > 1 && (
+            {/* ── Filtro 2: Presentación (vía/forma + concentración) ── */}
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 select-none">
+                Presentación
+              </p>
+              <div className="flex items-center gap-2 flex-wrap">
                 <select
-                  value={filtroTipo ?? ''}
-                  onChange={e => setFiltroTipo(e.target.value || null)}
+                  value={filtroGrupo ?? ''}
+                  onChange={e => setFiltroGrupo(e.target.value || null)}
                   className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400 cursor-pointer"
                 >
-                  <option value="">Todos los tipos ({resultados.length})</option>
-                  {tipos.map(t => {
-                    const n = resultados.filter(m => m.tipo_formula === t).length
-                    return <option key={t} value={t}>{TIPO_LABEL[t] ?? t} ({n})</option>
-                  })}
-                </select>
-              )}
-
-              <select
-                value={filtroGrupo ?? ''}
-                onChange={e => setFiltroGrupo(e.target.value || null)}
-                className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400 cursor-pointer"
-              >
-                <option value="">Todas las formas ({resultadosPorTipo.length})</option>
-                {grupos.map(([g, n]) => (
-                  <option key={g} value={g}>{labelGrupo(g)} ({n})</option>
-                ))}
-              </select>
-
-              {concentraciones.length > 1 && (
-                <select
-                  value={filtroConc ?? ''}
-                  onChange={e => setFiltroConc(e.target.value || null)}
-                  className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400 cursor-pointer"
-                >
-                  <option value="">Todas las concentraciones</option>
-                  {concentraciones.map(([c, n]) => (
-                    <option key={c} value={c}>{c}{n > 1 ? ` (${n})` : ''}</option>
+                  <option value="">Vía · forma</option>
+                  {grupos.map(([g, n]) => (
+                    <option key={g} value={g}>{labelGrupo(g)} ({n})</option>
                   ))}
                 </select>
-              )}
 
-              {hayFiltros && (
-                <button
-                  onClick={() => setFiltroDCI(null)}
-                  className="text-xs text-slate-400 hover:text-red-500 transition-colors px-1"
-                  title="Limpiar filtros"
-                >
-                  × limpiar
-                </button>
-              )}
-
-              <span className="text-xs text-slate-400 ml-auto">
-                {hayFiltros
-                  ? <>{resultadosFiltrados.length} <span className="text-slate-300">de {resultados.length}</span></>
-                  : resultados.length
-                } resultados
-                {selectedGroupKey && medSeleccionado && (
-                  <span className="ml-2 text-blue-500">
-                    · {medSeleccionado.principios_dci[0] ?? medSeleccionado.nombre_comercial}
-                    {medSeleccionado.concentracion_display && ` ${medSeleccionado.concentracion_display}`}
-                  </span>
+                {concentraciones.length > 0 && (
+                  <select
+                    value={filtroConc ?? ''}
+                    onChange={e => setFiltroConc(e.target.value || null)}
+                    className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400 cursor-pointer"
+                  >
+                    <option value="">Concentración · dosis</option>
+                    {concentraciones.map(([c, n]) => (
+                      <option key={c} value={c}>{c}{n > 1 ? ` (${n})` : ''}</option>
+                    ))}
+                  </select>
                 )}
-              </span>
+
+                {hayFiltros && (
+                  <button
+                    onClick={() => setFiltroDCI(null)}
+                    className="text-xs text-slate-400 hover:text-red-500 transition-colors px-1"
+                    title="Limpiar todos los filtros"
+                  >
+                    × limpiar
+                  </button>
+                )}
+
+                <span className="text-xs text-slate-400 ml-auto">
+                  {hayFiltros
+                    ? <>{resultadosFiltrados.length} <span className="text-slate-300">de {resultados.length}</span></>
+                    : resultados.length
+                  } resultados
+                  {selectedGroupKey && medSeleccionado && (
+                    <span className="ml-2 text-blue-500">
+                      · {medSeleccionado.principios_dci[0] ?? medSeleccionado.nombre_comercial}
+                      {medSeleccionado.concentracion_display && ` ${medSeleccionado.concentracion_display}`}
+                    </span>
+                  )}
+                </span>
+              </div>
             </div>
+
           </div>
         )}
       </div>
