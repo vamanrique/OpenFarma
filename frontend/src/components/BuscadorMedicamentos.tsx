@@ -84,13 +84,6 @@ const FORMA_A_GRUPO: Record<string, string> = {
   'SPRAY NASAL': 'NASAL', 'GOTAS NASALES': 'NASAL', 'SOLUCION NASAL': 'NASAL', 'GEL NASAL': 'NASAL',
 }
 
-const TIPO_LABEL: Record<string, string> = {
-  monocomponente:  'Monofármaco',
-  biconjugado:     'Bicomponente',
-  triconjugado:    'Tricomponente',
-  tetraconjugado:  'Tetracomponente',
-}
-const TIPO_ORDEN = ['monocomponente', 'biconjugado', 'triconjugado', 'tetraconjugado']
 
 const GRUPO_LABEL: Record<string, string> = {
   SOLIDO_ORAL: 'Sólido oral', SOLIDO_ORAL_LP: 'Liberación prolongada',
@@ -855,7 +848,7 @@ export default function BuscadorMedicamentos() {
       if (isComboDCI) {
         const nums = conc.match(/\d[\d.,]*\s*(?:mg|mcg|µg|g|UI|IU|mL|meq|%|mmol)/gi) ?? []
         totalLabel = nums.length > 0 ? nums.join(' · ') : '—'
-        totalValor = nums.length > 0 ? parseFloat(nums[0]) : 0
+        totalValor = nums.length > 0 ? parseFloat(nums[0]!) : 0
         detalles   = ''
       } else {
         totalLabel = t?.label ?? ([conc, pres].filter(Boolean).join(' · ') || '—')
