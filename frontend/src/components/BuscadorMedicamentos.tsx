@@ -844,10 +844,24 @@ export default function BuscadorMedicamentos() {
       const conc = (med.concentracion_display || '').includes('+')
         ? (med.concentracion_display || '').split('+').map(p => p.trim()).sort().join(' + ')
         : (med.concentracion_display || '')
-      const t      = computeTotal(conc, pres)
-      const totalLabel = t?.label ?? ([conc, pres].filter(Boolean).join(' · ') || '—')
-      const totalValor = t?.valor ?? parseFloat(conc) ?? 0
-      const detalles   = (conc && pres) ? `${conc} · ${pres}` : conc || pres || ''
+      const t = computeTotal(conc, pres)
+
+      // Si concentracion_display es una fórmula DCI (empieza con letra, no con número),
+      // extraer solo los valores numéricos para el label: "CODEINA 30 mg + PARACETAMOL 325 mg" → "30 mg · 325 mg"
+      const isComboDCI = conc.length > 0 && !/^\d/.test(conc.trim())
+      let totalLabel: string
+      let totalValor: number
+      let detalles: string
+      if (isComboDCI) {
+        const nums = conc.match(/\d[\d.,]*\s*(?:mg|mcg|µg|g|UI|IU|mL|meq|%|mmol)/gi) ?? []
+        totalLabel = nums.length > 0 ? nums.join(' · ') : '—'
+        totalValor = nums.length > 0 ? parseFloat(nums[0]) : 0
+        detalles   = ''
+      } else {
+        totalLabel = t?.label ?? ([conc, pres].filter(Boolean).join(' · ') || '—')
+        totalValor = t?.valor ?? parseFloat(conc) ?? 0
+        detalles   = (conc && pres) ? `${conc} · ${pres}` : conc || pres || ''
+      }
       // Agrupar por concentración normalizada (no por total clínico calculado).
       // Así, "50 mg/mL" sin presentación y "50 mg/mL · 100 mL" caen en la misma fila.
       const key = `${forma}\0${conc}`
@@ -856,7 +870,7 @@ export default function BuscadorMedicamentos() {
         prev.meds.push(med)
         // Si el grupo fue creado por un med sin presentación (totalLabel = conc),
         // actualizarlo cuando llega uno con total calculado.
-        if (t !== null && prev.totalLabel === conc) {
+        if (!isComboDCI && t !== null && prev.totalLabel === conc) {
           prev.totalLabel = totalLabel
           prev.totalValor = totalValor
         }
