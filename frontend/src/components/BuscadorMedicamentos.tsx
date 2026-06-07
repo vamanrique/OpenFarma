@@ -698,14 +698,12 @@ const EXCIPIENT_PREFIXES = [
 
 function normalizeDCIName(raw: string): string {
   return raw
-    // Strip trailing dose: "PARACETAMOL 325 mg" → "PARACETAMOL"
     .replace(/\s+\d[\d.,]*\s*(mg|mcg|µg|g|UI|IU|mL|meq|%|mmol)(\s*\/[\s\S]*)?$/i, '')
-    // Strip INN synonym after " - ": "ACETAMINOFEN - PARACETAMOL" → "ACETAMINOFEN"
     .replace(/\s+-\s+\w.*$/, '')
-    // Strip leading "DE ": "DE CODEINA" → "CODEINA"
     .replace(/^DE\s+/, '')
     .trim()
     .toUpperCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')  // CODEÍNA → CODEINA
 }
 
 function isExcipient(name: string): boolean {
@@ -857,7 +855,9 @@ export default function BuscadorMedicamentos() {
       }
       // Agrupar por concentración normalizada (no por total clínico calculado).
       // Así, "50 mg/mL" sin presentación y "50 mg/mL · 100 mL" caen en la misma fila.
-      const key = `${forma}\0${conc}`
+      // Normalizar tildes para que "CODEÍNA 30 mg" y "CODEINA 30 mg" formen el mismo grupo.
+      const concKey = conc.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase()
+      const key = `${forma}\0${concKey}`
       const prev = rowMap.get(key)
       if (prev) {
         prev.meds.push(med)
