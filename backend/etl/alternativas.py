@@ -82,13 +82,16 @@ def generar_alternativas(meds: list[MedicamentoTransformado]) -> list[ParAlterna
         dci      = mol_key(m)
 
         if dci:  # solo indexar en A0-A3 cuando se conoce (o infiere) la molécula
-            por_dci_forma[(dci, g_forma)].append(m)
+            # tipo_formula incluido en las claves de A0-A3: un biconjugado nunca
+            # puede ser sustituto directo ni alternativa de concentración de un mono.
+            tf = m.tipo_formula
+            por_dci_forma[(dci, g_forma, tf)].append(m)
             if m.dosis_numerica is not None:
                 dosis_key = round(m.dosis_numerica, 1)
                 pres_key  = _pres_key(m.presentacion)
-                por_directo[(dci, dosis_key, pres_key, g_forma)].append(m)
-                por_misma_conc[(dci, dosis_key, g_forma)].append(m)
-                por_dci_dosis[(dci, dosis_key)].append(m)
+                por_directo[(dci, dosis_key, pres_key, g_forma, tf)].append(m)
+                por_misma_conc[(dci, dosis_key, g_forma, tf)].append(m)
+                por_dci_dosis[(dci, dosis_key, tf)].append(m)
 
         por_atc7_forma[(m.atc, g_forma)].append(m)
         por_atc5_forma[(m.atc[:5], g_forma)].append(m)
@@ -112,8 +115,8 @@ def generar_alternativas(meds: list[MedicamentoTransformado]) -> list[ParAlterna
                 componentes_compartidos=compartidos,
             ))
 
-    # A0 — Sustituto directo: mismo DCI + misma conc + misma presentación + misma forma
-    for (dci, dosis, pres, _), grupo in por_directo.items():
+    # A0 — Sustituto directo: mismo DCI + misma conc + misma presentación + misma forma + mismo tipo
+    for (dci, dosis, pres, _, _tf), grupo in por_directo.items():
         dci_str = ', '.join(dci) if dci else '(DCI no registrado)'
         for a, b in combinations(grupo, 2):
             pres_str = f" · {a.presentacion}" if a.presentacion else ""
@@ -122,7 +125,7 @@ def generar_alternativas(meds: list[MedicamentoTransformado]) -> list[ParAlterna
                     list(dci))
 
     # A1 — Misma conc + misma forma + diferente presentación (cantidad total distinta)
-    for (dci, dosis, g_forma), grupo in por_misma_conc.items():
+    for (dci, dosis, g_forma, _tf), grupo in por_misma_conc.items():
         dci_str = ', '.join(dci) if dci else '(DCI no registrado)'
         for a, b in combinations(grupo, 2):
             if _pres_key(a.presentacion) != _pres_key(b.presentacion):
@@ -133,7 +136,7 @@ def generar_alternativas(meds: list[MedicamentoTransformado]) -> list[ParAlterna
                         list(dci))
 
     # A2 — Misma conc + diferente forma/vía
-    for (dci, dosis), grupo in por_dci_dosis.items():
+    for (dci, dosis, _tf), grupo in por_dci_dosis.items():
         dci_str = ', '.join(dci) if dci else '(DCI no registrado)'
         for a, b in combinations(grupo, 2):
             ga = _grupo_forma(a.forma_farmaceutica, a.via_administracion)
@@ -144,7 +147,7 @@ def generar_alternativas(meds: list[MedicamentoTransformado]) -> list[ParAlterna
                         list(dci))
 
     # A3 — Misma forma + diferente concentración
-    for (dci, g_forma), grupo in por_dci_forma.items():
+    for (dci, g_forma, _tf), grupo in por_dci_forma.items():
         dci_str = ', '.join(dci) if dci else '(DCI no registrado)'
         for a, b in combinations(grupo, 2):
             dosis_a = round(a.dosis_numerica, 1) if a.dosis_numerica is not None else None

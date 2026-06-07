@@ -84,6 +84,14 @@ const FORMA_A_GRUPO: Record<string, string> = {
   'SPRAY NASAL': 'NASAL', 'GOTAS NASALES': 'NASAL', 'SOLUCION NASAL': 'NASAL', 'GEL NASAL': 'NASAL',
 }
 
+const TIPO_LABEL: Record<string, string> = {
+  monocomponente:  'Monofármaco',
+  biconjugado:     'Bicomponente',
+  triconjugado:    'Tricomponente',
+  tetraconjugado:  'Tetracomponente',
+}
+const TIPO_ORDEN = ['monocomponente', 'biconjugado', 'triconjugado', 'tetraconjugado']
+
 const GRUPO_LABEL: Record<string, string> = {
   SOLIDO_ORAL: 'Sólido oral', SOLIDO_ORAL_LP: 'Liberación prolongada',
   ORAL_DISPERSABLE: 'Dispersable',
@@ -712,26 +720,40 @@ export default function BuscadorMedicamentos() {
   const [cargandoAlt, setCargandoAlt]             = useState(false)
   const [errorAlt, setErrorAlt]                   = useState('')
 
+  const [filtroTipo, setFiltroTipoRaw]   = useState<string | null>(null)
   const [filtroGrupo, setFiltroGrupoRaw] = useState<string | null>(null)
-  const [filtroConc, setFiltroConc]       = useState<string | null>(null)
+  const [filtroConc, setFiltroConc]      = useState<string | null>(null)
 
+  // Cambiar tipo limpia forma y concentración
+  const setFiltroTipo  = (t: string | null) => { setFiltroTipoRaw(t); setFiltroGrupoRaw(null); setFiltroConc(null) }
   const setFiltroGrupo = (g: string | null) => { setFiltroGrupoRaw(g); setFiltroConc(null) }
+
+  // Tipos presentes en los resultados (orden canónico)
+  const tipos = useMemo(() => {
+    const set = new Set(resultados.map(m => m.tipo_formula).filter(Boolean))
+    return TIPO_ORDEN.filter(t => set.has(t))
+  }, [resultados])
+
+  // Resultados filtrados solo por tipo (base para grupos y concentraciones)
+  const resultadosPorTipo = useMemo(() =>
+    filtroTipo ? resultados.filter(m => m.tipo_formula === filtroTipo) : resultados
+  , [resultados, filtroTipo])
 
   // Conteo de formas para el selector de filtro
   const grupos = useMemo(() => {
     const counts = new Map<string, number>()
-    for (const m of resultados) {
+    for (const m of resultadosPorTipo) {
       const g = grupoForma(m.forma_farmaceutica, m.via_administracion)
       counts.set(g, (counts.get(g) ?? 0) + 1)
     }
     return [...counts.entries()].sort((a, b) => b[1] - a[1])
-  }, [resultados])
+  }, [resultadosPorTipo])
 
   // Concentraciones únicas para el selector de filtro
   const concentraciones = useMemo(() => {
     const base = filtroGrupo
-      ? resultados.filter(m => grupoForma(m.forma_farmaceutica, m.via_administracion) === filtroGrupo)
-      : resultados
+      ? resultadosPorTipo.filter(m => grupoForma(m.forma_farmaceutica, m.via_administracion) === filtroGrupo)
+      : resultadosPorTipo
     const counts = new Map<string, number>()
     for (const m of base) {
       if (m.concentracion_display) counts.set(m.concentracion_display, (counts.get(m.concentracion_display) ?? 0) + 1)
@@ -740,18 +762,19 @@ export default function BuscadorMedicamentos() {
       const na = parseFloat(a[0]), nb = parseFloat(b[0])
       return isNaN(na) || isNaN(nb) ? a[0].localeCompare(b[0]) : na - nb
     })
-  }, [resultados, filtroGrupo])
+  }, [resultadosPorTipo, filtroGrupo])
 
-  // Resultados filtrados
+  // Resultados filtrados (tipo → forma → concentración)
   const resultadosFiltrados = useMemo(() => {
     return resultados.filter(m => {
+      if (filtroTipo  && m.tipo_formula !== filtroTipo) return false
       if (filtroGrupo && grupoForma(m.forma_farmaceutica, m.via_administracion) !== filtroGrupo) return false
-      if (filtroConc && m.concentracion_display !== filtroConc) return false
+      if (filtroConc  && m.concentracion_display !== filtroConc) return false
       return true
     })
-  }, [resultados, filtroGrupo, filtroConc])
+  }, [resultados, filtroTipo, filtroGrupo, filtroConc])
 
-  const hayFiltros = filtroGrupo !== null || filtroConc !== null
+  const hayFiltros = filtroTipo !== null || filtroGrupo !== null || filtroConc !== null
 
   // Estructura: forma farmacéutica → cantidad total por unidad dispensada (15 mg, 5 mg, 50 mg)
   const agrupados = useMemo((): FormaBlock[] => {
@@ -819,6 +842,7 @@ export default function BuscadorMedicamentos() {
     setSelectedGroupKey(null)
     setSelectedGroupMeds([])
     setHasBuscado(true)
+    setFiltroTipo(null)
     setFiltroGrupo(null)
     try {
       const res = await medicamentosApi.buscar(query.trim(), true, 50)
@@ -883,12 +907,26 @@ export default function BuscadorMedicamentos() {
         {resultados.length > 0 && !buscando && (
           <div className="mt-3 pt-3 border-t border-slate-100">
             <div className="flex items-center gap-2 flex-wrap">
+              {tipos.length > 1 && (
+                <select
+                  value={filtroTipo ?? ''}
+                  onChange={e => setFiltroTipo(e.target.value || null)}
+                  className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400 cursor-pointer"
+                >
+                  <option value="">Todos los tipos ({resultados.length})</option>
+                  {tipos.map(t => {
+                    const n = resultados.filter(m => m.tipo_formula === t).length
+                    return <option key={t} value={t}>{TIPO_LABEL[t] ?? t} ({n})</option>
+                  })}
+                </select>
+              )}
+
               <select
                 value={filtroGrupo ?? ''}
                 onChange={e => setFiltroGrupo(e.target.value || null)}
                 className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400 cursor-pointer"
               >
-                <option value="">Todas las formas ({resultados.length})</option>
+                <option value="">Todas las formas ({resultadosPorTipo.length})</option>
                 {grupos.map(([g, n]) => (
                   <option key={g} value={g}>{labelGrupo(g)} ({n})</option>
                 ))}
@@ -909,7 +947,7 @@ export default function BuscadorMedicamentos() {
 
               {hayFiltros && (
                 <button
-                  onClick={() => setFiltroGrupo(null)}
+                  onClick={() => setFiltroTipo(null)}
                   className="text-xs text-slate-400 hover:text-red-500 transition-colors px-1"
                   title="Limpiar filtros"
                 >
