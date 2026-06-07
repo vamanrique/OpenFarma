@@ -112,6 +112,10 @@ _SINONIMOS: dict[str, str] = {
     "CIPROFLOXACIN":    "CIPROFLOXACINO",
     "CIPROFLOXACINA":   "CIPROFLOXACINO",
     "METRONIDAZOLE":    "METRONIDAZOL",
+    "NIFUROXAZIDE":     "NIFUROXAZIDA",
+    "MICONAZOLE":       "MICONAZOL",
+    "CLOTRIMAZOLE":     "CLOTRIMAZOL",
+    "ISOCONAZOLE":      "ISOCONAZOL",
     "OMEPRAZOLE":       "OMEPRAZOL",
     "LOSARTAN":         "LOSARTAN",      # sin tilde — normaliza grafías
     "LOSARTÁN":         "LOSARTAN",
@@ -558,10 +562,11 @@ def construir_concentracion(row: pd.Series) -> str:
             and unidad_ref.upper() != unidad_real.upper()
             and re.search(r'\d', unidad_ref)
             and not _NDOSIS_EN_REF.search(unidad_ref)):
-        # Extraer solo "número + unidad" limpio, ignorando texto descriptivo posterior.
-        # "100 G DE UNGUENTO" → "100 G",  "100 GRAMOS DE UNGÜENTO" → "100 g"
-        _m_ref = re.match(
-            r'^(\d[\d.,]*)\s*(mg|g|gr|gramo[s]?|kg|mcg|µg|ml|dl|l|cm|mm|%|ui|iu)\b',
+        # Extraer solo "número + unidad" limpio, ignorando texto descriptivo anterior/posterior.
+        # "100 G DE UNGUENTO"           → "100 g"
+        # "CADA 100 ML DE SUSPENSION"   → "100 ml"  (re.search ignora el prefijo textual)
+        _m_ref = re.search(
+            r'(\d[\d.,]*)\s*(mg|g|gr|gramo[s]?|kg|mcg|µg|ml|dl|l|cm|mm|%|ui|iu)\b',
             unidad_ref.strip(), re.IGNORECASE,
         )
         if _m_ref:

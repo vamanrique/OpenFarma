@@ -57,7 +57,9 @@ const FORMA_A_GRUPO: Record<string, string> = {
   'JARABE': 'LIQUIDO_ORAL', 'SOLUCION ORAL': 'LIQUIDO_ORAL',
   'SUSPENSION ORAL': 'LIQUIDO_ORAL', 'ELIXIR': 'LIQUIDO_ORAL',
   'GOTAS ORALES': 'LIQUIDO_ORAL', 'SOLUCION': 'LIQUIDO_ORAL',
-  'SUSPENSION': 'LIQUIDO_ORAL', 'EMULSION ORAL': 'LIQUIDO_ORAL',
+  'SUSPENSION': 'LIQUIDO_ORAL', 'SUSPENSIONES': 'LIQUIDO_ORAL',
+  'SUSPENSION ORAL RECONSTITUIDA': 'LIQUIDO_ORAL', 'EMULSION ORAL': 'LIQUIDO_ORAL',
+  'SOLUCION PARA ADMINISTRACION ORAL': 'LIQUIDO_ORAL',
   'TABLETA SUBLINGUAL': 'SUBLINGUAL', 'COMPRIMIDO SUBLINGUAL': 'SUBLINGUAL',
   'TABLETA BUCODISPERSABLE': 'SUBLINGUAL', 'FILM SUBLINGUAL': 'SUBLINGUAL',
   'SOLUCION INYECTABLE': 'INYECTABLE', 'POLVO PARA SOLUCION INYECTABLE': 'INYECTABLE',
@@ -751,10 +753,18 @@ export default function BuscadorMedicamentos() {
       const totalLabel = t?.label ?? ([conc, pres].filter(Boolean).join(' · ') || '—')
       const totalValor = t?.valor ?? parseFloat(conc) ?? 0
       const detalles   = (conc && pres) ? `${conc} · ${pres}` : conc || pres || ''
-      const key = `${forma}\0${totalLabel}`
+      // Agrupar por concentración normalizada (no por total clínico calculado).
+      // Así, "50 mg/mL" sin presentación y "50 mg/mL · 100 mL" caen en la misma fila.
+      const key = `${forma}\0${conc}`
       const prev = rowMap.get(key)
       if (prev) {
         prev.meds.push(med)
+        // Si el grupo fue creado por un med sin presentación (totalLabel = conc),
+        // actualizarlo cuando llega uno con total calculado.
+        if (t !== null && prev.totalLabel === conc) {
+          prev.totalLabel = totalLabel
+          prev.totalValor = totalValor
+        }
       } else {
         rowMap.set(key, { totalLabel, totalValor, detalles, meds: [med] })
       }
