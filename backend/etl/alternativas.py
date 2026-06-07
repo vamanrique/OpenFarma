@@ -100,7 +100,9 @@ def generar_alternativas(meds: list[MedicamentoTransformado]) -> list[ParAlterna
     def agregar(a: MedicamentoTransformado, b: MedicamentoTransformado,
                 tipo: str, desc: str, compartidos: list[str]):
         key = (min(a.cum_id, b.cum_id), max(a.cum_id, b.cum_id))
-        if key not in pares_vistos and a.cum_id != b.cum_id:
+        # Mismo expediente = mismo titular: en desabastecimiento todos sus consecutivos
+        # estarían igualmente afectados, por lo que no son alternativas reales.
+        if key not in pares_vistos and a.cum_id != b.cum_id and a.expedientecum != b.expedientecum:
             pares_vistos.add(key)
             resultado.append(ParAlternativa(
                 cum_origen=a.cum_id,

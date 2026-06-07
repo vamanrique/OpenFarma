@@ -158,20 +158,36 @@ function BadgeNTI() {
   )
 }
 
-function BadgeEstado({ estado }: { estado: string }) {
+function BadgeEstadoReg({ estado_cum, estado_registro, fuente }: {
+  estado_cum: string; estado_registro?: string; fuente?: string
+}) {
+  if (fuente === 'CUM_RENOVACION') {
+    const sufijo = estado_cum === 'Activo' ? ' · Activo' : estado_cum ? ` · ${estado_cum}` : ''
+    return (
+      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-700 whitespace-nowrap shrink-0">
+        En renovación{sufijo}
+      </span>
+    )
+  }
+  const vigente = (estado_registro ?? '').toLowerCase() === 'vigente'
+  const activo  = estado_cum === 'Activo'
+  if (vigente && activo) {
+    return (
+      <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-700 whitespace-nowrap shrink-0">
+        Vigente · Activo
+      </span>
+    )
+  }
+  if (activo) {
+    return (
+      <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-700 whitespace-nowrap shrink-0">
+        Activo
+      </span>
+    )
+  }
   return (
-    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
-      estado === 'Activo' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'
-    }`}>
-      {estado}
-    </span>
-  )
-}
-
-function BadgeRenovacion() {
-  return (
-    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-700 whitespace-nowrap shrink-0">
-      En tramite renovacion
+    <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-red-100 text-red-600 whitespace-nowrap shrink-0">
+      {estado_cum || 'Inactivo'}
     </span>
   )
 }
@@ -251,8 +267,7 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
           <span className="text-xs text-slate-600 font-medium truncate max-w-[160px]">{dest.nombre_comercial}</span>
           <span className="text-slate-300 text-xs">·</span>
           <span className="text-xs text-slate-400 truncate max-w-[130px]">{dest.laboratorio}</span>
-          <BadgeEstado estado={dest.estado_cum} />
-          {dest.fuente === 'CUM_RENOVACION' && <BadgeRenovacion />}
+          <BadgeEstadoReg estado_cum={dest.estado_cum} estado_registro={dest.estado_registro} fuente={dest.fuente} />
         </div>
         {/* Fila 3: forma + detalle técnico (secundario) */}
         <div className="flex items-center gap-1.5 mt-1 flex-wrap">
@@ -383,7 +398,7 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
                             </div>
                             <div className="shrink-0 text-right">
                               <p className="text-xs text-slate-600 font-medium truncate max-w-[130px]">{dest?.laboratorio}</p>
-                              {dest && <BadgeEstado estado={dest.estado_cum} />}
+                              {dest && <BadgeEstadoReg estado_cum={dest.estado_cum} estado_registro={dest.estado_registro} fuente={dest.fuente} />}
                             </div>
                           </div>
                         )
@@ -429,7 +444,7 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
                               </div>
                               <p className="text-[11px] text-slate-400 truncate mt-0.5">{dest.laboratorio}</p>
                             </div>
-                            <BadgeEstado estado={dest.estado_cum} />
+                            <BadgeEstadoReg estado_cum={dest.estado_cum} estado_registro={dest.estado_registro} fuente={dest.fuente} />
                           </div>
                         )
                       })}
@@ -505,7 +520,7 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
                                 <span className="text-[11px] text-slate-400 truncate">{dest.laboratorio}</span>
                               </div>
                             </div>
-                            <BadgeEstado estado={dest.estado_cum} />
+                            <BadgeEstadoReg estado_cum={dest.estado_cum} estado_registro={dest.estado_registro} fuente={dest.fuente} />
                           </div>
                         )
                       })}
@@ -1164,7 +1179,7 @@ export default function BuscadorMedicamentos() {
                               }
                               {hasNTI && <BadgeNTI />}
                               {tiposDistinct.length === 1 && <BadgeFormula tipo={tiposDistinct[0]} />}
-                              {isRenov && <BadgeRenovacion />}
+                              {isRenov && <BadgeEstadoReg estado_cum={row.meds[0]?.estado_cum ?? ''} estado_registro={row.meds[0]?.estado_registro} fuente="CUM_RENOVACION" />}
                             </div>
                             <p className="text-[11px] text-slate-400 truncate mt-0.5">
                               {row.meds.length} {row.meds.length === 1 ? 'producto' : 'productos'} · {labs}{more}
