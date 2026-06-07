@@ -8,15 +8,40 @@ from typing import Optional
 from etl.transformacion import agrupar_y_transformar, MedicamentoTransformado, terminos_busqueda
 from etl.alternativas import generar_alternativas, ParAlternativa
 
-API_URL = "https://www.datos.gov.co/resource/i7cb-raxc.json"
+API_URL        = "https://www.datos.gov.co/resource/i7cb-raxc.json"
+RENOVACION_URL = "https://www.datos.gov.co/resource/vgr4-gemg.json"
 TIMEOUT = 20.0
 
 
-async def _get(params: dict) -> list[dict]:
+async def _get(params: dict, url: str = API_URL) -> list[dict]:
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
-        resp = await client.get(API_URL, params=params)
+        resp = await client.get(url, params=params)
         resp.raise_for_status()
         return resp.json()
+
+
+async def _completar_grupos(filas: list[dict], url: str = API_URL) -> list[dict]:
+    """
+    Obtiene todas las filas de los expedientes encontrados para no omitir
+    los componentes de productos combinados que no coinciden con la búsqueda.
+    """
+    expedientes = list({f['expedientecum'] for f in filas if f.get('expedientecum')})
+    if not expedientes:
+        return filas
+    BATCH = 50
+    filas_extra: list[dict] = []
+    async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+        for i in range(0, len(expedientes), BATCH):
+            lote = expedientes[i:i + BATCH]
+            ids  = ', '.join(f"'{e}'" for e in lote)
+            resp = await client.get(url, params={"$where": f"expedientecum IN ({ids})", "$limit": 2000})
+            resp.raise_for_status()
+            filas_extra.extend(resp.json())
+    todas: dict[tuple, dict] = {
+        (f['expedientecum'], f.get('consecutivocum', ''), f.get('principioactivo', '')): f
+        for f in filas + filas_extra
+    }
+    return list(todas.values())
 
 
 async def buscar_medicamentos(
@@ -49,6 +74,7 @@ async def buscar_medicamentos(
     if not filas:
         return []
 
+    filas = await _completar_grupos(filas)
     df = pd.DataFrame(filas)
     return agrupar_y_transformar(df)
 
@@ -104,6 +130,36 @@ async def alternativas_para(
         if p.cum_origen == cum_objetivo or p.cum_destino == cum_objetivo
     ]
     return filtrados, lookup
+
+
+async def buscar_en_renovacion(
+    query: str,
+    limit: int = 200,
+) -> list[MedicamentoTransformado]:
+    """
+    Busca en el dataset de registros en tramite de renovacion (vgr4-gemg.json).
+    Retorna MedicamentoTransformado con fuente='CUM_RENOVACION'.
+    """
+    q_upper = query.strip().upper()
+    terms = terminos_busqueda(q_upper)
+    cond_terms = " OR ".join(
+        f"(upper(producto) like '%{t}%' OR upper(principioactivo) like '%{t}%')"
+        for t in terms
+    )
+    params = {
+        "$where": cond_terms,
+        "$limit": limit,
+        "$order": "producto ASC",
+    }
+    filas = await _get(params, url=RENOVACION_URL)
+    if not filas:
+        return []
+    filas = await _completar_grupos(filas, url=RENOVACION_URL)
+    df = pd.DataFrame(filas)
+    meds = agrupar_y_transformar(df)
+    for m in meds:
+        m.fuente = 'CUM_RENOVACION'
+    return meds
 
 
 async def estadisticas_por_atc() -> list[dict]:

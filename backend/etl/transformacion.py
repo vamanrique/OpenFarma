@@ -92,6 +92,87 @@ _SINONIMOS: dict[str, str] = {
     "NIMODIPINA":       "NIMODIPINO",
     "ISRADIPINA":       "ISRADIPINO",
     "BARNIDIPINA":      "BARNIDIPINO",
+    # Sinónimos clínicos Colombia — el CUM usa el nombre del fabricante, no siempre el INN
+    "ACETAMINOFEN":     "PARACETAMOL",   # nombre colombiano más común en el CUM
+    "ACETAMINOFÉN":     "PARACETAMOL",
+    "TYLENOL":          "PARACETAMOL",
+    "DIPIRONA":         "METAMIZOL",
+    "DIPIRONA SODICA":  "METAMIZOL",
+    "DIPIRONA SODICA MONOHIDRATADA": "METAMIZOL",
+    "METAMIZOL SODICO": "METAMIZOL",
+    "MEPERIDINA":       "PETIDINA",
+    "PETHIDINE":        "PETIDINA",
+    "ALBUTEROL":        "SALBUTAMOL",    # nombre en inglés / EE.UU.
+    "VITAMINA C":       "ACIDO ASCORBICO",
+    "ÁCIDO ASCÓRBICO":  "ACIDO ASCORBICO",
+    "ACIDO ASCORBICO":  "ACIDO ASCORBICO",
+    # Variantes inglés adicionales frecuentes en búsquedas
+    "FUROSEMIDE":       "FUROSEMIDA",
+    "AMOXICILLIN":      "AMOXICILINA",
+    "CIPROFLOXACIN":    "CIPROFLOXACINO",
+    "CIPROFLOXACINA":   "CIPROFLOXACINO",
+    "METRONIDAZOLE":    "METRONIDAZOL",
+    "OMEPRAZOLE":       "OMEPRAZOL",
+    "LOSARTAN":         "LOSARTAN",      # sin tilde — normaliza grafías
+    "LOSARTÁN":         "LOSARTAN",
+    "CAPTOPRIL":        "CAPTOPRIL",
+    "ENALAPRIL":        "ENALAPRIL",
+    "ENALAPRILAT":      "ENALAPRIL",
+    "MORFINA":          "MORFINA",
+    "MORPHINE":         "MORFINA",
+    "FENTANYL":         "FENTANILO",
+    "FENTANIL":         "FENTANILO",
+    "TRAMADOL":         "TRAMADOL",
+    "DICLOFENAC":       "DICLOFENACO",
+    "DICLOFENACO SODICO":   "DICLOFENACO",
+    "DICLOFENACO POTASICO": "DICLOFENACO",
+    "KETOPROFEN":       "KETOPROFENO",
+    "NAPROXEN":         "NAPROXENO",
+    "WARFARIN":         "WARFARINA",
+    "HEPARIN":          "HEPARINA",
+    "INSULIN":          "INSULINA",
+    "METFORMIN":        "METFORMINA",
+    "GLIBENCLAMIDE":    "GLIBENCLAMIDA",
+    "GLIBENCLAMIDA":    "GLIBENCLAMIDA",
+    "ATORVASTATIN":     "ATORVASTATINA",
+    "SIMVASTATIN":      "SIMVASTATINA",
+    "LOVASTATINA":      "LOVASTATINA",
+    "LOVASTATIN":       "LOVASTATINA",
+    "CLARITHROMYCIN":   "CLARITROMICINA",
+    "AZITHROMYCIN":     "AZITROMICINA",
+    "DOXYCYCLINE":      "DOXICICLINA",
+    "CLINDAMYCIN":      "CLINDAMICINA",
+    "VANCOMYCIN":       "VANCOMICINA",
+    "AMPICILLIN":       "AMPICILINA",
+    "GENTAMICIN":       "GENTAMICINA",
+    "TOBRAMYCIN":       "TOBRAMICINA",
+    "FLUCONAZOLE":      "FLUCONAZOL",
+    "ITRACONAZOLE":     "ITRACONAZOL",
+    "KETOCONAZOLE":     "KETOCONAZOL",
+    "ACYCLOVIR":        "ACICLOVIR",
+    "ACICLOVIR":        "ACICLOVIR",
+    "HALOPERIDOL":      "HALOPERIDOL",
+    "DIAZEPAM":         "DIAZEPAM",
+    "LORAZEPAM":        "LORAZEPAM",
+    "ALPRAZOLAM":       "ALPRAZOLAM",
+    "PHENOBARBITAL":    "FENOBARBITAL",
+    "PHENYTOIN":        "FENITOINA",
+    "FENITOINA":        "FENITOINA",
+    "CARBAMAZEPINE":    "CARBAMAZEPINA",
+    "VALPROIC ACID":    "ACIDO VALPROICO",
+    "ACIDO VALPROICO":  "ACIDO VALPROICO",
+    "SALBUTAMOL SULFATO": "SALBUTAMOL",
+    "BECLOMETASONA DIPROPIONATO": "BECLOMETASONA",
+    "BECLOMETHASONE":   "BECLOMETASONA",
+    "BUDESONIDE":       "BUDESONIDA",
+    "BUDESONIDA":       "BUDESONIDA",
+    "FLUTICASONE":      "FLUTICASONA",
+    "FLUTICASONA":      "FLUTICASONA",
+    "IPRATROPIUM":      "IPRATROPIO",
+    "IPRATROPIO":       "IPRATROPIO",
+    "TIOTROPIUM":       "TIOTROPIO",
+    "FORMOTEROL":       "FORMOTEROL",
+    "SALMETEROL":       "SALMETEROL",
 }
 
 
@@ -471,16 +552,26 @@ def construir_concentracion(row: pd.Series) -> str:
     unidad_display = "UI" if unidad_real.upper() in ("UI", "IU") else unidad_real.lower()
     base = f"{cantidad} {unidad_display}"
 
-    # Agregar referencia de presentación SOLO si contiene un valor numérico,
-    # lo que indica volumen/cantidad real (ej. "AMPOLLA POR 5 ML", "FRASCO 100 ML").
-    # Si no tiene dígitos es solo el nombre de la forma farmacéutica (ej. "TABLETA RECUBIERTA",
-    # "COMPRIMIDO") que ya está en forma_farmaceutica y no aporta al filtro de concentración.
-    # Excluir conteos de dosis ("200 DOSIS", "120 INHALACIONES") — van a presentacion, no a concentración.
+    # Agregar referencia SOLO si contiene un valor numérico real (volumen, masa, etc.)
+    # Excluir: nombres de forma farmacéutica sin dígitos, conteos de dosis.
     if (unidad_ref and unidad_ref.upper() not in _INVALIDOS
             and unidad_ref.upper() != unidad_real.upper()
             and re.search(r'\d', unidad_ref)
             and not _NDOSIS_EN_REF.search(unidad_ref)):
-        base = f"{base}/{unidad_ref}"
+        # Extraer solo "número + unidad" limpio, ignorando texto descriptivo posterior.
+        # "100 G DE UNGUENTO" → "100 G",  "100 GRAMOS DE UNGÜENTO" → "100 g"
+        _m_ref = re.match(
+            r'^(\d[\d.,]*)\s*(mg|g|gr|gramo[s]?|kg|mcg|µg|ml|dl|l|cm|mm|%|ui|iu)\b',
+            unidad_ref.strip(), re.IGNORECASE,
+        )
+        if _m_ref:
+            num  = _m_ref.group(1)
+            unit = re.sub(r'gramo[s]?', 'g', _m_ref.group(2), flags=re.IGNORECASE).lower()
+            unit = 'UI' if unit in ('ui', 'iu') else unit
+            ref_display = f"{num} {unit}"
+        else:
+            ref_display = unidad_ref
+        base = f"{base}/{ref_display}"
 
     return base.strip()
 
@@ -507,6 +598,19 @@ class MedicamentoTransformado:
     estado_registro: str
     estado_cum: str
     modalidad: str
+    # Fuente del registro: CUM_ACTIVO | CUM_RENOVACION
+    fuente:               str              = field(default='CUM_ACTIVO')
+    # Campos opcionales enriquecidos por LLM (None si el caché aún no tiene este CUM)
+    principios_dci_llm:   list[str] | None = field(default=None)
+    dosis_total_mg:       float | None     = field(default=None)
+    concentracion_mg_ml:  float | None     = field(default=None)
+    volumen_ml_por_unidad: float | None    = field(default=None)
+    forma_normalizada:    str | None       = field(default=None)
+    via_normalizada:      list[str] | None = field(default=None)
+    atc_llm:              str | None       = field(default=None)
+    tipo_formula_llm:     str | None       = field(default=None)  # MONO, BI, TRI, TETRA
+    componentes_llm:      list | None      = field(default=None)  # [{"dci","concentracion_mg_ml","dosis_mg"}]
+    notas_llm:            str | None       = field(default=None)
 
 
 _TIPO_FORMULA = {1: "monocomponente", 2: "biconjugado", 3: "triconjugado", 4: "tetraconjugado"}

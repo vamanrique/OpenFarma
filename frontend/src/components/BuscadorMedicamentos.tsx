@@ -22,7 +22,7 @@ const ALT_CFG: Record<string, { color: string; label: string; desc: string }> = 
 }
 
 const TIPOS_TERAPEUTICOS = [
-  'EQUIVALENTE_EXACTO', 'EQUIVALENTE_CLASE', 'COMPONENTE_COMPARTIDO', 'ALTERNATIVA_DIFERENTE_FORMA',
+  'EQUIVALENTE_CLASE', 'COMPONENTE_COMPARTIDO',
 ]
 
 // ─── Grupos de formas farmacéuticas (espejo del backend) ─────────────────────
@@ -93,7 +93,32 @@ const GRUPO_LABEL: Record<string, string> = {
 
 function grupoForma(forma: string, via: string): string {
   const viaU = via.trim().toUpperCase()
-  return VIA_A_GRUPO[viaU] ?? FORMA_A_GRUPO[forma.trim().toUpperCase()] ?? forma.trim().toUpperCase()
+  if (VIA_A_GRUPO[viaU]) return VIA_A_GRUPO[viaU]
+
+  const f = forma.trim().toUpperCase()
+  if (FORMA_A_GRUPO[f]) return FORMA_A_GRUPO[f]
+
+  // Matching por palabras clave en orden de prioridad (específico → general).
+  // Formas con calificador de vía/sitio primero, para que "UNGUENTO OFTALMICO"
+  // vaya a OFTALMICO y no a TOPICO.
+  if (/OFTALM/.test(f))                                                           return 'OFTALMICO'
+  if (/VAGINAL/.test(f))                                                           return 'VAGINAL'
+  if (/RECTAL|SUPOSITORIO/.test(f))                                                return 'RECTAL'
+  if (/\bNASAL\b/.test(f))                                                         return 'NASAL'
+  if (/\bOTIC|ÓTICA|OTICA\b/.test(f))                                              return 'OTICO'
+  if (/INHALACI|INHALADO|INHALADOR|PULMONAR|NEBULIZACI/.test(f))                   return 'INHALADO'
+  if (/PARCHE|TRANSDER/.test(f))                                                    return 'TRANSDERMICO'
+  if (/SUBLINGUAL|BUCODISPERS/.test(f))                                             return 'SUBLINGUAL'
+  if (/LIBERACI.N (PROLONGADA|CONTROLADA|MODIFICADA|SOSTENIDA|RETARDADA)|ACCION PROLONGADA/.test(f)) return 'SOLIDO_ORAL_LP'
+  if (/LIOFILIZ|POLVO.*(INYECT|RECONSTITUIR.*INYECT)|CONCENTRADO.*PERFUS|EMULSION INYECT|SUSPENSION INYECT/.test(f)) return 'INYECTABLE'
+  if (/INYECT|PARENTERAL/.test(f))                                                  return 'INYECTABLE'
+  if (/TABLETA|COMPRIMIDO|GRAGEA/.test(f))                                          return 'SOLIDO_ORAL'
+  if (/\bCAPSULA\b/.test(f))                                                        return 'SOLIDO_ORAL'
+  if (/POLVO PARA (RECONSTITUIR|SUSPENSION)|GRANULADO ORAL|EFERVESCENTE/.test(f))   return 'ORAL_DISPERSABLE'
+  if (/JARABE|SOLUCION ORAL|SUSPENSION ORAL|ELIXIR|GOTAS ORAL|EMULSION ORAL/.test(f)) return 'LIQUIDO_ORAL'
+  if (/UNGÜENTO|UNGUENTO|POMADA|CREMA|GEL|LOCION|PASTA|EMULSI|ESPUMA/.test(f))     return 'TOPICO'
+
+  return f
 }
 
 function labelGrupo(g: string): string {
@@ -141,6 +166,14 @@ function BadgeEstado({ estado }: { estado: string }) {
   )
 }
 
+function BadgeRenovacion() {
+  return (
+    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-700 whitespace-nowrap shrink-0">
+      En tramite renovacion
+    </span>
+  )
+}
+
 function TagDCI({ dci, highlight }: { dci: string; highlight?: boolean }) {
   return (
     <span className={`text-[11px] px-2 py-0.5 rounded-full border ${
@@ -172,6 +205,8 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
   const distCantidad        = useMemo(() => alternativas.filter(a => a.tipo === 'MISMA_CONC_DIFERENTE_CANTIDAD'), [alternativas])
   const distForma           = useMemo(() => alternativas.filter(a => a.tipo === 'MISMA_CONC_DIFERENTE_FORMA'),    [alternativas])
   const distConcentracion   = useMemo(() => alternativas.filter(a => a.tipo === 'DIFERENTE_CONCENTRACION'),       [alternativas])
+  const equivalentesExactos = useMemo(() => alternativas.filter(a => a.tipo === 'EQUIVALENTE_EXACTO'),            [alternativas])
+  const diferenteVia        = useMemo(() => alternativas.filter(a => a.tipo === 'ALTERNATIVA_DIFERENTE_FORMA'),   [alternativas])
   const terapeuticas        = useMemo(() => alternativas.filter(a => TIPOS_TERAPEUTICOS.includes(a.tipo)),        [alternativas])
   const porTipo      = useMemo(() => TIPOS_TERAPEUTICOS.reduce<Record<string, AlternativaLive[]>>((acc, t) => {
     acc[t] = alternativas.filter(a => a.tipo === t)
@@ -215,6 +250,7 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
           <span className="text-slate-300 text-xs">·</span>
           <span className="text-xs text-slate-400 truncate max-w-[130px]">{dest.laboratorio}</span>
           <BadgeEstado estado={dest.estado_cum} />
+          {dest.fuente === 'CUM_RENOVACION' && <BadgeRenovacion />}
         </div>
         {/* Fila 3: forma + detalle técnico (secundario) */}
         <div className="flex items-center gap-1.5 mt-1 flex-wrap">
@@ -275,21 +311,6 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
             <span className="text-xs text-slate-400 ml-auto">{alternativas.length} alternativas</span>
           )}
         </div>
-        {/* Fila 3: productos en el grupo */}
-        {grupoMeds.length > 0 && (
-          <div className="mt-2 pt-2 border-t border-slate-200">
-            <p className="text-[10px] text-slate-400 uppercase tracking-wide font-semibold mb-1">
-              {grupoMeds.length} {grupoMeds.length === 1 ? 'producto' : 'productos'} con esta presentación
-            </p>
-            <div className="flex flex-wrap gap-1">
-              {grupoMeds.map((m, i) => (
-                <span key={i} className="text-[11px] bg-white border border-slate-200 rounded px-1.5 py-0.5 text-slate-600 truncate max-w-[220px]" title={`${m.nombre_comercial} · ${m.laboratorio}`}>
-                  {m.nombre_comercial}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="p-4 space-y-4">
@@ -323,164 +344,216 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
 
         {!cargando && (
           <>
-            {/* Sección 1 — Sustitutos directos */}
-            {sustitutos.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                  <p className="text-xs font-bold text-emerald-800 uppercase tracking-wide">
-                    Sustitutos directos — {sustitutos.length}
-                  </p>
-                </div>
-                <p className="text-xs text-slate-500 mb-2 pl-4">
-                  Mismo PA · misma concentración · misma cantidad · misma forma. Intercambiables directamente.
+            {/* Tier 1 — Misma molécula · misma vía · misma concentración */}
+            {(sustitutos.length > 0 || distCantidad.length > 0 || equivalentesExactos.length > 0) && (
+              <div className="space-y-3">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">
+                  Misma molécula · misma vía · misma concentración
                 </p>
-                <div className="border border-emerald-200 rounded-lg overflow-hidden">
-                  {sustitutos.map((alt, i) => {
-                    const dest = alt.medicamento_destino
-                    return (
-                      <div key={i} className="flex items-center gap-3 px-3 py-2.5 border-b border-emerald-50 last:border-0 hover:bg-emerald-50 transition-colors">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <p className="text-sm font-medium text-slate-800 truncate">{dest?.nombre_comercial ?? alt.cum_destino}</p>
-                            {dest && esNTI(dest.principios_dci) && <BadgeNTI />}
+
+                {sustitutos.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                      <p className="text-xs font-bold text-emerald-800 uppercase tracking-wide">
+                        Sustitutos directos — {sustitutos.length}
+                      </p>
+                    </div>
+                    <p className="text-xs text-slate-500 mb-2 pl-4">
+                      Mismo PA · misma concentración · misma cantidad · misma forma. Intercambiables directamente.
+                    </p>
+                    <div className="border border-emerald-200 rounded-lg overflow-hidden">
+                      {sustitutos.map((alt, i) => {
+                        const dest = alt.medicamento_destino
+                        return (
+                          <div key={i} className="flex items-center gap-3 px-3 py-2.5 border-b border-emerald-50 last:border-0 hover:bg-emerald-50 transition-colors">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-sm font-medium text-slate-800 truncate">{dest?.nombre_comercial ?? alt.cum_destino}</p>
+                                {dest && esNTI(dest.principios_dci) && <BadgeNTI />}
+                              </div>
+                              {dest?.concentracion_display && (
+                                <p className="text-xs font-mono text-slate-500 truncate">
+                                  {dest.concentracion_display}
+                                  {dest.presentacion && <span className="text-slate-400"> · {dest.presentacion}</span>}
+                                </p>
+                              )}
+                            </div>
+                            <div className="shrink-0 text-right">
+                              <p className="text-xs text-slate-600 font-medium truncate max-w-[130px]">{dest?.laboratorio}</p>
+                              {dest && <BadgeEstado estado={dest.estado_cum} />}
+                            </div>
                           </div>
-                          {dest?.concentracion_display && (
-                            <p className="text-xs font-mono text-slate-500 truncate">
-                              {dest.concentracion_display}
-                              {dest.presentacion && <span className="text-slate-400"> · {dest.presentacion}</span>}
-                            </p>
-                          )}
-                        </div>
-                        <div className="shrink-0 text-right">
-                          <p className="text-xs text-slate-600 font-medium truncate max-w-[130px]">{dest?.laboratorio}</p>
-                          {dest && <BadgeEstado estado={dest.estado_cum} />}
-                        </div>
-                      </div>
-                    )
-                  })}
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {distCantidad.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-2 h-2 rounded-full bg-lime-500 shrink-0" />
+                      <p className="text-xs font-bold text-lime-800 uppercase tracking-wide">
+                        Diferente cantidad de envase ({distCantidad.length})
+                      </p>
+                    </div>
+                    <p className="text-xs text-slate-500 mb-2 pl-4">
+                      Misma concentración y forma farmacéutica, distinto volumen o número de dosis por envase.
+                    </p>
+                    <div className="border border-lime-200 rounded-lg overflow-hidden">
+                      {distCantidad.map((alt, i) => {
+                        const dest = alt.medicamento_destino
+                        if (!dest) return (
+                          <div key={i} className="px-3 py-2 border-b border-lime-50 last:border-0 text-xs text-slate-400 font-mono">{alt.cum_destino}</div>
+                        )
+                        const totalDest = computeTotal(dest.concentracion_display || '', dest.presentacion || '')
+                        return (
+                          <div key={i} className="flex items-center gap-3 px-3 py-2.5 border-b border-lime-50 last:border-0 hover:bg-lime-50 transition-colors">
+                            <div className="shrink-0 text-right min-w-[56px]">
+                              {totalDest
+                                ? <p className="text-sm font-bold font-mono text-lime-700 leading-tight">{totalDest.label}</p>
+                                : <p className="text-xs font-mono text-slate-600">{dest.concentracion_display}</p>
+                              }
+                              {dest.presentacion && (
+                                <p className="text-[10px] text-slate-400 font-mono mt-0.5">{dest.presentacion}</p>
+                              )}
+                            </div>
+                            <div className="w-px self-stretch bg-lime-100 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-xs font-medium text-slate-700 truncate">{dest.nombre_comercial}</p>
+                                {esNTI(dest.principios_dci) && <BadgeNTI />}
+                              </div>
+                              <p className="text-[11px] text-slate-400 truncate mt-0.5">{dest.laboratorio}</p>
+                            </div>
+                            <BadgeEstado estado={dest.estado_cum} />
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {equivalentesExactos.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-2 h-2 rounded-full bg-blue-400 shrink-0" />
+                      <p className="text-xs font-bold text-blue-800 uppercase tracking-wide">
+                        Equivalente por sal o éster — {equivalentesExactos.length}
+                      </p>
+                    </div>
+                    <p className="text-xs text-slate-500 mb-2 pl-4">
+                      Distinta sal o éster del mismo compuesto. Clínicamente equivalentes en la mayoría de casos.
+                    </p>
+                    <div className="space-y-2">
+                      {equivalentesExactos.map((alt, i) => renderAlternativa(alt, i, 'EQUIVALENTE_EXACTO'))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tier 2 — Misma molécula · misma vía · diferente concentración o forma */}
+            {(distForma.length > 0 || distConcentracion.length > 0) && (
+              <div className="space-y-3">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">
+                  Misma molécula · misma vía · diferente concentración o forma
+                </p>
+
+                {distConcentracion.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-2 h-2 rounded-full bg-teal-400 shrink-0" />
+                      <p className="text-xs font-bold text-teal-800 uppercase tracking-wide">
+                        Diferente concentración ({distConcentracion.length})
+                      </p>
+                    </div>
+                    <p className="text-xs text-slate-500 mb-2 pl-4">
+                      Mismo PA y vía. La dosis varía — requiere ajuste de posología por el profesional de salud.
+                    </p>
+                    <div className="border border-teal-200 rounded-lg overflow-hidden">
+                      {distConcentracion.map((alt, i) => {
+                        const dest = alt.medicamento_destino
+                        if (!dest) return (
+                          <div key={i} className="px-3 py-2 border-b border-teal-50 last:border-0 text-xs text-slate-400 font-mono">{alt.cum_destino}</div>
+                        )
+                        const totalDest = computeTotal(dest.concentracion_display || '', dest.presentacion || '')
+                        return (
+                          <div key={i} className="flex items-center gap-3 px-3 py-2.5 border-b border-teal-50 last:border-0 hover:bg-teal-50 transition-colors">
+                            <div className="shrink-0 text-right min-w-[72px]">
+                              {totalDest
+                                ? <p className="text-sm font-bold font-mono text-teal-700 leading-tight">{totalDest.label}</p>
+                                : <p className="text-xs font-mono text-slate-600">{dest.concentracion_display}</p>
+                              }
+                              {dest.concentracion_display && (
+                                <p className="text-[10px] text-slate-400 font-mono mt-0.5">{dest.concentracion_display}</p>
+                              )}
+                            </div>
+                            <div className="w-px self-stretch bg-teal-100 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-xs font-medium text-slate-700 truncate">{dest.nombre_comercial}</p>
+                                {esNTI(dest.principios_dci) && <BadgeNTI />}
+                              </div>
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <span className="text-[10px] text-slate-400 bg-slate-100 px-1 py-0.5 rounded">
+                                  {labelGrupo(grupoForma(dest.forma_farmaceutica, dest.via_administracion))}
+                                </span>
+                                <span className="text-[11px] text-slate-400 truncate">{dest.laboratorio}</span>
+                              </div>
+                            </div>
+                            <BadgeEstado estado={dest.estado_cum} />
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {distForma.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-2 h-2 rounded-full bg-sky-400 shrink-0" />
+                      <p className="text-xs font-bold text-sky-800 uppercase tracking-wide">
+                        Diferente forma farmacéutica ({distForma.length})
+                      </p>
+                    </div>
+                    <p className="text-xs text-slate-500 mb-2 pl-4">
+                      Mismo PA y dosis. La forma varía (ej. convencional vs liberación prolongada). Requiere evaluación clínica.
+                    </p>
+                    <div className="space-y-2">
+                      {distForma.map((alt, i) => renderAlternativa(alt, i, 'MISMA_CONC_DIFERENTE_FORMA'))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tier 3 — Misma molécula · diferente vía */}
+            {diferenteVia.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">
+                  Misma molécula · diferente vía de administración
+                </p>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+                    <p className="text-xs font-bold text-amber-800 uppercase tracking-wide">
+                      Diferente vía — {diferenteVia.length}
+                    </p>
+                  </div>
+                  <p className="text-xs text-slate-500 mb-2 pl-4">
+                    Oral vs. inyectable, tópico vs. sistémico, etc. Requiere evaluación clínica.
+                  </p>
+                  <div className="space-y-2">
+                    {diferenteVia.map((alt, i) => renderAlternativa(alt, i, 'ALTERNATIVA_DIFERENTE_FORMA'))}
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* Sección 2 — Misma concentración, diferente cantidad */}
-            {distCantidad.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="w-2 h-2 rounded-full bg-lime-500 shrink-0" />
-                  <p className="text-xs font-bold text-lime-800 uppercase tracking-wide">
-                    Misma concentración · diferente cantidad ({distCantidad.length})
-                  </p>
-                </div>
-                <p className="text-xs text-slate-500 mb-2 pl-4">
-                  Misma concentración y forma farmacéutica, distinto volumen o número de dosis por envase.
-                </p>
-                <div className="border border-lime-200 rounded-lg overflow-hidden">
-                  {distCantidad.map((alt, i) => {
-                    const dest = alt.medicamento_destino
-                    if (!dest) return (
-                      <div key={i} className="px-3 py-2 border-b border-lime-50 last:border-0 text-xs text-slate-400 font-mono">{alt.cum_destino}</div>
-                    )
-                    const totalDest = computeTotal(dest.concentracion_display || '', dest.presentacion || '')
-                    return (
-                      <div key={i} className="flex items-center gap-3 px-3 py-2.5 border-b border-lime-50 last:border-0 hover:bg-lime-50 transition-colors">
-                        {/* Cantidad total — lo que diferencia */}
-                        <div className="shrink-0 text-right min-w-[56px]">
-                          {totalDest
-                            ? <p className="text-sm font-bold font-mono text-lime-700 leading-tight">{totalDest.label}</p>
-                            : <p className="text-xs font-mono text-slate-600">{dest.concentracion_display}</p>
-                          }
-                          {dest.presentacion && (
-                            <p className="text-[10px] text-slate-400 font-mono mt-0.5">{dest.presentacion}</p>
-                          )}
-                        </div>
-                        <div className="w-px self-stretch bg-lime-100 shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <p className="text-xs font-medium text-slate-700 truncate">{dest.nombre_comercial}</p>
-                            {esNTI(dest.principios_dci) && <BadgeNTI />}
-                          </div>
-                          <p className="text-[11px] text-slate-400 truncate mt-0.5">{dest.laboratorio}</p>
-                        </div>
-                        <BadgeEstado estado={dest.estado_cum} />
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Sección 3 — Misma concentración, diferente forma */}
-            {distForma.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="w-2 h-2 rounded-full bg-sky-400 shrink-0" />
-                  <p className="text-xs font-bold text-sky-800 uppercase tracking-wide">
-                    Misma molécula · misma concentración · diferente forma ({distForma.length})
-                  </p>
-                </div>
-                <p className="text-xs text-slate-500 mb-2 pl-4">
-                  Mismo PA y dosis. La forma farmacéutica varía (ej. convencional vs liberación prolongada). Requiere evaluación clínica.
-                </p>
-                <div className="space-y-2">
-                  {distForma.map((alt, i) => renderAlternativa(alt, i, 'MISMA_CONC_DIFERENTE_FORMA'))}
-                </div>
-              </div>
-            )}
-
-            {/* Sección 4 — Diferente concentración */}
-            {distConcentracion.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="w-2 h-2 rounded-full bg-teal-400 shrink-0" />
-                  <p className="text-xs font-bold text-teal-800 uppercase tracking-wide">
-                    Misma molécula — diferente concentración ({distConcentracion.length})
-                  </p>
-                </div>
-                <p className="text-xs text-slate-500 mb-2 pl-4">
-                  Mismo PA y vía. La dosis varía — requiere ajuste de posología por el profesional de salud.
-                </p>
-                <div className="border border-teal-200 rounded-lg overflow-hidden">
-                  {distConcentracion.map((alt, i) => {
-                    const dest = alt.medicamento_destino
-                    if (!dest) return (
-                      <div key={i} className="px-3 py-2 border-b border-teal-50 last:border-0 text-xs text-slate-400 font-mono">{alt.cum_destino}</div>
-                    )
-                    const totalDest = computeTotal(dest.concentracion_display || '', dest.presentacion || '')
-                    return (
-                      <div key={i} className="flex items-center gap-3 px-3 py-2.5 border-b border-teal-50 last:border-0 hover:bg-teal-50 transition-colors">
-                        {/* Concentración diferente — comparación con la seleccionada */}
-                        <div className="shrink-0 text-right min-w-[72px]">
-                          {totalDest
-                            ? <p className="text-sm font-bold font-mono text-teal-700 leading-tight">{totalDest.label}</p>
-                            : <p className="text-xs font-mono text-slate-600">{dest.concentracion_display}</p>
-                          }
-                          {dest.concentracion_display && (
-                            <p className="text-[10px] text-slate-400 font-mono mt-0.5">{dest.concentracion_display}</p>
-                          )}
-                        </div>
-                        <div className="w-px self-stretch bg-teal-100 shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <p className="text-xs font-medium text-slate-700 truncate">{dest.nombre_comercial}</p>
-                            {esNTI(dest.principios_dci) && <BadgeNTI />}
-                          </div>
-                          <div className="flex items-center gap-1 mt-0.5">
-                            <span className="text-[10px] text-slate-400 bg-slate-100 px-1 py-0.5 rounded">
-                              {labelGrupo(grupoForma(dest.forma_farmaceutica, dest.via_administracion))}
-                            </span>
-                            <span className="text-[11px] text-slate-400 truncate">{dest.laboratorio}</span>
-                          </div>
-                        </div>
-                        <BadgeEstado estado={dest.estado_cum} />
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Sección 4 — Alternativas terapéuticas (colapsable) */}
+            {/* Tier 4 — Diferente molécula · misma clase terapéutica (colapsable) */}
             {terapeuticas.length > 0 && (
               <div>
                 <button
@@ -490,7 +563,7 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-slate-400 shrink-0" />
                     <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                      Alternativas terapéuticas — {terapeuticas.length}
+                      Clase terapéutica — {terapeuticas.length}
                     </p>
                   </div>
                   <svg className={`w-4 h-4 text-slate-400 transition-transform ${terapExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -530,7 +603,7 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
               </div>
             )}
 
-            {sustitutos.length > 0 && distCantidad.length === 0 && distForma.length === 0 && distConcentracion.length === 0 && terapeuticas.length === 0 && (
+            {sustitutos.length > 0 && distCantidad.length === 0 && distForma.length === 0 && distConcentracion.length === 0 && equivalentesExactos.length === 0 && diferenteVia.length === 0 && terapeuticas.length === 0 && (
               <p className="text-xs text-slate-400 text-center pt-1">
                 Solo hay sustitutos directos. No se encontraron alternativas en la misma clase ATC.
               </p>
@@ -1039,6 +1112,7 @@ export default function BuscadorMedicamentos() {
                     {rows.map(row => {
                       const sel      = selectedGroupKey === row.key
                       const hasNTI   = row.meds.some(m => esNTI(m.principios_dci))
+                      const isRenov  = row.meds.every(m => m.fuente === 'CUM_RENOVACION')
                       const dcisGrupo = [...new Set(row.meds.flatMap(m => m.principios_dci))].slice(0, 3)
                       const tiposDistinct = [...new Set(row.meds.map(m => m.tipo_formula))]
                       const labs = row.meds
@@ -1080,6 +1154,7 @@ export default function BuscadorMedicamentos() {
                               }
                               {hasNTI && <BadgeNTI />}
                               {tiposDistinct.length === 1 && <BadgeFormula tipo={tiposDistinct[0]} />}
+                              {isRenov && <BadgeRenovacion />}
                             </div>
                             <p className="text-[11px] text-slate-400 truncate mt-0.5">
                               {row.meds.length} {row.meds.length === 1 ? 'producto' : 'productos'} · {labs}{more}

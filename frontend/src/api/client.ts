@@ -17,6 +17,7 @@ export interface MedicamentoLive {
   registro_sanitario: string
   estado_registro: string
   estado_cum: string
+  fuente?: string             // CUM_ACTIVO | CUM_RENOVACION
 }
 
 export interface AlternativaLive {

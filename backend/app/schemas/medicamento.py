@@ -57,6 +57,17 @@ class MedicamentoLiveRead(BaseModel):
     registro_sanitario: str
     estado_registro: str
     estado_cum: str
+    # Fuente del registro
+    fuente:                str                = 'CUM_ACTIVO'  # CUM_ACTIVO | CUM_RENOVACION
+    # Campos enriquecidos por LLM — presentes si el CUM ya fue procesado
+    dosis_total_mg:        Optional[float]     = None
+    concentracion_mg_ml:   Optional[float]     = None
+    volumen_ml_por_unidad: Optional[float]     = None
+    forma_normalizada:     Optional[str]       = None
+    via_normalizada:       Optional[list[str]] = None
+    tipo_formula_llm:      Optional[str]       = None   # MONO, BI, TRI, TETRA
+    componentes:           Optional[list]      = None   # [{"dci","concentracion_mg_ml","dosis_mg"}]
+    notas_llm:             Optional[str]       = None
 
 
 class AlternativaLiveRead(BaseModel):
