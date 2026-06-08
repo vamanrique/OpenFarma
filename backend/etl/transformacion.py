@@ -194,10 +194,20 @@ _UNIT_TO_MG: dict[str, float] = {
     "mcg": 0.001, "µg": 0.001, "ug": 0.001,
 }
 
-# Convierte gramos a miligramos en strings de concentración para display uniforme.
-# Actúa sobre "N g" y "N gr" standalone; no toca "mg", "mcg", "g/mL", "gr/mL".
+# Convierte gramos a miligramos en el NUMERADOR de concentraciones para display uniforme.
+# Solo actúa sobre la parte antes de "/" para no convertir denominadores en masa (ej. "5 mg/100 g").
 _G_A_MG_RE = re.compile(
     r'(\d+(?:[.,]\d+)?)\s+(?:g|gr)\b(?!/)',
+    re.IGNORECASE,
+)
+
+# Extrae porcentaje del nombre de producto para formas tópicas: "ACICLOVIR 5% UNGUENTO" → "5%"
+_PORCENTAJE_EN_NOMBRE = re.compile(r'(\d+(?:[.,]\d+)?)\s*%', re.IGNORECASE)
+
+# Extrae dosis standalone (sin denominador /mL) del nombre del producto para sólidos orales:
+# "VALACICLOVIR 1 G" → (1, 'g'), "AMOXICILINA 500 MG" → (500, 'mg')
+_DOSIS_ORAL_EN_NOMBRE = re.compile(
+    r'\b(\d+(?:[.,]\d+)?)\s*(mg|g|gr)\b(?!\s*/)',
     re.IGNORECASE,
 )
 
@@ -209,11 +219,15 @@ def _to_mg_equiv(valor: float, unidad: str) -> float:
 
 
 def _normalizar_g_a_mg(conc: str) -> str:
-    """Convierte gramos a mg en string de concentración: '0.5 g' → '500 mg', '1 gr' → '1000 mg'."""
+    """Convierte gramos a mg solo en el NUMERADOR: '0.5 g' → '500 mg', '1 gr' → '1000 mg'.
+    No toca el denominador ('5 mg/100 g' permanece igual — evita '5 mg/100000 mg')."""
     def repl(m: re.Match) -> str:
         val = float(m.group(1).replace(',', '.'))
         return f"{val * 1000:g} mg"
-    return _G_A_MG_RE.sub(repl, conc)
+    # Dividir en numerador/denominador y solo convertir el numerador
+    partes = conc.split('/', 1)
+    partes[0] = _G_A_MG_RE.sub(repl, partes[0])
+    return '/'.join(partes)
 
 
 def normalizar_principio(principio: str) -> str:
@@ -400,13 +414,34 @@ _VIA_A_GRUPO: dict[str, str] = {
 
 def _grupo_forma(forma: str, via: str = '') -> str:
     """Clasifica una forma farmacéutica en un grupo de equivalencia.
-    La vía de administración tiene precedencia para evitar que, por ejemplo,
-    una cápsula vaginal quede en el mismo grupo que una cápsula oral.
+    La vía de administración tiene precedencia. Si no hay coincidencia exacta
+    en el diccionario, usa keywords para cubrir las variantes del CUM
+    (ej. "UNGUENTO TOPICO", "POLVO PARA RECONSTITUIR A SUSPENSION ORAL").
     """
     via_u = via.strip().upper()
     if via_u in _VIA_A_GRUPO:
         return _VIA_A_GRUPO[via_u]
-    return _FORMA_A_GRUPO.get(forma.strip().upper(), forma.strip().upper())
+    f = forma.strip().upper()
+    if f in _FORMA_A_GRUPO:
+        return _FORMA_A_GRUPO[f]
+    # Keyword fallback — mismo orden de prioridad que el componente frontend
+    if re.search(r'OFTALM', f):                                                           return 'OFTALMICO'
+    if re.search(r'VAGINAL', f):                                                          return 'VAGINAL'
+    if re.search(r'RECTAL|SUPOSITORIO', f):                                               return 'RECTAL'
+    if re.search(r'\bNASAL\b', f):                                                        return 'NASAL'
+    if re.search(r'\bOTIC|OTICA\b', f):                                                   return 'OTICO'
+    if re.search(r'INHALACI|INHALADO|INHALADOR|PULMONAR|NEBULIZACI', f):                  return 'INHALADO'
+    if re.search(r'PARCHE|TRANSDER', f):                                                  return 'TRANSDERMICO'
+    if re.search(r'SUBLINGUAL|BUCODISPERS', f):                                           return 'SUBLINGUAL'
+    if re.search(r'LIBERACI.N (PROLONGADA|CONTROLADA|MODIFICADA|SOSTENIDA|RETARDADA)|ACCION PROLONGADA', f): return 'SOLIDO_ORAL_LP'
+    if re.search(r'LIOFILIZ|POLVO.*(INYECT|RECONSTITUIR.*INYECT)|CONCENTRADO.*PERFUS|EMULSION INYECT|SUSPENSION INYECT', f): return 'INYECTABLE'
+    if re.search(r'INYECT|PARENTERAL', f):                                                return 'INYECTABLE'
+    if re.search(r'POLVO PARA (RECONSTITUIR|SUSPENSION)|GRANULADO ORAL|EFERVESCENTE', f): return 'ORAL_DISPERSABLE'
+    if re.search(r'TABLETA|COMPRIMIDO|GRAGEA', f):                                        return 'SOLIDO_ORAL'
+    if re.search(r'\bCAPSULA\b', f):                                                      return 'SOLIDO_ORAL'
+    if re.search(r'JARABE|SOLUCION ORAL|SUSPENSION ORAL|ELIXIR|GOTAS ORAL|EMULSION ORAL', f): return 'LIQUIDO_ORAL'
+    if re.search(r'UNGÜENTO|UNGUENTO|POMADA|CREMA|GEL|LOCION|PASTA|EMULSIO|ESPUMA', f):  return 'TOPICO'
+    return f
 
 
 # Grupos que se normalizan a concentración por mL
@@ -453,40 +488,56 @@ def _conc_desde_nombre(nombre: str) -> str:
 def _normalizar_por_forma(conc: str, g_forma: str, nombre_prod: str, forma_raw: str = '') -> str:
     """
     Normaliza la concentración según el grupo farmacéutico:
-    - INYECTABLE / LIQUIDO_ORAL → ratio /mL; si no se puede calcular desde campos
-      estructurados, intenta extraerlo del nombre del producto.
-    - INHALADO / NASAL → primer valor+unidad con /dosis (excepto nebulizables
-      que ya devuelven /mL desde construir_concentracion).
-    - Otros grupos (sólidos orales, tópicos, vaginales…) → sin cambio.
-    - POLVO / LIOFILIZADO inyectable → sin normalización /mL (el volumen del CUM
-      es el del solvente de reconstitución, no de la solución final).
+    - INYECTABLE / LIQUIDO_ORAL → ratio /mL desde campos estructurados o nombre.
+    - ORAL_DISPERSABLE (polvos para suspensión) → extrae ratio /mL del nombre
+      del producto (ej. "AMOXICILINA 250MG/5ML" → "50 mg/mL").
+    - TOPICO → extrae porcentaje del nombre (ej. "ACICLOVIR 5% UNGÜENTO" → "5%").
+    - INHALADO / NASAL → primer valor+unidad con /dosis.
+    - Sólidos orales y otros → sin cambio.
+    - POLVO/LIOFILIZADO inyectable → sin normalización /mL.
     """
     if g_forma in _GRUPOS_NORM_ML:
-        # Polvos para reconstitución: su concentración ya es correcta tal como viene
-        # (la masa total del fármaco por vial). No intentar extraer /mL del nombre.
+        # Polvos inyectables para reconstitución: la masa total por vial ya es correcta.
         if any(kw in forma_raw.upper() for kw in _FORMAS_POLVO):
             return conc
         if g_forma == 'LIQUIDO_ORAL':
-            # Para líquidos orales el nombre del producto (ej. "AMOXICILINA 250MG/5ML")
-            # es más fiable que los campos estructurados: el CUM suele poner el volumen
-            # del frasco entero ("FRASCO 100 ML") en unidadreferencia, no la dosis.
             c_fb = _conc_desde_nombre(nombre_prod)
             if c_fb:
                 return c_fb
-        # Para inyectables (y líquidos orales sin ratio en el nombre):
-        # confiar en el /mL calculado desde campos estructurados, o intentar desde nombre.
-        if '/mL' in conc or '/ml' in conc:
+        # Aceptar solo si tiene unidad de masa antes del /mL (descarta "5 ml/5 ml").
+        _masa_por_ml = re.compile(
+            r'^\d[\d.,]*\s*(mg|g|mcg|µg|ug|ui|iu|meq|mmol)\s*/mL', re.IGNORECASE
+        )
+        if _masa_por_ml.match(conc):
             return conc
         c_fb = _conc_desde_nombre(nombre_prod)
         return c_fb if c_fb else conc
+
+    if g_forma == 'ORAL_DISPERSABLE':
+        # Polvos para suspensión oral: la concentración real está en el nombre del producto
+        # (ej. "AMOXICILINA 250MG/5ML" → 50 mg/mL tras reconstitución).
+        # Tabletas efervescentes/dispersables no tienen ratio /mL en el nombre → sin cambio.
+        c_fb = _conc_desde_nombre(nombre_prod)
+        if c_fb:
+            return c_fb
+        return conc
+
+    if g_forma == 'TOPICO':
+        # Preparaciones tópicas: la concentración estándar es el porcentaje.
+        # El CUM frecuentemente almacena "5 U / 100 G" → debería mostrarse como "5%".
+        m_pct = _PORCENTAJE_EN_NOMBRE.search(nombre_prod)
+        if m_pct:
+            return f"{m_pct.group(1).rstrip('0').rstrip('.')}%"
+        return conc
+
     if g_forma in _GRUPOS_NORM_DOSIS:
-        # nebulizables ya vienen como X mg/mL — conservar
         if '/dosis' in conc.lower() or '/mL' in conc or '/ml' in conc:
             return conc
         m = re.match(r'^(\d+(?:[.,]\d+)?)\s*(\S+)', conc)
         if m:
             return f"{m.group(1)} {m.group(2)}/dosis"
         return conc
+
     return conc
 
 
@@ -604,11 +655,29 @@ def construir_concentracion(row: pd.Series) -> str:
     unidad_display = "UI" if unidad_real.upper() in ("UI", "IU") else unidad_real.lower()
     base = f"{cantidad} {unidad_display}"
 
+    # Si la unidad original era "U" (inválida, convertida a mg por defecto) y el resultado
+    # parece incorrecto (cantidad pequeña como "1 mg"), intentar extraer la dosis del nombre
+    # del producto para sólidos orales. Ejemplo: VALACICLOVIR 1 G → qty=1 U → "1 mg" es
+    # incorrecto; el nombre tiene "1 G" → extraer → "1000 mg".
+    if unidad.upper() in _INVALIDOS and unidad_real == "mg":
+        nombre_raw = str(row.get("producto", "")).upper()
+        m_oral = _DOSIS_ORAL_EN_NOMBRE.search(nombre_raw)
+        if m_oral:
+            val = float(m_oral.group(1).replace(',', '.'))
+            u_name = m_oral.group(2).lower()
+            if u_name in ('g', 'gr'):
+                val *= 1000
+                u_name = 'mg'
+            base = f"{val:g} {u_name}"
+
     # Agregar referencia SOLO si contiene un valor numérico real (volumen, masa, etc.)
-    # Excluir: nombres de forma farmacéutica sin dígitos, conteos de dosis.
-    # Para polvos/liofilizados, el volumen de unidadreferencia es el del solvente:
-    # no debe incorporarse a la concentración (ya queda en `presentacion`).
+    # Excluir: nombres de forma farmacéutica sin dígitos, conteos de dosis,
+    # polvos/liofilizados, y casos donde la unidad principal ya es un volumen
+    # (unidad=mL indica que la cantidad es un volumen, no una masa — appending daría
+    # "5 ml/5 ml" que no tiene sentido clínico).
+    _UNIDADES_VOLUMEN = {"ML", "DL", "L", "CC", "CM3"}
     if (not es_polvo
+            and unidad_real.upper() not in _UNIDADES_VOLUMEN
             and unidad_ref and unidad_ref.upper() not in _INVALIDOS
             and unidad_ref.upper() != unidad_real.upper()
             and re.search(r'\d', unidad_ref)
