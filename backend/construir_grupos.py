@@ -113,19 +113,10 @@ def build_dci_key(cum: CumNormalizado) -> str | None:
 
 # ── DeepSeek clasificacion ────────────────────────────────────────────────────
 
-def clasificar_con_deepseek(
-    dci_key: str,
-    unclassified: list[dict],
-    existing_groups: list[dict],
-) -> list[dict]:
-    """
-    Calls DeepSeek to classify unclassified products into group_via + concentracion_norm.
-    Returns list of classification dicts.
-    """
-    if not DEEPSEEK_API_KEY:
-        print(f"  [WARN] No DEEPSEEK_API_KEY found, skipping AI classification for {dci_key}")
-        return []
+CHUNK_SIZE = 25  # max products per DeepSeek call to avoid JSON truncation
 
+def _clasificar_chunk(dci_key: str, chunk: list[dict], existing_groups: list[dict]) -> list[dict]:
+    """Single DeepSeek call for one chunk of products."""
     system_prompt = (
         "Eres un farmaceutico colombiano experto en el registro CUM-INVIMA. "
         "Dado un listado de productos farmaceuticos con datos incompletos de normalizacion, "
@@ -138,10 +129,9 @@ def clasificar_con_deepseek(
         "INHALADO, NASAL, OFTALMICO, OTICO, TOPICO, VAGINAL, RECTAL, TRANSDERMICO, LIQUIDO_ORAL. "
         "Responde SOLO con JSON valido, sin texto adicional."
     )
-
     user_content = json.dumps({
         "principio_activo": dci_key,
-        "productos_a_clasificar": unclassified,
+        "productos_a_clasificar": chunk,
         "grupos_existentes": existing_groups,
         "instruccion": (
             "Para cada producto en productos_a_clasificar, determina grupo_via y concentracion_norm. "
@@ -151,33 +141,45 @@ def clasificar_con_deepseek(
         ),
     }, ensure_ascii=False)
 
-    try:
-        with httpx.Client(timeout=60.0) as client:
-            resp = client.post(
-                f"{DEEPSEEK_BASE_URL}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": DEEPSEEK_MODEL,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_content},
-                    ],
-                    "response_format": {"type": "json_object"},
-                    "temperature": 0.1,
-                    "max_tokens": 4096,
-                },
-            )
-        resp.raise_for_status()
-        data = resp.json()
-        content = data["choices"][0]["message"]["content"]
-        parsed = json.loads(content)
-        return parsed.get("clasificaciones", [])
-    except Exception as exc:
-        print(f"  [ERROR] DeepSeek call failed for {dci_key}: {exc}")
+    with httpx.Client(timeout=60.0) as client:
+        resp = client.post(
+            f"{DEEPSEEK_BASE_URL}/chat/completions",
+            headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"},
+            json={
+                "model": DEEPSEEK_MODEL,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_content},
+                ],
+                "response_format": {"type": "json_object"},
+                "temperature": 0.1,
+                "max_tokens": 4096,
+            },
+        )
+    resp.raise_for_status()
+    parsed = json.loads(resp.json()["choices"][0]["message"]["content"])
+    return parsed.get("clasificaciones", [])
+
+
+def clasificar_con_deepseek(
+    dci_key: str,
+    unclassified: list[dict],
+    existing_groups: list[dict],
+) -> list[dict]:
+    """Classifies products in chunks of CHUNK_SIZE to avoid JSON truncation on large DCIs."""
+    if not DEEPSEEK_API_KEY:
+        print(f"  [WARN] No DEEPSEEK_API_KEY, skipping {dci_key}")
         return []
+
+    results: list[dict] = []
+    chunks = [unclassified[i:i+CHUNK_SIZE] for i in range(0, len(unclassified), CHUNK_SIZE)]
+    for idx, chunk in enumerate(chunks):
+        suffix = f" chunk {idx+1}/{len(chunks)}" if len(chunks) > 1 else ""
+        try:
+            results.extend(_clasificar_chunk(dci_key, chunk, existing_groups))
+        except Exception as exc:
+            print(f"  [ERROR] DeepSeek call failed for {dci_key}{suffix}: {exc}")
+    return results
 
 
 # ── Pipeline principal ────────────────────────────────────────────────────────
@@ -293,10 +295,15 @@ def _run_pipeline(db, args):
                 cum_id = cl.get("cum_id", "")
                 if not cum_id:
                     continue
+                raw_cval = cl.get("concentracion_valor")
+                try:
+                    cval_parsed = float(raw_cval) if raw_cval is not None else None
+                except (TypeError, ValueError):
+                    cval_parsed = None
                 ai_classifications[cum_id] = {
                     "grupo_via": cl.get("grupo_via", ""),
                     "cnorm": cl.get("concentracion_norm"),
-                    "cval": cl.get("concentracion_valor"),
+                    "cval": cval_parsed,
                     "cunit": cl.get("concentracion_unidad"),
                     "es_singleton": cl.get("es_singleton", False),
                 }
@@ -371,8 +378,12 @@ def _run_pipeline(db, args):
     inserted = 0
     for (dci_k, gv, cnorm), prod_list in groups.items():
         cum_ids = [p[0] for p in prod_list]
-        # Representative concentration value and unit (first non-None)
-        cval = next((p[1] for p in prod_list if p[1] is not None), None)
+        # Representative concentration value and unit (first non-None, must be float)
+        cval_raw = next((p[1] for p in prod_list if p[1] is not None), None)
+        try:
+            cval = float(cval_raw) if cval_raw is not None else None
+        except (TypeError, ValueError):
+            cval = None
         cunit = next((p[2] for p in prod_list if p[2] is not None), None)
 
         # Check if any product in this group was AI-reviewed
