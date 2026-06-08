@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { medicamentosApi, type MedicamentoLive, type AlternativaLive } from '../api/client'
+import { medicamentosApi, type MedicamentoLive, type AlternativaLive, type GruposEquivalencia, type GrupoDetalle } from '../api/client'
 
 // ─── Configuración de fórmulas ───────────────────────────────────────────────
 const FORMULA_CFG: Record<string, { label: string; color: string }> = {
@@ -202,6 +202,171 @@ function TagDCI({ dci, highlight }: { dci: string; highlight?: boolean }) {
     }`}>
       {dci}
     </span>
+  )
+}
+
+// ─── Panel de grupos de equivalencia ─────────────────────────────────────────
+function BadgeEstadoSimple({ estado_cum, fuente }: { estado_cum: string; fuente: string }) {
+  if (fuente === 'CUM_RENOVACION') {
+    return (
+      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-700 whitespace-nowrap shrink-0">
+        Renovacion
+      </span>
+    )
+  }
+  const activo = estado_cum === 'Activo'
+  return (
+    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium whitespace-nowrap shrink-0 ${
+      activo ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'
+    }`}>
+      {activo ? 'Activo' : (estado_cum || 'Inactivo')}
+    </span>
+  )
+}
+
+function GrupoSection({
+  titulo,
+  subtitulo,
+  grupo,
+  colorClass,
+  defaultOpen = false,
+}: {
+  titulo: string
+  subtitulo?: string
+  grupo: GrupoDetalle
+  colorClass: string
+  defaultOpen?: boolean
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div className={`border rounded-lg overflow-hidden ${colorClass}`}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:opacity-80 transition-opacity"
+      >
+        <div className="min-w-0">
+          <p className="text-xs font-bold leading-tight truncate">{titulo}</p>
+          {subtitulo && <p className="text-[10px] opacity-70 mt-0.5">{subtitulo}</p>}
+        </div>
+        <div className="flex items-center gap-2 shrink-0 ml-2">
+          <span className="text-[10px] font-semibold opacity-60">{grupo.n_productos} prod.</span>
+          <svg
+            className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-90' : ''}`}
+            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" />
+          </svg>
+        </div>
+      </button>
+      {open && (
+        <div className="border-t border-current border-opacity-10">
+          {grupo.productos.map((p, i) => (
+            <div key={i} className="flex items-center gap-2 px-3 py-2 border-b border-current border-opacity-5 last:border-0 bg-white bg-opacity-50">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-slate-800 truncate">{p.nombre_comercial}</p>
+                {p.laboratorio && (
+                  <p className="text-[10px] text-slate-400 truncate mt-0.5">{p.laboratorio}</p>
+                )}
+              </div>
+              <BadgeEstadoSimple estado_cum={p.estado_cum} fuente={p.fuente} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PanelGrupos({ gruposEq, cargando }: {
+  gruposEq: GruposEquivalencia | null
+  cargando: boolean
+}) {
+  if (cargando) {
+    return (
+      <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 text-center">
+        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-xs text-slate-400 mt-2">Cargando grupos...</p>
+      </div>
+    )
+  }
+
+  if (!gruposEq || gruposEq.grupos_fallback) return null
+
+  const { dci, mi_grupo, misma_via, otras_vias } = gruposEq
+  const hayGrupos = mi_grupo || misma_via.length > 0 || otras_vias.length > 0
+  if (!hayGrupos) return null
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+      {/* Header */}
+      <div className="bg-slate-50 border-b border-slate-200 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-bold text-slate-900">{dci}</p>
+          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">
+            Grupos
+          </span>
+        </div>
+        <p className="text-xs text-slate-400 mt-0.5">
+          Alternativas por equivalencia farmacologica
+        </p>
+      </div>
+
+      <div className="p-4 space-y-4">
+
+        {/* Mi grupo: sustitutos directos */}
+        {mi_grupo && (
+          <div className="space-y-2">
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">
+              Mi grupo (sustitutos directos)
+            </p>
+            <GrupoSection
+              titulo={`${mi_grupo.grupo_via_label}${mi_grupo.concentracion_norm ? ' · ' + mi_grupo.concentracion_norm : ''}`}
+              subtitulo={`${mi_grupo.n_productos} productos con mismo principio activo, via y concentracion`}
+              grupo={mi_grupo}
+              colorClass="border-emerald-200 bg-emerald-50 text-emerald-800"
+              defaultOpen={true}
+            />
+          </div>
+        )}
+
+        {/* Misma via, otras concentraciones */}
+        {misma_via.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">
+              Misma via · otras concentraciones
+            </p>
+            {misma_via.map(g => (
+              <GrupoSection
+                key={g.id}
+                titulo={`${g.grupo_via_label}${g.concentracion_norm ? ' · ' + g.concentracion_norm : ''}`}
+                subtitulo={`${g.n_productos} ${g.n_productos === 1 ? 'producto' : 'productos'}`}
+                grupo={g}
+                colorClass="border-teal-200 bg-teal-50 text-teal-800"
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Otras vias */}
+        {otras_vias.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">
+              Otras vias de administracion
+            </p>
+            {otras_vias.map(g => (
+              <GrupoSection
+                key={g.id}
+                titulo={`${g.grupo_via_label}${g.concentracion_norm ? ' · ' + g.concentracion_norm : ''}`}
+                subtitulo={`${g.n_productos} ${g.n_productos === 1 ? 'producto' : 'productos'}`}
+                grupo={g}
+                colorClass="border-amber-200 bg-amber-50 text-amber-800"
+              />
+            ))}
+          </div>
+        )}
+
+      </div>
+    </div>
   )
 }
 
@@ -761,6 +926,8 @@ export default function BuscadorMedicamentos() {
   const [alternativas, setAlternativas]           = useState<AlternativaLive[]>([])
   const [cargandoAlt, setCargandoAlt]             = useState(false)
   const [errorAlt, setErrorAlt]                   = useState('')
+  const [gruposEq, setGruposEq]                   = useState<GruposEquivalencia | null>(null)
+  const [cargandoGrupos, setCargandoGrupos]       = useState(false)
 
   const [filtroDCI, setFiltroDCIRaw]     = useState<string | null>(null)
   const [showAllDCI, setShowAllDCI]      = useState(false)
@@ -923,6 +1090,8 @@ export default function BuscadorMedicamentos() {
     setCargandoAlt(true)
     setErrorAlt('')
     setAlternativas([])
+    setCargandoGrupos(true)
+    setGruposEq(null)
     try {
       const res = await medicamentosApi.alternativas(med.cum_id)
       setAlternativas(res.data)
@@ -930,6 +1099,14 @@ export default function BuscadorMedicamentos() {
       setErrorAlt('No se pudieron cargar las alternativas.')
     } finally {
       setCargandoAlt(false)
+    }
+    try {
+      const gEq = await medicamentosApi.gruposEquivalencia(med.cum_id)
+      setGruposEq(gEq)
+    } catch {
+      setGruposEq(null)
+    } finally {
+      setCargandoGrupos(false)
     }
   }
 
@@ -1353,9 +1530,12 @@ export default function BuscadorMedicamentos() {
             )}
           </div>
 
-          {/* Panel alternativas */}
+          {/* Panel grupos + alternativas */}
           {medSeleccionado ? (
-            <div className="max-h-[70vh] overflow-y-auto">
+            <div className="max-h-[70vh] overflow-y-auto space-y-3">
+              {/* Grupos de equivalencia (se muestra si hay datos en la tabla) */}
+              <PanelGrupos gruposEq={gruposEq} cargando={cargandoGrupos} />
+              {/* Panel de alternativas clásico (siempre visible) */}
               <PanelAlternativas
                 medicamento={medSeleccionado}
                 grupoMeds={selectedGroupMeds}

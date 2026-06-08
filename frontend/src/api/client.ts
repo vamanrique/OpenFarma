@@ -48,6 +48,38 @@ export interface PrediccionMapa {
   medicamento_nombre?: string
 }
 
+export interface ProductoEnGrupo {
+  cum_id: string
+  nombre_comercial: string
+  laboratorio: string | null
+  registro_sanitario: string | null
+  estado_cum: string
+  fuente: string
+}
+
+export interface GrupoDetalle {
+  id: number
+  grupo_via: string
+  grupo_via_label: string
+  concentracion_norm: string | null
+  concentracion_valor: number | null
+  concentracion_unidad: string | null
+  n_productos: number
+  productos: ProductoEnGrupo[]
+  revisado_ia: boolean
+}
+
+export interface GruposEquivalencia {
+  dci: string
+  dci_key: string
+  mi_grupo: GrupoDetalle | null
+  misma_via: GrupoDetalle[]
+  otras_vias: GrupoDetalle[]
+  grupos_fallback: boolean
+}
+
+const BASE_URL = '/api/v1'
+
 export const medicamentosApi = {
   buscar: (q: string, soloActivos = true, limit = 20) =>
     api.get<MedicamentoLive[]>('/medicamentos/buscar', {
@@ -55,6 +87,11 @@ export const medicamentosApi = {
     }),
   alternativas: (cumId: string) =>
     api.get<AlternativaLive[]>(`/medicamentos/${encodeURIComponent(cumId)}/alternativas`),
+  gruposEquivalencia: async (cumId: string): Promise<GruposEquivalencia> => {
+    const r = await fetch(`${BASE_URL}/grupos/medicamentos/${encodeURIComponent(cumId)}`)
+    if (!r.ok) throw new Error('Error cargando grupos')
+    return r.json()
+  },
 }
 
 export const regionesApi = {
