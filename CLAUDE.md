@@ -21,20 +21,20 @@ Tabla central del sistema. Estado actual (2026-06-08):
 
 | Métrica | Valor |
 |---------|-------|
-| Total grupos | 3,701 |
-| NULL concentracion_norm | 290 (7.8%) |
+| Total grupos | 3,666 |
+| NULL concentracion_norm | 307 (8.4%) |
 | OTRO grupos | 0 |
-| Productos en grupos | 50,597 |
+| Normalización DCI | **100%** (52,830/52,830 productos) |
 
 ### Distribución por grupo_via
 
 | grupo_via | Grupos |
 |-----------|--------|
-| SOLIDO_ORAL | 1,568 |
-| INYECTABLE | 985 |
-| LIQUIDO_ORAL | 458 |
+| SOLIDO_ORAL | ~1,550 |
+| INYECTABLE | ~970 |
+| LIQUIDO_ORAL | ~450 |
 | TOPICO | 249 |
-| OFTALMICO | 152 |
+| OFTALMICO | ~145 |
 | INHALADO | 79 |
 | SOLIDO_ORAL_LP | 76 |
 | VAGINAL | 56 |
@@ -61,6 +61,7 @@ Tabla central del sistema. Estado actual (2026-06-08):
 | `backend/fix_grupos_calidad.py` | 7 pasos: OTRO→correct_via, NULL conc recovery, singleton merge, dedup |
 | `backend/fix_lp_grupos.py` | Mueve LP products de SOLIDO_ORAL → SOLIDO_ORAL_LP usando LP_RE regex |
 | `backend/fix_null_conc2.py` | Segunda pasada: OFTALMICO/NASAL/OTICO via conc_mg_ml, UI regex mejorado |
+| `backend/fix_dci_normalization.py` | Normaliza dci_key en grupos_equivalencia + principios_dci en cum_normalizado; fusiona duplicados generados |
 
 ## API endpoints clave
 
@@ -68,9 +69,23 @@ Tabla central del sistema. Estado actual (2026-06-08):
 - `GET /medicamentos/buscar?q=...` — búsqueda en Socrata API + enriquecimiento local
 - `GET /predicciones/{cum_id}` — predicción de desabastecimiento
 
+## Normalización de principios activos (DCI)
+
+### Estado: 100% normalizado (2026-06-08)
+
+**`_SINONIMOS`** en `etl/transformacion.py`: ~420 entradas cubriendo:
+- Variantes inglés→español (-ine/-ina, -ol/-ole, etc.)
+- Fluoroquinolonas: siempre terminan en **-INO** (CIPROFLOXACINO, LEVOFLOXACINO, etc.)
+- Nombres colombianos: ACETAMINOFEN→PARACETAMOL, DIPIRONA→METAMIZOL, ALBUTEROL→SALBUTAMOL
+- Eritropoyetinas: EPOETIN ALFA→EPOETINA ALFA, orden canónico ERITROPOYETINA HUMANA RECOMBINANTE
+
+**`_SUFIJOS_SAL`** en `etl/transformacion.py`: ~50 formas de sal eliminadas (CLORHIDRATO, SULFATO, SODICO, LISINA, etc.)
+
+**Advertencia**: `_SUFIJOS_SAL` elimina SULFATO, CITRATO, LACTATO, GLUCONATO — NO aplicar `normalizar_principio()` a DCIs donde la sal ES el INN (CONDROITINA SULFATO, LACTATO DE SODIO, GLUCONATO DE ZINC, etc.). Estos están correctos en la DB tal como están.
+
 ## Problemas conocidos / deuda técnica
 
-### NULL concentraciones restantes (290 grupos, 7.8%)
+### NULL concentraciones restantes (307 grupos, 8.4%)
 
 La mayoría son legítimos:
 - **ORS** (Hidraplus, Electrolit, Pediasol): soluciones multi-componente con composición variable
@@ -85,10 +100,6 @@ Mayoría son productos genuinamente únicos. Los que están "cerca" de otros gru
 ### ORAL_DISPERSABLE (0 grupos)
 
 La ETL no genera esta categoría porque los granulados/polvos se clasifican bajo SOLIDO_ORAL. El label está disponible en el sistema pero sin grupos.
-
-### ERITROPOYETINA dci_key inconsistencia
-
-Dos dci_keys distintos para el mismo fármaco: "ERITROPOYETINA HUMANA RECOMBINANTE" y "EPOETIN ALFA". Son la misma molécula pero diferente normalización. Para unificarlos se necesita cambio en ETL.
 
 ## Flujo de trabajo Git
 
