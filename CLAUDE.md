@@ -21,8 +21,10 @@ Tabla central del sistema. Estado actual (2026-06-08):
 
 | Métrica | Valor |
 |---------|-------|
-| Total grupos | 3,666 |
-| NULL concentracion_norm | 307 (8.4%) |
+| Total grupos | 3,659 |
+| NULL concentracion_norm | **0 (0%)** ✓ |
+| SIN_CONCENTRACION | 222 (6.1%) — vacunas, biológicos, gases, sin cuantificar |
+| Con concentracion real | 3,437 (93.9%) |
 | OTRO grupos | 0 |
 | Normalización DCI | **100%** (52,830/52,830 productos) |
 
@@ -30,12 +32,12 @@ Tabla central del sistema. Estado actual (2026-06-08):
 
 | grupo_via | Grupos |
 |-----------|--------|
-| SOLIDO_ORAL | ~1,550 |
-| INYECTABLE | ~970 |
-| LIQUIDO_ORAL | ~450 |
+| SOLIDO_ORAL | 1,543 |
+| INYECTABLE | 974 |
+| LIQUIDO_ORAL | 456 |
 | TOPICO | 249 |
-| OFTALMICO | ~145 |
-| INHALADO | 79 |
+| OFTALMICO | 148 |
+| INHALADO | 78 |
 | SOLIDO_ORAL_LP | 76 |
 | VAGINAL | 56 |
 | TRANSDERMICO | 22 |
@@ -62,6 +64,7 @@ Tabla central del sistema. Estado actual (2026-06-08):
 | `backend/fix_lp_grupos.py` | Mueve LP products de SOLIDO_ORAL → SOLIDO_ORAL_LP usando LP_RE regex |
 | `backend/fix_null_conc2.py` | Segunda pasada: OFTALMICO/NASAL/OTICO via conc_mg_ml, UI regex mejorado |
 | `backend/fix_dci_normalization.py` | Normaliza dci_key en grupos_equivalencia + principios_dci en cum_normalizado; fusiona duplicados generados |
+| `backend/fix_null_conc3.py` | **Tercera pasada (definitiva)**: Fase1 reglas (componentes mg_ml), Fase2 DeepSeek 212 grupos, Fase3 SIN_CONCENTRACION para irrecuperables, Fase4 merge duplicados. Resultado: NULL=0 |
 
 ## API endpoints clave
 
@@ -85,15 +88,18 @@ Tabla central del sistema. Estado actual (2026-06-08):
 
 ## Problemas conocidos / deuda técnica
 
-### NULL concentraciones restantes (307 grupos, 8.4%)
+### SIN_CONCENTRACION (222 grupos, 6.1%)
 
-La mayoría son legítimos:
-- **ORS** (Hidraplus, Electrolit, Pediasol): soluciones multi-componente con composición variable
-- **Biológicos**: Zolgensma (vg/mL), Enoxaparina (IU anti-Xa), vacunas complejas
-- **Gases médicos**: O2, N2O, CO2
-- **Cremas/soluciones combinadas** sin concentración estandarizada en el CUM
+Productos donde la concentración no aplica o no tiene una presentación estandarizada:
+- **Vacunas y biológicos complejos**: MMR, Hepatitis A/B, Dengue, BCG, factores de coagulación, inmunoglobulinas
+- **Terapias génicas/celulares**: Zolgensma, Luxturna, etc.
+- **Anticoagulantes de múltiples dosis**: Heparina (5000/25000 UI/mL), Enoxaparina (IU anti-Xa)
+- **Gases médicos**: O2, N2O, CO2, Helio, Nitrógeno
+- **Productos sin fórmula estándar**: Agua inyectable, soluciones electrolíticas complejas, radiofármacos
 
-### Singletons (aprox. 500 grupos)
+El valor `SIN_CONCENTRACION` no afecta alternativas A4–A7 (basadas en ATC). Solo excluye A0–A3 (basadas en concentración exacta). El frontend lo omite del display.
+
+### Singletons (502 grupos)
 
 Mayoría son productos genuinamente únicos. Los que están "cerca" de otros grupos tienen concentraciones diferentes de verdad (p.ej. Emtricitabina+TAF 245mg vs TDF 300mg = drogas distintas).
 

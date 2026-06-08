@@ -128,6 +128,11 @@ function labelGrupo(g: string): string {
   return GRUPO_LABEL[g] ?? g
 }
 
+function fmtConc(conc: string | null): string {
+  if (!conc || conc === 'SIN_CONCENTRACION') return ''
+  return ` · ${conc}`
+}
+
 // ─── Margen Terapéutico Estrecho ──────────────────────────────────────────────
 const NTI_DCIS = new Set([
   'WARFARINA', 'ACENOCUMAROL', 'DIGOXINA',
@@ -320,7 +325,7 @@ function PanelGrupos({ gruposEq, cargando }: {
               Mi grupo (sustitutos directos)
             </p>
             <GrupoSection
-              titulo={`${mi_grupo.grupo_via_label}${mi_grupo.concentracion_norm ? ' · ' + mi_grupo.concentracion_norm : ''}`}
+              titulo={`${mi_grupo.grupo_via_label}${fmtConc(mi_grupo.concentracion_norm)}`}
               subtitulo={`${mi_grupo.n_productos} productos con mismo principio activo, via y concentracion`}
               grupo={mi_grupo}
               colorClass="border-emerald-200 bg-emerald-50 text-emerald-800"
@@ -338,7 +343,7 @@ function PanelGrupos({ gruposEq, cargando }: {
             {misma_via.map(g => (
               <GrupoSection
                 key={g.id}
-                titulo={`${g.grupo_via_label}${g.concentracion_norm ? ' · ' + g.concentracion_norm : ''}`}
+                titulo={`${g.grupo_via_label}${fmtConc(g.concentracion_norm)}`}
                 subtitulo={`${g.n_productos} ${g.n_productos === 1 ? 'producto' : 'productos'}`}
                 grupo={g}
                 colorClass="border-teal-200 bg-teal-50 text-teal-800"
@@ -356,7 +361,7 @@ function PanelGrupos({ gruposEq, cargando }: {
             {otras_vias.map(g => (
               <GrupoSection
                 key={g.id}
-                titulo={`${g.grupo_via_label}${g.concentracion_norm ? ' · ' + g.concentracion_norm : ''}`}
+                titulo={`${g.grupo_via_label}${fmtConc(g.concentracion_norm)}`}
                 subtitulo={`${g.n_productos} ${g.n_productos === 1 ? 'producto' : 'productos'}`}
                 grupo={g}
                 colorClass="border-amber-200 bg-amber-50 text-amber-800"
