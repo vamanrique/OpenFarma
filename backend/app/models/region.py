@@ -22,10 +22,9 @@ class ConsultaRegion(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     region_id = Column(Integer, ForeignKey("regiones.id"), index=True)
-    medicamento_id = Column(Integer, ForeignKey("medicamentos.id"), index=True)
+    cum_id = Column(String(100), index=True)  # "expediente-consecutivo"
     fecha = Column(DateTime, server_default=func.now())
     tipo = Column(String(30))  # busqueda, reporte_no_disponibilidad, reporte_ips
     conteo = Column(Integer, default=1)
 
     region = relationship("Region", back_populates="consultas")
-    medicamento = relationship("Medicamento", back_populates="consultas")

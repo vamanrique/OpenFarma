@@ -38,8 +38,8 @@ export interface Region {
 }
 
 export interface PrediccionMapa {
+  cum_id: string
   region_id: number
-  medicamento_id: number
   probabilidad: number
   nivel_riesgo: string
   latitud?: number

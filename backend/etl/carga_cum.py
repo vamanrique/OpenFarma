@@ -61,15 +61,21 @@ def descargar_live(limite: int = 0, verbose: bool = True) -> pd.DataFrame:
 
 
 def cargar_medicamentos_en_db(meds_transformados, verbose: bool = True):
+    # La tabla 'medicamentos' fue reemplazada por 'cum_normalizado'.
+    # Este pipeline ahora es gestionado por auto_estandarizar.py.
+    # Esta función se mantiene solo para compatibilidad de importaciones.
+    if verbose:
+        print("AVISO: cargar_medicamentos_en_db está deprecado. Usa auto_estandarizar.py.", flush=True)
+    return
+
     from app.database import SessionLocal, init_db
     import app.models  # noqa
 
     init_db()
-    from app.models.medicamento import Medicamento
 
     db = SessionLocal()
     try:
-        existentes = {m[0] for m in db.query(Medicamento.cum).all()}
+        existentes: set = set()
         nuevos = 0
 
         for med in meds_transformados:

@@ -38,9 +38,9 @@ def entrenar(df_raw: pd.DataFrame, verbose: bool = True) -> dict:
         X, y, test_size=0.2, random_state=42, stratify=y
     )
 
-    # Compensar el desbalance de clases (22% positivos / 78% negativos)
-    pesos = compute_class_weight("balanced", classes=np.unique(y_train), y=y_train)
-    class_weight = {0: pesos[0], 1: pesos[1]}
+    clases = np.unique(y_train)
+    pesos = compute_class_weight("balanced", classes=clases, y=y_train)
+    class_weight = {int(c): float(p) for c, p in zip(clases, pesos)}
 
     rf = RandomForestClassifier(
         n_estimators=200,
@@ -88,6 +88,74 @@ def entrenar(df_raw: pd.DataFrame, verbose: bool = True) -> dict:
             pass
 
     # Guardar modelo + metadata
+    artefacto = {"modelo": modelo, "features": FEATURE_COLS, "metricas": metricas}
+    MODEL_PATH.parent.mkdir(exist_ok=True)
+    with open(MODEL_PATH, "wb") as f:
+        pickle.dump(artefacto, f)
+
+    if verbose:
+        print(f"\nModelo guardado en: {MODEL_PATH}")
+
+    return metricas
+
+
+def entrenar_desde_features(df_feat: pd.DataFrame, verbose: bool = True) -> dict:
+    """Entrena directamente desde un DataFrame ya con features calculadas (desde DB)."""
+    from app.ml.features import FEATURE_COLS
+    X = df_feat[FEATURE_COLS].values
+    y = df_feat["desabastecido"].values
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42, stratify=y
+    )
+
+    clases = np.unique(y_train)
+    pesos = compute_class_weight("balanced", classes=clases, y=y_train)
+    class_weight = {int(c): float(p) for c, p in zip(clases, pesos)}
+
+    rf = RandomForestClassifier(
+        n_estimators=200,
+        max_depth=12,
+        min_samples_leaf=20,
+        max_features="sqrt",
+        class_weight=class_weight,
+        random_state=42,
+        n_jobs=-1,
+    )
+
+    modelo = CalibratedClassifierCV(rf, cv=3, method="sigmoid")
+    modelo.fit(X_train, y_train)
+
+    y_prob = modelo.predict_proba(X_test)[:, 1]
+    y_pred = (y_prob >= 0.5).astype(int)
+
+    metricas = {
+        "roc_auc": float(roc_auc_score(y_test, y_prob)),
+        "avg_precision": float(average_precision_score(y_test, y_prob)),
+        "n_train": int(len(X_train)),
+        "n_test": int(len(X_test)),
+        "pos_rate_train": float(y_train.mean()),
+    }
+
+    if verbose:
+        print("\n=== MÉTRICAS DEL MODELO ===")
+        print(f"  ROC-AUC         : {metricas['roc_auc']:.4f}")
+        print(f"  Avg Precision   : {metricas['avg_precision']:.4f}")
+        print(f"  Train/Test      : {metricas['n_train']:,} / {metricas['n_test']:,}")
+        print(f"  Tasa positivos  : {metricas['pos_rate_train']:.2%}")
+        print()
+        print(classification_report(y_test, y_pred, target_names=["Activo", "Inactivo/Riesgo"]))
+
+        try:
+            base_rf = modelo.calibrated_classifiers_[0].estimator
+            importancias = base_rf.feature_importances_
+            print("\n  Importancia de features:")
+            for feat, imp in sorted(zip(FEATURE_COLS, importancias), key=lambda x: -x[1]):
+                bar = "|" * int(imp * 40)
+                print(f"  {feat:<35} {imp:.4f}  {bar}")
+        except Exception:
+            pass
+
     artefacto = {"modelo": modelo, "features": FEATURE_COLS, "metricas": metricas}
     MODEL_PATH.parent.mkdir(exist_ok=True)
     with open(MODEL_PATH, "wb") as f:

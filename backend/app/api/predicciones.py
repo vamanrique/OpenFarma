@@ -20,14 +20,14 @@ def mapa_riesgo(
 
     return [
         {
+            "cum_id": p.cum_id,
             "region_id": p.region_id,
-            "medicamento_id": p.medicamento_id,
             "probabilidad": p.probabilidad,
             "nivel_riesgo": p.nivel_riesgo,
             "latitud": p.region.latitud if p.region else None,
             "longitud": p.region.longitud if p.region else None,
             "region_nombre": p.region.nombre if p.region else None,
-            "medicamento_nombre": p.medicamento.nombre_generico if p.medicamento else None,
+            "medicamento_nombre": p.medicamento_nombre,
         }
         for p in query.all()
     ]
@@ -35,7 +35,6 @@ def mapa_riesgo(
 
 @router.get("/mapa/resumen")
 def resumen_mapa(db: Session = Depends(get_db)):
-    """Conteo de predicciones por nivel de riesgo para el dashboard."""
     from sqlalchemy import func
     rows = (
         db.query(
@@ -49,47 +48,51 @@ def resumen_mapa(db: Session = Depends(get_db)):
     return [{"nivel": r.nivel_riesgo, "total": r.total, "prob_media": round(r.prob_media, 3)} for r in rows]
 
 
-@router.get("/medicamento/{medicamento_id}", response_model=list[PrediccionRead])
-def predicciones_por_medicamento(medicamento_id: int, db: Session = Depends(get_db)):
+@router.get("/medicamento/{cum_id:path}", response_model=list[PrediccionRead])
+def predicciones_por_medicamento(cum_id: str, db: Session = Depends(get_db)):
     return (
         db.query(PrediccionDesabastecimiento)
-        .filter(PrediccionDesabastecimiento.medicamento_id == medicamento_id)
+        .filter(PrediccionDesabastecimiento.cum_id == cum_id)
         .all()
     )
 
 
-@router.post("/calcular/{medicamento_id}")
-def calcular_prediccion(medicamento_id: int, db: Session = Depends(get_db)):
+@router.post("/calcular/{cum_id:path}")
+def calcular_prediccion(cum_id: str, db: Session = Depends(get_db)):
     servicio = ServicioPrediccion(db)
-    return servicio.predecir(medicamento_id)
+    return servicio.predecir_cum(cum_id)
 
 
 @router.post("/calcular-todos")
 def calcular_todos(db: Session = Depends(get_db)):
-    """Corre el modelo para todos los medicamentos en la DB."""
-    from app.models.medicamento import Medicamento
-    meds = db.query(Medicamento.id).filter(Medicamento.estado == "vigente").limit(500).all()
+    from app.models.cum_normalizado import CumNormalizado
+    cums = (
+        db.query(CumNormalizado)
+        .filter(CumNormalizado.estado_cum.ilike("activo"))
+        .limit(200)
+        .all()
+    )
     servicio = ServicioPrediccion(db)
     total = 0
-    for (med_id,) in meds:
-        servicio.predecir(med_id)
+    for cum in cums:
+        servicio._predecir_para_cum(cum)
         total += 1
     return {"mensaje": f"Predicciones calculadas para {total} medicamentos"}
 
 
 @router.get("/modelo/info")
 def info_modelo():
-    """Expone métricas y feature importances del modelo entrenado."""
     from app.ml.modelo import MODEL_PATH
     if not MODEL_PATH.exists():
         raise HTTPException(status_code=404, detail="Modelo no entrenado aún. Ejecuta el entrenamiento.")
-    from app.ml.modelo import cargar_modelo, FEATURE_COLS
+    from app.ml.modelo import cargar_modelo
     artefacto = cargar_modelo()
     metricas = artefacto.get("metricas", {})
 
     importancias = []
     try:
         base_rf = artefacto["modelo"].calibrated_classifiers_[0].estimator
+        from app.ml.features import FEATURE_COLS
         for feat, imp in sorted(
             zip(FEATURE_COLS, base_rf.feature_importances_), key=lambda x: -x[1]
         ):

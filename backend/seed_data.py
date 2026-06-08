@@ -70,7 +70,6 @@ def seed():
     db = SessionLocal()
     try:
         from app.models.region import Region
-        from app.models.medicamento import Medicamento, Alternativa
 
         if db.query(Region).count() == 0:
             for nombre, codigo, lat, lon in DEPARTAMENTOS:
@@ -78,23 +77,8 @@ def seed():
             db.commit()
             print(f"OK: {len(DEPARTAMENTOS)} departamentos cargados")
 
-        if db.query(Medicamento).count() == 0:
-            for datos in MEDICAMENTOS_EJEMPLO:
-                cum, nom_com, nom_gen, principio, conc, forma, lab, reg, atc, grupo, precio, formula = datos
-                db.add(Medicamento(
-                    cum=cum, nombre_comercial=nom_com, nombre_generico=nom_gen,
-                    principio_activo=principio, concentracion=conc, forma_farmaceutica=forma,
-                    laboratorio=lab, registro_sanitario=reg, codigo_atc=atc,
-                    grupo_terapeutico=grupo, precio_maximo=precio, requiere_formula=formula,
-                ))
-            db.commit()
-            print(f"OK: {len(MEDICAMENTOS_EJEMPLO)} medicamentos de ejemplo cargados")
-
-        if db.query(Alternativa).count() == 0:
-            for med_id, alt_id, tipo, obs in ALTERNATIVAS_EJEMPLO:
-                db.add(Alternativa(medicamento_id=med_id, alternativa_id=alt_id, tipo=tipo, observaciones=obs))
-            db.commit()
-            print(f"OK: {len(ALTERNATIVAS_EJEMPLO)} relaciones de alternativas cargadas")
+        # La tabla medicamentos fue reemplazada por cum_normalizado (auto_estandarizar.py)
+        pass
 
         print("Base de datos lista para usar")
     finally:

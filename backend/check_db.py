@@ -1,27 +1,23 @@
+"""Check DB stats using cum_normalizado (replaces old Medicamento-based script)."""
 from app.database import SessionLocal, init_db
 import app.models
+
 init_db()
-from app.models.medicamento import Medicamento
+from app.models.cum_normalizado import CumNormalizado
+
 db = SessionLocal()
+total = db.query(CumNormalizado).count()
+mono  = db.query(CumNormalizado).filter(CumNormalizado.tipo_formula == "MONO").count()
+bi    = db.query(CumNormalizado).filter(CumNormalizado.tipo_formula == "BI").count()
+tri   = db.query(CumNormalizado).filter(CumNormalizado.tipo_formula == "TRI").count()
+tetra = db.query(CumNormalizado).filter(CumNormalizado.tipo_formula == "TETRA").count()
+activo = db.query(CumNormalizado).filter(CumNormalizado.estado_cum.ilike("activo")).count()
 
-total = db.query(Medicamento).count()
-with_tipo = db.query(Medicamento).filter(Medicamento.tipo_formula != None).count()
-bi = db.query(Medicamento).filter(Medicamento.tipo_formula == "biconjugado").count()
-tri = db.query(Medicamento).filter(Medicamento.tipo_formula == "triconjugado").count()
-tetra = db.query(Medicamento).filter(Medicamento.tipo_formula == "tetraconjugado").count()
-mono = db.query(Medicamento).filter(Medicamento.tipo_formula == "monocomponente").count()
-none_ = db.query(Medicamento).filter(Medicamento.tipo_formula == None).count()
+print(f"Total cum_normalizado: {total}")
+print(f"  MONO: {mono}  BI: {bi}  TRI: {tri}  TETRA: {tetra}")
+print(f"  Activos: {activo}")
 
-print(f"Total: {total}")
-print(f"Con tipo_formula: {with_tipo}")
-print(f"  monocomponente: {mono}")
-print(f"  biconjugado:    {bi}")
-print(f"  triconjugado:   {tri}")
-print(f"  tetraconjugado: {tetra}")
-print(f"  sin tipo:       {none_}")
-
-# Sample with dci
-sample = db.query(Medicamento).filter(Medicamento.tipo_formula == "biconjugado").first()
+sample = db.query(CumNormalizado).filter(CumNormalizado.tipo_formula == "BI").first()
 if sample:
-    print(f"\nSample biconjugado: {sample.cum} | {sample.nombre_comercial} | dci={sample.principios_dci}")
+    print(f"\nSample BI: {sample.expediente_cum}-{sample.consecutivo_cum} | {sample.nombre_comercial_norm} | dci={sample.principios_dci}")
 db.close()

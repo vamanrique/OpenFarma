@@ -5,7 +5,8 @@ from datetime import datetime
 
 class PrediccionRead(BaseModel):
     id: int
-    medicamento_id: int
+    cum_id: str
+    medicamento_nombre: Optional[str] = None
     region_id: int
     fecha_prediccion: datetime
     probabilidad: float
