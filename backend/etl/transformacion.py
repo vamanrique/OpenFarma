@@ -1330,6 +1330,25 @@ def construir_concentracion(row: pd.Series) -> str:
         except ValueError:
             pass
 
+    # Inhaladores: CUM registra la dosis como "N U / DOSIS" donde U = microgramos.
+    # Ejemplos: SALBUTAMOL 100 U/DOSIS → 100 mcg/dosis; FORMOTEROL 4.5 U/DOSIS → 4.5 mcg/dosis.
+    # Detectar: forma inhalada + ref contiene DOSIS/INHALACION + unidad ambigua → mcg/dosis.
+    _FORMAS_INHALADO_CONC = {
+        'SUSPENSION PARA INHALACION', 'SOLUCION PARA INHALACION',
+        'POLVO PARA INHALACION', 'POLVO PARA INHALAR',
+        'AEROSOL PARA INHALACION', 'AEROSOL INHALACION',
+        'INHALADOR', 'INHALACION',
+    }
+    if (any(kw in _forma_check for kw in _FORMAS_INHALADO_CONC)
+            and unidad.upper() in _INVALIDOS
+            and unidad_ref
+            and re.search(r'\b(DOSIS|INHALACION|INHALACIONES|ACTUACION)\b',
+                          unidad_ref, re.IGNORECASE)):
+        try:
+            return f"{float(cantidad.replace(',', '.')):g} mcg/dosis"
+        except ValueError:
+            pass
+
     # Normalizar a por-mL cuando unidad_ref contiene un volumen numérico y la unidad
     # es de masa (mg, mcg, UI…). Ejemplos:
     #   "15 mg" + "AMPOLLA POR 3 ML"  → 15/3 = 5   → "5 mg/mL"
