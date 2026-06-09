@@ -53,4 +53,24 @@ def enriquecer_con_llm(
         med.componentes_llm        = norm.componentes or []
         med.notas_llm              = norm.notas
 
+        # Corrección de concentracion_display para sólidos orales cuyo nombre comercial
+        # no contiene la dosis y construir_concentracion() no pudo determinarla del CUM.
+        # Si dosis_total_mg difiere del valor live en más del 10%, usar el valor LLM.
+        # Ejemplo: VALTROIS (Valaciclovir 1g) → Socrata da "1 mg", LLM sabe "1000 mg".
+        if (norm.dosis_total_mg is not None
+                and med.forma_normalizada in ('TABLETA', 'CAPSULA', 'COMPRIMIDO', None)
+                and med.concentracion_display
+                and med.concentracion_display.endswith(' mg')
+                and len(med.principios_dci) == 1):
+            try:
+                live_val = float(med.concentracion_display[:-3])
+                lmg = float(norm.dosis_total_mg)
+                if lmg > 0 and abs(lmg - live_val) / max(lmg, live_val) > 0.1:
+                    corrected = f"{lmg:g} mg"
+                    med.concentracion_display = corrected
+                    if med.concentraciones:
+                        med.concentraciones = [corrected]
+            except (ValueError, TypeError):
+                pass
+
     return meds

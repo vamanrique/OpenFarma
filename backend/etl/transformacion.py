@@ -1297,6 +1297,13 @@ def construir_concentracion(row: pd.Series) -> str:
         else:
             unidad_real = "mg"  # default para sólidos orales
 
+    # Unidad de volumen en forma sólida oral = error del CUM (ej. VIREX Z "800 ml/TABLETA")
+    _forma_check = str(row.get("formafarmaceutica", "")).strip().upper()
+    _FORMAS_SOLIDO = {'TABLETA', 'COMPRIMIDO', 'CAPSULA', 'GRAGEA', 'CACHET'}
+    if (unidad_real.upper() in {'ML', 'L', 'DL', 'CC'}
+            and any(kw in _forma_check for kw in _FORMAS_SOLIDO)):
+        unidad_real = 'mg'
+
     # Normalizar a por-mL cuando unidad_ref contiene un volumen numérico y la unidad
     # es de masa (mg, mcg, UI…). Ejemplos:
     #   "15 mg" + "AMPOLLA POR 3 ML"  → 15/3 = 5   → "5 mg/mL"
