@@ -168,6 +168,8 @@ _SINONIMOS: dict[str, str] = {
     "KETOCONAZOLE":     "KETOCONAZOL",
     "ACYCLOVIR":        "ACICLOVIR",
     "ACICLOVIR":        "ACICLOVIR",
+    "ACLICLOVIR":       "ACICLOVIR",   # typo en Socrata CUM ("ACLICLOVIR BASE:")
+    "ACICLVIR":         "ACICLOVIR",   # variante abreviada
     "HALOPERIDOL":      "HALOPERIDOL",
     "DIAZEPAM":         "DIAZEPAM",
     "LORAZEPAM":        "LORAZEPAM",
@@ -926,8 +928,10 @@ def normalizar_principio(principio: str) -> str:
     # Limpiar cualquier residuo "EQUIVALENTE ..." que no capturó el patrón principal
     p = _EQUIV_RESIDUO.sub("", p).strip()
 
-    # Limpiar espacios múltiples
+    # Limpiar espacios múltiples y puntuación residual al final
+    # ej. "ACICLOVIR :" → "ACICLOVIR" (colon del campo Socrata "...EQUIVALENTE A ACLICLOVIR BASE:")
     p = re.sub(r"\s{2,}", " ", p).strip()
+    p = re.sub(r"[^A-Z0-9ÁÉÍÓÚÜÑ]+$", "", p).strip()
 
     # Unificar grafías inglés→español para DCI de un solo token (metotrexate → metotrexato)
     p = _SINONIMOS.get(p, p)
