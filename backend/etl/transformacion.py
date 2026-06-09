@@ -1195,6 +1195,11 @@ def _normalizar_por_forma(conc: str, g_forma: str, nombre_prod: str, forma_raw: 
         m_pct = _PORCENTAJE_EN_NOMBRE.search(nombre_prod)
         if m_pct:
             return f"{m_pct.group(1).rstrip('0').rstrip('.')}%"
+        # "5 g/100 g" = 5% (gramos por 100 gramos es numéricamente igual a porcentaje)
+        _m_g100 = re.match(r'^(\d+(?:[.,]\d+)?)\s*g\s*/\s*100\s*g\b', conc, re.IGNORECASE)
+        if _m_g100:
+            val = _m_g100.group(1).rstrip('0').rstrip('.')
+            return f"{val}%"
         return conc
 
     if g_forma in _GRUPOS_NORM_DOSIS:
@@ -1285,7 +1290,12 @@ def construir_concentracion(row: pd.Series) -> str:
     # Unidad real: preferir unidadmedida, luego unidad; descartar valores inválidos
     unidad_real = unidad_medida if unidad_medida.upper() not in _INVALIDOS else unidad
     if unidad_real.upper() in _INVALIDOS:
-        unidad_real = "mg"  # default para sólidos orales
+        # "U" en ref "100 G..." = gramos por 100 g (CUM topicos: "5 U/100G" → 5g/100g = 5%)
+        if (unidad.upper() == 'U'
+                and re.search(r'\b100\s*g\b', unidad_ref, re.IGNORECASE)):
+            unidad_real = 'g'
+        else:
+            unidad_real = "mg"  # default para sólidos orales
 
     # Normalizar a por-mL cuando unidad_ref contiene un volumen numérico y la unidad
     # es de masa (mg, mcg, UI…). Ejemplos:
