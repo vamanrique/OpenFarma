@@ -2,9 +2,13 @@
 Cliente para la API Socrata del CUM (datos.gov.co).
 Siempre consulta el JSON en línea — nunca lee archivos locales.
 """
+import asyncio
+import json
 import httpx
 import pandas as pd
 from typing import Optional
+from sqlalchemy.orm import Session
+from sqlalchemy import text
 from etl.transformacion import agrupar_y_transformar, MedicamentoTransformado, terminos_busqueda
 from etl.alternativas import generar_alternativas, ParAlternativa
 
@@ -94,37 +98,83 @@ async def obtener_por_cum(expedientecum: str, consecutivocum: str) -> Optional[M
     return meds[0] if meds else None
 
 
+async def _fetch_grupo_expedientes(cum_ids: list[str]) -> list[dict]:
+    """Fetches all Socrata rows for the expedientes in a group's cum_ids list."""
+    expedientes = list({cid.split("-")[0] for cid in cum_ids if "-" in cid})
+    if not expedientes:
+        return []
+    BATCH = 50
+    filas: list[dict] = []
+    async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+        for i in range(0, len(expedientes), BATCH):
+            lote = expedientes[i:i + BATCH]
+            ids = ', '.join(f"'{e}'" for e in lote)
+            resp = await client.get(API_URL, params={
+                "$where": f"expedientecum IN ({ids}) AND estadocum='Activo'",
+                "$limit": 2000,
+            })
+            resp.raise_for_status()
+            filas.extend(resp.json())
+    return filas
+
+
 async def alternativas_para(
     medicamento: MedicamentoTransformado,
-    limit_clase: int = 500,
+    db: Optional[Session] = None,
+    limit_clase: int = 1000,
 ) -> tuple[list[ParAlternativa], dict[str, MedicamentoTransformado]]:
     """
     Busca alternativas para un medicamento dado.
     Retorna (pares_filtrados, lookup) — el lookup evita N API calls adicionales.
+
+    Si se provee db, carga los productos del grupo de equivalencia directamente
+    desde grupos_equivalencia (A0-A3), evitando el corte por limit en la query ATC.
+    La query ATC solo aporta A4-A7 (equivalentes de clase).
     """
     if not medicamento.atc or len(medicamento.atc) < 5:
         return [], {}
 
     atc5 = medicamento.atc[:5]
-    params = {
-        "$where": f"atc like '{atc5}%' AND estadocum='Activo'",
-        "$limit": limit_clase,
-        "$order": "producto ASC",
-    }
 
-    filas = await _get(params)
-    if not filas:
+    # Resolve group members from grupos_equivalencia (synchronous DB lookup)
+    cum_ids_grupo: list[str] = []
+    if db is not None:
+        row = db.execute(
+            text("SELECT cum_ids FROM grupos_equivalencia WHERE cum_ids LIKE :pat LIMIT 1"),
+            {"pat": f'%"{medicamento.cum_id}"%'},
+        ).fetchone()
+        if row:
+            cum_ids_grupo = json.loads(row[0]) if isinstance(row[0], str) else (row[0] or [])
+
+    async def _empty() -> list[dict]:
+        return []
+
+    # Fetch ATC class (A4-A7) and group expedientes (A0-A3) in parallel
+    filas_atc, grupo_filas = await asyncio.gather(
+        _get({
+            "$where": f"atc like '{atc5}%' AND estadocum='Activo'",
+            "$limit": limit_clase,
+            "$order": "producto ASC",
+        }),
+        _fetch_grupo_expedientes(cum_ids_grupo) if cum_ids_grupo else _empty(),
+    )
+    if not filas_atc and not grupo_filas:
         return [], {}
 
-    # Recuperar todas las filas del expediente para reconstruir correctamente
-    # los productos combinados cuyos componentes tienen ATCs distintos
-    # (ej. DOLEX: PARACETAMOL N02BE51 + CAFEINA N06BC01 — la cafeína no
-    # aparece en la query by ATC y sin ella el biconjugado se arma mal).
-    filas = await _completar_grupos(filas)
+    # Merge: group products take precedence (already active-filtered), ATC adds A4-A7 context
+    seen: set[tuple] = set()
+    merged: list[dict] = []
+    for f in grupo_filas + filas_atc:
+        k = (f.get('expedientecum'), f.get('consecutivocum'), f.get('principioactivo', ''))
+        if k not in seen:
+            seen.add(k)
+            merged.append(f)
 
-    df = pd.DataFrame(filas)
+    # Complete combination products whose components have different ATCs
+    merged = await _completar_grupos(merged)
+
+    df = pd.DataFrame(merged)
     todos_raw = agrupar_y_transformar(df)
-    # Solo productos con registro sanitario vigente como posibles alternativas
     todos = [m for m in todos_raw if m.estado_registro.lower() in ('vigente', '')]
     lookup: dict[str, MedicamentoTransformado] = {m.cum_id: m for m in todos}
 

@@ -83,8 +83,9 @@ async def obtener_alternativas_live(cum_id: str, db: Session = Depends(get_db)):
     if not med:
         raise HTTPException(status_code=404, detail="Medicamento no encontrado en la API")
 
-    # Una sola query ATC-5 devuelve pares + lookup (sin N llamadas adicionales)
-    pares, lookup = await cum_live.alternativas_para(med)
+    # Pares A0-A3 desde grupos_equivalencia (todos los productos del grupo),
+    # A4-A7 desde query ATC. Pasar db evita el corte por $limit en la query ATC.
+    pares, lookup = await cum_live.alternativas_para(med, db=db)
 
     # Enriquecer con LLM: med objetivo + todos los del lookup en una sola query
     todos_meds = [med] + list(lookup.values())
