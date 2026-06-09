@@ -26,7 +26,14 @@ Tabla central del sistema. Estado actual (2026-06-08):
 | SIN_CONCENTRACION | 222 (6.1%) — vacunas, biológicos, gases, sin cuantificar |
 | Con concentracion real | 3,437 (93.9%) |
 | OTRO grupos | 0 |
-| Normalización DCI | **100%** (52,830/52,830 productos) |
+| Normalización DCI | **~95%** (48,580 / 50,597 en grupos corregidos; ~1,525 huérfanos marca aún pendientes) |
+
+**cum_normalizado DCI corrupción (resuelta 2026-06-08):**
+- Causa: LLM contaminación de batch → 50,065/52,830 productos asignados con DCIs de fluoroquinolonas (CIPROFLOXACINO, LEVOFLOXACINO, etc.)
+- `grupos_equivalencia.dci_key` siempre fue correcto — se usó como fuente de verdad
+- **fix_dci_mismatch.py Fase 1**: 48,580 productos corregidos desde grupos
+- **fix_dci_mismatch.py Fase 2**: 669 huérfanos INN-nombrados corregidos + 592 asignados a grupo
+- Pendiente: ~1,525 huérfanos marca-nombrados (DeepSeek en curso)
 
 ### Distribución por grupo_via
 
@@ -65,6 +72,7 @@ Tabla central del sistema. Estado actual (2026-06-08):
 | `backend/fix_null_conc2.py` | Segunda pasada: OFTALMICO/NASAL/OTICO via conc_mg_ml, UI regex mejorado |
 | `backend/fix_dci_normalization.py` | Normaliza dci_key en grupos_equivalencia + principios_dci en cum_normalizado; fusiona duplicados generados |
 | `backend/fix_null_conc3.py` | **Tercera pasada (definitiva)**: Fase1 reglas (componentes mg_ml), Fase2 DeepSeek 212 grupos, Fase3 SIN_CONCENTRACION para irrecuperables, Fase4 merge duplicados. Resultado: NULL=0 |
+| `backend/fix_dci_mismatch.py` | **Corrige DCI contaminados**: Fase1 sincroniza cum_normalizado desde grupos_equivalencia (48,580 fixes), Fase2 huérfanos por nombre+DeepSeek. SIEMPRE ejecutar Fase1 primero. |
 
 ## API endpoints clave
 
