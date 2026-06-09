@@ -53,10 +53,10 @@ def enriquecer_con_llm(
         med.componentes_llm        = norm.componentes or []
         med.notas_llm              = norm.notas
 
-        # Corrección de concentracion_display para sólidos orales cuyo nombre comercial
-        # no contiene la dosis y construir_concentracion() no pudo determinarla del CUM.
-        # Si dosis_total_mg difiere del valor live en más del 10%, usar el valor LLM.
-        # Ejemplo: VALTROIS (Valaciclovir 1g) → Socrata da "1 mg", LLM sabe "1000 mg".
+        # Corrección de concentracion_display para sólidos orales: Socrata a veces reporta
+        # "cantidad=1, unidad=U" (significa 1 g) que el ETL convierte a "1 mg" por defecto.
+        # Ejemplo: VALTROIS (Valaciclovir 1g) → live="1 mg", LLM sabe "1000 mg".
+        # Guard lmg > live_val: solo corregir hacia arriba (LLM con valor en gramos no sobreescribe).
         if (norm.dosis_total_mg is not None
                 and med.forma_normalizada in ('TABLETA', 'CAPSULA', 'COMPRIMIDO', None)
                 and med.concentracion_display
@@ -65,10 +65,30 @@ def enriquecer_con_llm(
             try:
                 live_val = float(med.concentracion_display[:-3])
                 lmg = float(norm.dosis_total_mg)
-                # Only correct upward: live ETL defaulted 'U' unit to mg when it meant g.
-                # If lmg < live_val, LLM likely stored in wrong units (g instead of mg).
                 if lmg > 0 and lmg > live_val and abs(lmg - live_val) / max(lmg, live_val) > 0.1:
                     corrected = f"{lmg:g} mg"
+                    med.concentracion_display = corrected
+                    if med.concentraciones:
+                        med.concentraciones = [corrected]
+            except (ValueError, TypeError):
+                pass
+
+        # Corrección de concentracion_display para líquidos orales (suspensiones/soluciones).
+        # Socrata puede entregar "cantidad=5, unidad=U, ref=100 ML" para una suspensión 50 mg/mL
+        # (el valor 5 son gramos de benzoato por referencia, no mg).
+        # concentracion_mg_ml en cum_normalizado tiene el valor farmacológicamente correcto.
+        # Guard lmg > live_val: solo corregir hacia arriba (mismo principio que sólidos).
+        if (norm.concentracion_mg_ml is not None
+                and med.forma_normalizada in ('SUSPENSION_ORAL', 'SOLUCION_ORAL', 'JARABE',
+                                              'ELIXIR', 'LIQUIDO_ORAL')
+                and med.concentracion_display
+                and med.concentracion_display.endswith(' mg/mL')
+                and len(med.principios_dci) == 1):
+            try:
+                live_val = float(med.concentracion_display[:-6])
+                lmg = float(norm.concentracion_mg_ml)
+                if lmg > 0 and lmg > live_val and abs(lmg - live_val) / max(lmg, live_val) > 0.1:
+                    corrected = f"{lmg:g} mg/mL"
                     med.concentracion_display = corrected
                     if med.concentraciones:
                         med.concentraciones = [corrected]

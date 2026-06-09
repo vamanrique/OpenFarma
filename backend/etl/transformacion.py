@@ -1298,11 +1298,18 @@ def construir_concentracion(row: pd.Series) -> str:
             unidad_real = "mg"  # default para sólidos orales
 
     # Unidad de volumen en forma sólida oral = error del CUM (ej. VIREX Z "800 ml/TABLETA")
+    # También aplica a soluciones inyectables: "500 ml / 100 ML" debe ser "500 mg / 100 ML".
     _forma_check = str(row.get("formafarmaceutica", "")).strip().upper()
     _FORMAS_SOLIDO = {'TABLETA', 'COMPRIMIDO', 'CAPSULA', 'GRAGEA', 'CACHET'}
-    if (unidad_real.upper() in {'ML', 'L', 'DL', 'CC'}
-            and any(kw in _forma_check for kw in _FORMAS_SOLIDO)):
-        unidad_real = 'mg'
+    _FORMAS_SOLUCION_INY = {'SOLUCION INYECTABLE', 'SOLUCION PARA INFUSION',
+                            'SOLUCION PARA INYECCION', 'INFUSION'}
+    if unidad_real.upper() in {'ML', 'L', 'DL', 'CC'}:
+        if any(kw in _forma_check for kw in _FORMAS_SOLIDO):
+            unidad_real = 'mg'
+        elif any(kw in _forma_check for kw in _FORMAS_SOLUCION_INY):
+            # Para soluciones inyectables, el fármaco se expresa en mg sobre volumen.
+            # Si Socrata reportó el numerador en mL (error de carga), corregir a mg.
+            unidad_real = 'mg'
 
     # Normalizar a por-mL cuando unidad_ref contiene un volumen numérico y la unidad
     # es de masa (mg, mcg, UI…). Ejemplos:

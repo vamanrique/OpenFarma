@@ -93,7 +93,9 @@ def generar_alternativas(meds: list[MedicamentoTransformado]) -> list[ParAlterna
                 por_misma_conc[(dci, dosis_key, g_forma, tf)].append(m)
                 por_dci_dosis[(dci, dosis_key, tf)].append(m)
 
-        por_atc7_forma[(m.atc, g_forma)].append(m)
+        # tipo_formula in A4 key: a bicomponent must never be "equivalente exacto"
+        # of a monocomponent — that would be A6 (componente_compartido).
+        por_atc7_forma[(m.atc, g_forma, m.tipo_formula)].append(m)
         por_atc5_forma[(m.atc[:5], g_forma)].append(m)
         por_atc5[m.atc[:5]].append(m)
 
@@ -159,7 +161,7 @@ def generar_alternativas(meds: list[MedicamentoTransformado]) -> list[ParAlterna
 
     # A4 — Mismo ATC7 + misma forma + distintos DCI (sales del mismo compuesto)
     # Solo cuando AMBOS tienen DCI conocido (evita falsos positivos con DCI vacío por datos CUM)
-    for (atc7, gf), grupo in por_atc7_forma.items():
+    for (atc7, gf, _tf), grupo in por_atc7_forma.items():
         for a, b in combinations(grupo, 2):
             dci_a = tuple(sorted(a.principios_dci))
             dci_b = tuple(sorted(b.principios_dci))

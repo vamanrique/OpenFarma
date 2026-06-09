@@ -83,13 +83,16 @@ async def obtener_alternativas_live(cum_id: str, db: Session = Depends(get_db)):
     if not med:
         raise HTTPException(status_code=404, detail="Medicamento no encontrado en la API")
 
+    # Pre-enriquecer el producto objetivo para que atc_llm esté disponible antes
+    # de la query ATC en alternativas_para (corrige ATCs erróneos en Socrata).
+    enriquecer_con_llm([med], db)
+
     # Pares A0-A3 desde grupos_equivalencia (todos los productos del grupo),
-    # A4-A7 desde query ATC. Pasar db evita el corte por $limit en la query ATC.
+    # A4-A7 desde query ATC usando atc_llm cuando esté disponible.
     pares, lookup = await cum_live.alternativas_para(med, db=db)
 
-    # Enriquecer con LLM: med objetivo + todos los del lookup en una sola query
-    todos_meds = [med] + list(lookup.values())
-    enriquecer_con_llm(todos_meds, db)
+    # Enriquecer todos los del lookup en una sola query
+    enriquecer_con_llm(list(lookup.values()), db)
 
     vistos: set[str] = set()
     resultado: list[AlternativaLiveRead] = []

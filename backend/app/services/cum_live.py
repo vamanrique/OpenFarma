@@ -131,10 +131,12 @@ async def alternativas_para(
     desde grupos_equivalencia (A0-A3), evitando el corte por limit en la query ATC.
     La query ATC solo aporta A4-A7 (equivalentes de clase).
     """
-    if not medicamento.atc or len(medicamento.atc) < 5:
+    # Use corrected LLM ATC if available (fixes Socrata ATC errors like A01AB17 for oral metronidazol)
+    atc_efectivo = medicamento.atc_llm or medicamento.atc
+    if not atc_efectivo or len(atc_efectivo) < 5:
         return [], {}
 
-    atc5 = medicamento.atc[:5]
+    atc5 = atc_efectivo[:5]
 
     # Resolve group members from grupos_equivalencia (synchronous DB lookup)
     cum_ids_grupo: list[str] = []
