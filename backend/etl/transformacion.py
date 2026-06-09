@@ -626,7 +626,8 @@ _SINONIMOS: dict[str, str] = {
     "DIMENHIDRINATO":   "DIMENHIDRINATO",
     "DIMENHYDRINATE":   "DIMENHIDRINATO",
     "HYOSCINE":         "ESCOPOLAMINA",
-    "BUTYLSCOPOLAMINE": "BUTILBROMURO DE HIOSCINA",
+    "BUTYLSCOPOLAMINE":         "BUTILBROMURO DE HIOSCINA",
+    "HIOSCINA BUTILBROMURO":    "BUTILBROMURO DE HIOSCINA",
     "PAPAVERINE":       "PAPAVERINA",
     "ERGOTAMINE":       "ERGOTAMINA",
     "SUMATRIPTAN":      "SUMATRIPTAN",
@@ -1310,6 +1311,24 @@ def construir_concentracion(row: pd.Series) -> str:
             # Para soluciones inyectables, el fármaco se expresa en mg sobre volumen.
             # Si Socrata reportó el numerador en mL (error de carga), corregir a mg.
             unidad_real = 'mg'
+
+    # Suspensiones orales codificadas como g/100 mL (porcentaje): CUM usa cant=2, ref='100 ML'
+    # para expresar 2 g/100 mL = 2% = 20 mg/mL. Solo aplica cuando la unidad original es
+    # ambigua ('U', vacía) o de volumen ('ml') — nunca cuando unidad='mg' (eso sería 0.02 mg/mL real).
+    # El pipeline per-mL devuelve "0.02 g/mL" y _normalizar_g_a_mg lo convierte a "20 mg/mL".
+    _FORMAS_SUSPENSION = {'SUSPENSION ORAL', 'SUSPENSION'}
+    _unidad_ambigua = (unidad.upper() in _INVALIDOS
+                       or unidad.upper() in {'ML', 'L', 'DL', 'CC'}
+                       or unidad_medida.upper() in _INVALIDOS)
+    if (any(kw in _forma_check for kw in _FORMAS_SUSPENSION)
+            and _unidad_ambigua
+            and unidad_ref
+            and re.search(r'\b100\s*ml\b', unidad_ref, re.IGNORECASE)):
+        try:
+            if float(cantidad.replace(',', '.')) <= 10:
+                unidad_real = 'g'
+        except ValueError:
+            pass
 
     # Normalizar a por-mL cuando unidad_ref contiene un volumen numérico y la unidad
     # es de masa (mg, mcg, UI…). Ejemplos:
