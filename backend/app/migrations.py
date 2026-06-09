@@ -80,6 +80,61 @@ def _fix_dci_contamination(db) -> int:
     return fixed
 
 
+def _fix_tipo_formula(db) -> int:
+    """
+    Normaliza tipo_formula de formato abreviado (MONO/BI/TRI/TETRA/OTRO/NULL)
+    al formato canónico (monocomponente/biconjugado/triconjugado/tetraconjugado).
+
+    Idempotente: solo actúa si hay registros con formato incorrecto.
+    """
+    import json
+
+    bad_count = db.execute(text(
+        "SELECT COUNT(*) FROM cum_normalizado "
+        "WHERE tipo_formula IN ('MONO','BI','TRI','TETRA','OTRO') "
+        "   OR tipo_formula IS NULL"
+    )).scalar() or 0
+
+    if bad_count == 0:
+        return 0
+
+    logger.info("tipo_formula: %d productos con formato incorrecto, aplicando fix...", bad_count)
+
+    TIPO_MAP = {
+        "MONO": "monocomponente", "BI": "biconjugado",
+        "TRI": "triconjugado",    "TETRA": "tetraconjugado",
+    }
+    TIPO_BY_COUNT = {1: "monocomponente", 2: "biconjugado",
+                     3: "triconjugado",   4: "tetraconjugado"}
+
+    rows = db.execute(text(
+        "SELECT expediente_cum, consecutivo_cum, tipo_formula, principios_dci "
+        "FROM cum_normalizado "
+        "WHERE tipo_formula IN ('MONO','BI','TRI','TETRA','OTRO') "
+        "   OR tipo_formula IS NULL"
+    )).fetchall()
+
+    fixed = 0
+    for exp, cons, tf, pdci_json in rows:
+        nuevo = TIPO_MAP.get(tf or "")
+        if nuevo is None:
+            try:
+                n = len(json.loads(pdci_json or "[]"))
+            except Exception:
+                n = 1
+            nuevo = TIPO_BY_COUNT.get(n, "monocomponente")
+
+        db.execute(text(
+            "UPDATE cum_normalizado SET tipo_formula=:tf "
+            "WHERE expediente_cum=:exp AND consecutivo_cum=:cons"
+        ), {"tf": nuevo, "exp": exp, "cons": cons})
+        fixed += 1
+
+    db.commit()
+    logger.info("tipo_formula fix completado: %d productos actualizados.", fixed)
+    return fixed
+
+
 def run_all():
     """Ejecuta todas las migraciones pendientes al iniciar la app."""
     db = SessionLocal()
@@ -87,6 +142,9 @@ def run_all():
         n = _fix_dci_contamination(db)
         if n:
             logger.info("Migración DCI: %d productos corregidos.", n)
+        m = _fix_tipo_formula(db)
+        if m:
+            logger.info("Migración tipo_formula: %d productos corregidos.", m)
     except Exception as e:
         logger.error("Error en migraciones de startup: %s", e)
         db.rollback()
