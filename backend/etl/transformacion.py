@@ -6,6 +6,7 @@ La fuente es siempre el JSON online — este módulo solo transforma,
 no lee ni escribe archivos.
 """
 import re
+import unicodedata
 import pandas as pd
 from dataclasses import dataclass, field
 
@@ -56,6 +57,16 @@ _CONCENTRACION_INCRUSTADA = re.compile(
     r"\s+\d[\d.,]*\s*(?:MG|MCG|G|UI|U|ML|%)\b.*$",
     re.IGNORECASE,
 )
+
+# Descriptores físicos/farmacopeicos que NO son parte del INN:
+#   "ACICLOVIR POLVO MICRONIZADO USP" → "ACICLOVIR"
+_DESCRIPTORES_FISICOS = re.compile(
+    r"\s+\b(POLVO\s+MICRONIZADO|MICRONIZADO|NANOCRISTALES|LIPOSOMICO|LIPOSOMAL|"
+    r"USP|BP|EP|FCC|DAB|FU|FISPQ|PHARMAEUROPA)\b.*$",
+    re.IGNORECASE,
+)
+# POLVO suelto al final (pero no dentro del nombre, ej. "RINGER LACTATO" queda intacto)
+_POLVO_FINAL = re.compile(r"\s+\bPOLVO\b\s*$", re.IGNORECASE)
 
 # Patrón CUM frecuente: "5 MG DE MIDAZOLAM", "0.5MG DE ALPRAZOLAM CADA TABLETA"
 # La DCI real es la parte posterior a "DE".
@@ -885,7 +896,10 @@ def normalizar_principio(principio: str) -> str:
       "METFORMINA CLORHIDRATO" → "METFORMINA"
       "LEVODOPA" → "LEVODOPA"
     """
-    p = str(principio).strip().upper()
+    # Normalizar Unicode: tildes → sin tilde (SUMATRIPTÁN → SUMATRIPTAN)
+    p = unicodedata.normalize("NFD", str(principio))
+    p = "".join(c for c in p if unicodedata.category(c) != "Mn")
+    p = p.strip().upper()
 
     # Patrón "5 MG DE MIDAZOLAM [CADA AMPOLLA]" → extraer solo el INN
     m_de = _DOSIS_DE_INN.match(p)
@@ -904,6 +918,10 @@ def normalizar_principio(principio: str) -> str:
 
     # Quitar sufijos de sal/forma
     p = _SUFIJOS_SAL.sub("", p)
+
+    # Quitar descriptores físicos/farmacopeicos (MICRONIZADO, USP, BP, etc.)
+    p = _DESCRIPTORES_FISICOS.sub("", p)
+    p = _POLVO_FINAL.sub("", p)
 
     # Limpiar cualquier residuo "EQUIVALENTE ..." que no capturó el patrón principal
     p = _EQUIV_RESIDUO.sub("", p).strip()

@@ -26,9 +26,20 @@ def enriquecer_con_llm(
         (r.expediente_cum, r.consecutivo_cum): r for r in rows
     }
 
+    # Índice secundario por expediente: para consecutivos no presentes en cum_normalizado,
+    # usamos el DCI del primer consecutivo del mismo expediente como fallback.
+    expediente_dci: dict[str, list[str]] = {}
+    for (exp, _cons), norm in cache.items():
+        if norm.principios_dci and exp not in expediente_dci:
+            expediente_dci[exp] = norm.principios_dci
+
     for med in meds:
         norm = cache.get((med.expedientecum, med.consecutivocum))
         if not norm:
+            # Fallback: si el mismo expediente tiene DCI conocido en cum_normalizado, usarlo
+            fallback_dci = expediente_dci.get(med.expedientecum)
+            if fallback_dci:
+                med.principios_dci_llm = fallback_dci
             continue
         if norm.principios_dci:
             med.principios_dci_llm = norm.principios_dci
