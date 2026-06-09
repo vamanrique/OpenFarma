@@ -65,7 +65,9 @@ def enriquecer_con_llm(
             try:
                 live_val = float(med.concentracion_display[:-3])
                 lmg = float(norm.dosis_total_mg)
-                if lmg > 0 and abs(lmg - live_val) / max(lmg, live_val) > 0.1:
+                # Only correct upward: live ETL defaulted 'U' unit to mg when it meant g.
+                # If lmg < live_val, LLM likely stored in wrong units (g instead of mg).
+                if lmg > 0 and lmg > live_val and abs(lmg - live_val) / max(lmg, live_val) > 0.1:
                     corrected = f"{lmg:g} mg"
                     med.concentracion_display = corrected
                     if med.concentraciones:
