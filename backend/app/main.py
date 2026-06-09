@@ -11,8 +11,10 @@ load_dotenv()
 import app.models  # noqa: F401 — registra todos los modelos antes de init_db
 from app.database import init_db
 from app.api.router import api_router
+from app.migrations import run_all as run_migrations
 
 init_db()
+run_migrations()
 
 app = FastAPI(
     title="OpenFarma API",

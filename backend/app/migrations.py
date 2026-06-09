@@ -1,0 +1,94 @@
+"""
+migrations.py — migraciones one-shot que se ejecutan al iniciar la app.
+
+Cada migración es idempotente: detecta si ya fue aplicada antes de actuar.
+"""
+import logging
+from sqlalchemy import text
+from app.database import SessionLocal
+
+logger = logging.getLogger(__name__)
+
+
+def _fix_dci_contamination(db) -> int:
+    """
+    Fase 1 de fix_dci_mismatch: sincroniza principios_dci en cum_normalizado
+    usando grupos_equivalencia como fuente de verdad.
+
+    Solo actúa si detecta contaminación masiva (>500 productos con CIPROFLOXACINO
+    como único DCI, señal inequívoca de batch contamination).
+    """
+    import json
+
+    contaminated_count = db.execute(text(
+        "SELECT COUNT(*) FROM cum_normalizado "
+        "WHERE principios_dci = '[\"CIPROFLOXACINO\"]'"
+    )).scalar() or 0
+
+    if contaminated_count < 500:
+        return 0  # ya corregido o no contaminado
+
+    logger.warning(
+        "DCI contamination detectada: %d productos con CIPROFLOXACINO. "
+        "Aplicando fix automático...", contaminated_count
+    )
+
+    TIPO_FORMULA = {1: "monocomponente", 2: "biconjugado",
+                    3: "triconjugado",   4: "tetraconjugado"}
+
+    groups_rows = db.execute(text(
+        "SELECT dci_key, cum_ids FROM grupos_equivalencia"
+    )).fetchall()
+
+    fixed = 0
+    processed: set[str] = set()
+
+    for dci_key, cum_ids_json in groups_rows:
+        try:
+            cum_ids = json.loads(cum_ids_json) if cum_ids_json else []
+        except Exception:
+            continue
+
+        correct_dcis = [d.strip() for d in dci_key.split("||")]
+        correct_tipo = TIPO_FORMULA.get(len(correct_dcis), "monocomponente")
+        correct_json = json.dumps(correct_dcis, ensure_ascii=False)
+
+        for cum_id in cum_ids:
+            if cum_id in processed:
+                continue
+            processed.add(cum_id)
+
+            parts = cum_id.split("-", 1)
+            if len(parts) != 2:
+                continue
+
+            db.execute(text(
+                "UPDATE cum_normalizado "
+                "SET principios_dci = :pdci, tipo_formula = :tf "
+                "WHERE expediente_cum = :exp AND consecutivo_cum = :cons "
+                "AND principios_dci != :pdci"
+            ), {
+                "pdci": correct_json,
+                "tf": correct_tipo,
+                "exp": parts[0],
+                "cons": parts[1],
+            })
+            fixed += 1
+
+    db.commit()
+    logger.info("DCI fix completado: %d productos actualizados.", fixed)
+    return fixed
+
+
+def run_all():
+    """Ejecuta todas las migraciones pendientes al iniciar la app."""
+    db = SessionLocal()
+    try:
+        n = _fix_dci_contamination(db)
+        if n:
+            logger.info("Migración DCI: %d productos corregidos.", n)
+    except Exception as e:
+        logger.error("Error en migraciones de startup: %s", e)
+        db.rollback()
+    finally:
+        db.close()
