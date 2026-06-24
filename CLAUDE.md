@@ -17,16 +17,15 @@ Deploy: Railway (auto-deploy desde main)
 
 ## Base de datos: grupos_equivalencia
 
-Tabla central del sistema. Estado actual (2026-06-08):
+Tabla central del sistema. Estado actual (2026-06-24, tras ronda 65):
 
 | Métrica | Valor |
 |---------|-------|
-| Total grupos | 3,659 |
+| Total grupos | 3,246 |
 | NULL concentracion_norm | **0 (0%)** ✓ |
-| SIN_CONCENTRACION | 222 (6.1%) — vacunas, biológicos, gases, sin cuantificar |
-| Con concentracion real | 3,437 (93.9%) |
+| SIN_CONCENTRACION | 216 — vacunas, biológicos, gases, sin cuantificar |
+| Duplicados (dci+via+conc) | **0** ✓ |
 | OTRO grupos | 0 |
-| Normalización DCI | **~95%** (48,580 / 50,597 en grupos corregidos; ~1,525 huérfanos marca aún pendientes) |
 
 **cum_normalizado DCI corrupción (resuelta 2026-06-08):**
 - Causa: LLM contaminación de batch → 50,065/52,830 productos asignados con DCIs de fluoroquinolonas (CIPROFLOXACINO, LEVOFLOXACINO, etc.)
@@ -71,8 +70,48 @@ Tabla central del sistema. Estado actual (2026-06-08):
 | `backend/fix_lp_grupos.py` | Mueve LP products de SOLIDO_ORAL → SOLIDO_ORAL_LP usando LP_RE regex |
 | `backend/fix_null_conc2.py` | Segunda pasada: OFTALMICO/NASAL/OTICO via conc_mg_ml, UI regex mejorado |
 | `backend/fix_dci_normalization.py` | Normaliza dci_key en grupos_equivalencia + principios_dci en cum_normalizado; fusiona duplicados generados |
-| `backend/fix_null_conc3.py` | **Tercera pasada (definitiva)**: Fase1 reglas (componentes mg_ml), Fase2 DeepSeek 212 grupos, Fase3 SIN_CONCENTRACION para irrecuperables, Fase4 merge duplicados. Resultado: NULL=0 |
-| `backend/fix_dci_mismatch.py` | **Corrige DCI contaminados**: Fase1 sincroniza cum_normalizado desde grupos_equivalencia (48,580 fixes), Fase2 huérfanos por nombre+DeepSeek. SIEMPRE ejecutar Fase1 primero. |
+| `backend/fix_null_conc3.py` | **Tercera pasada (definitiva)**: Fase1 reglas, Fase2 DeepSeek 212 grupos, Fase3 SIN_CONCENTRACION, Fase4 merge. NULL=0 |
+| `backend/fix_dci_mismatch.py` | **Corrige DCI contaminados**: Fase1 sincroniza cum_normalizado desde grupos_equivalencia (48,580 fixes), Fase2 huérfanos. |
+| `backend/fix_auditoria_conc01..65.py` | **Auditoría INN continua** (rondas 1–65): typos, anglicismos, orden de palabras, merges. Ver sección abajo. |
+
+## Auditoría INN — convenciones aprendidas (rondas 1–65)
+
+### Reglas de nomenclatura establecidas
+
+- **Orden de palabras**: ACIDO siempre primero (ACIDO MALICO no MALICO ACIDO)
+- **Género**: ACEITE es masculino → ACEITE DE SOYA REFINADO (no REFINADA)
+- **Isotopo radiofármacos**: notación DESPUÉS del nombre base → MOLIBDATO DE SODIO (99MO), PERTECNETATO DE SODIO (99MTC), YODURO DE SODIO (131I)
+- **Vacunas**: no incluir la palabra VACUNA en el DCI (es forma farmacéutica)
+- **Hemaglutinina**: una sola G → HEMAGLUTININA FILAMENTOSA (no HEMAGGLUTININA)
+- **Bordetella**: doble S → BORDETELLA PERTUSSIS (no PERTUSIS)
+- **Poliovirus**: forma abreviada → POLIOVIRUS INACTIVADO TIPO X (no VIRUS DE POLIO INACTIVADO TIPO X)
+- **INN abreviado sobre nombre científico**: TOXINA BOTULINICA TIPO A (no TOXINA DE CLOSTRIDIUM BOTULINUM TIPO A)
+- **Español sobre inglés**: LUMEFANTRINA (no LUMENFANTRINA), SITAGLIPTINA (no SITAGLIPINA), DONEPEZILO (no DONEPECILO)
+- **SOYA** (no SOJA): término colombiano regional, se mantiene
+- **Sin tildes**: DB usa mayúsculas ASCII sin acentos (TOXOIDE PERTUSICO, no PERTUÍSICO)
+- **ISPAGHULA** (no ISPAGHULA HUSK): HUSK es descriptor inglés, no parte del INN OMS
+- **Hepatitis A canónica**: VIRUS DE LA HEPATITIS A (INACTIVADO)
+- **PERTECNETATO DE SODIO** (no PERTECNETATO solo)
+
+### Rondas recientes
+
+| Ronda | Script | Cambio |
+|-------|--------|--------|
+| 57 | fix_auditoria_conc57.py | HIDROXIUREA→HIDROXICARBAMIDA, IOBENGUANE→IOBENGUANO |
+| 58 | fix_auditoria_conc58.py | VIDAGLIPTINA typo, CEFTAZIDIME→CEFTAZIDIMA, FLUOCINOLONA ACETONIDO→ACETONIDA, TOXOIDE PERTUSSIS→PERTUSICO, vacuna pentavalente inglés→español |
+| 59 | fix_auditoria_conc59.py | DONEPECILO→DONEPEZILO, DOXASOZINA→DOXAZOSINA |
+| 60 | fix_auditoria_conc60.py | LUMENFANTRINA→LUMEFANTRINA, SITAGLIPINA→SITAGLIPTINA, MALICO ACIDO→ACIDO MALICO |
+| 61 | fix_auditoria_conc61.py | ACEITE DE SOYA REFINADA→REFINADO, ISPAGHULA HUSK→ISPAGHULA |
+| 62 | fix_auditoria_conc62.py | 3 variantes Hepatitis A → VIRUS DE LA HEPATITIS A (INACTIVADO) |
+| 63 | fix_auditoria_conc63.py | TOXINA DE CLOSTRIDIUM BOTULINUM TIPO A → TOXINA BOTULINICA TIPO A |
+| 64 | fix_auditoria_conc64.py | MOLIBDATO (99MO) DE SODIO → MOLIBDATO DE SODIO (99MO) (posición isótopo) |
+| 65 | fix_auditoria_conc65.py | ROTAVIRUS VACUNA→PENTAVALENTE, VIRUS DE POLIO→POLIOVIRUS, BORDETELLA PERTUSIS→PERTUSSIS |
+
+### Pendiente identificado
+
+- `id=3305` (Adacel Tdap): `BORDETELLA PERTUSSIS HEMAGGLUTININA FILAMENTOSA` → `BORDETELLA PERTUSSIS HEMAGLUTININA FILAMENTOSA` (doble G → una G)
+- `id=3610` (Vaxigrip Tetra): `INFLUENZA A VIRUS||INFLUENZA A VIRUS||INFLUENZA B VIRUS||INFLUENZA B VIRUS` — componentes duplicados en dci_key
+- `id=3704` (Vaxigrip trivalente): `INFLUENZA A H1N1||INFLUENZA A H3N2||INFLUENZA B` — naming de vacuna influenza sin estandarizar
 
 ## API endpoints clave
 
