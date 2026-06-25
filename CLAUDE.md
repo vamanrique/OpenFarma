@@ -17,7 +17,7 @@ Deploy: Railway (auto-deploy desde main)
 
 ## Base de datos: grupos_equivalencia
 
-Tabla central del sistema. Estado actual (2026-06-24, tras ronda 77):
+Tabla central del sistema. Estado actual (2026-06-24, tras ronda 81):
 
 | Métrica | Valor |
 |---------|-------|
@@ -72,9 +72,9 @@ Tabla central del sistema. Estado actual (2026-06-24, tras ronda 77):
 | `backend/fix_dci_normalization.py` | Normaliza dci_key en grupos_equivalencia + principios_dci en cum_normalizado; fusiona duplicados generados |
 | `backend/fix_null_conc3.py` | **Tercera pasada (definitiva)**: Fase1 reglas, Fase2 DeepSeek 212 grupos, Fase3 SIN_CONCENTRACION, Fase4 merge. NULL=0 |
 | `backend/fix_dci_mismatch.py` | **Corrige DCI contaminados**: Fase1 sincroniza cum_normalizado desde grupos_equivalencia (48,580 fixes), Fase2 huérfanos. |
-| `backend/fix_auditoria_conc01..77.py` | **Auditoría INN continua** (rondas 1–77): typos, anglicismos, orden de palabras, merges. Ver sección abajo. |
+| `backend/fix_auditoria_conc01..81.py` | **Auditoría INN continua** (rondas 1–81): typos, anglicismos, orden de palabras, merges. Ver sección abajo. |
 
-## Auditoría INN — convenciones aprendidas (rondas 1–77)
+## Auditoría INN — convenciones aprendidas (rondas 1–81)
 
 ### Reglas de nomenclatura establecidas
 
@@ -116,11 +116,23 @@ Tabla central del sistema. Estado actual (2026-06-24, tras ronda 77):
 | 75 | fix_auditoria_conc75.py | Influenza cepas anuales→subtipos canónicos (merge 3611→3610), VIRUS DE LA RABIA (INACTIVADO) |
 | 76 | fix_auditoria_conc76.py | VIVO ATENUADO con paréntesis (MMR, varicela), VIRUS DE LA VARICELA con artículo |
 | 77 | fix_auditoria_conc77.py | Dengvaxia VIRUS DENGUE SEROTIPO X (VIVO ATENUADO) |
+| 78 | fix_auditoria_conc78.py | ProQuad CEPA con paréntesis: CEPA JERYL LYNN → (CEPA JERYL LYNN), etc. |
+| 79 | fix_auditoria_conc79.py | Gardasil 9 L1VPH→L1 VPH TIPO (uniform HPV naming), Infanrix Hexa HBsAg sin RECOMBINANTE |
+| 80 | fix_auditoria_conc80.py | Typhim Vi polisacárido-primero: SALMONELLA TYPHI POLISACARIDO VI→POLISACARIDO VI DE SALMONELLA TYPHI; Pneumovax 23 forma adjetival POLISACARIDOS NEUMOCOCICOS |
+| 81 | fix_auditoria_conc81.py | Arexvy RSV GLUCOPROTEINA F drop RECOMBINANTE (proceso de producción, no parte del INN) |
+
+### Convenciones adicionales (rondas 78-81)
+
+- **CEPA entre paréntesis**: designaciones de cepa vacunal siempre entre paréntesis → `(CEPA JERYL LYNN)`, `(CEPA OKA/MERCK)`, `(CEPA WISTAR RA 27/3)`, `(CEPA EDMONSTON B)`, `(CEPA RIX4414)`
+- **VPH nomenclatura**: `PROTEINA L1 VPH TIPO X` (con espacio entre L1 y VPH, y con TIPO antes del número)
+- **RECOMBINANTE**: NO incluir en INN cuando toda la clase es recombinante (HBsAg vacunal, glucoproteína F RSV). SÍ incluir cuando distingue de versión plasmática (Factor VIII, Factor IX, eritropoyetinas)
+- **Polisacárido primero**: componente activo antes del organismo — `POLISACARIDO VI DE SALMONELLA TYPHI` (no SALMONELLA TYPHI POLISACARIDO VI)
+- **Forma adjetival para bacterias comunes**: POLISACARIDOS NEUMOCOCICOS (no STREPTOCOCCUS PNEUMONIAE), POLISACARIDO MENINGOCOCICO (no NEISSERIA MENINGITIDIS)
 
 ### Pendiente identificado
 
 - `id=3623` (Technescan MAG3): `BETIATIDA` — verificar si es sinónimo de MERTIATIDA (INN OMS); concentraciones distintas (SIN_CONC vs 0.2mg) → no merge aunque sean iguales
-- `VIRUS DENGUE SEROTIPO X (VIVO ATENUADO)` ya canónico; ROTARIX `ROTAVIRUS HUMANO VIVO ATENUADO (CEPA RIX4414)` — VIVO ATENUADO sin parens (aceptable por complejidad dual-parens)
+- ROTARIX `ROTAVIRUS HUMANO VIVO ATENUADO (CEPA RIX4414)` — VIVO ATENUADO sin parens (aceptable por complejidad dual-parens; nombre establacido)
 
 ## API endpoints clave
 
