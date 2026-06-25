@@ -17,13 +17,13 @@ Deploy: Railway (auto-deploy desde main)
 
 ## Base de datos: grupos_equivalencia
 
-Tabla central del sistema. Estado actual (2026-06-24, tras ronda 70):
+Tabla central del sistema. Estado actual (2026-06-24, tras ronda 77):
 
 | Métrica | Valor |
 |---------|-------|
-| Total grupos | 3,241 |
+| Total grupos | 3,240 |
 | NULL concentracion_norm | **0 (0%)** ✓ |
-| SIN_CONCENTRACION | 215 — vacunas, biológicos, gases, sin cuantificar |
+| SIN_CONCENTRACION | 214 — vacunas, biológicos, gases, sin cuantificar |
 | Duplicados (dci+via+conc) | **0** ✓ |
 | OTRO grupos | 0 |
 
@@ -72,9 +72,9 @@ Tabla central del sistema. Estado actual (2026-06-24, tras ronda 70):
 | `backend/fix_dci_normalization.py` | Normaliza dci_key en grupos_equivalencia + principios_dci en cum_normalizado; fusiona duplicados generados |
 | `backend/fix_null_conc3.py` | **Tercera pasada (definitiva)**: Fase1 reglas, Fase2 DeepSeek 212 grupos, Fase3 SIN_CONCENTRACION, Fase4 merge. NULL=0 |
 | `backend/fix_dci_mismatch.py` | **Corrige DCI contaminados**: Fase1 sincroniza cum_normalizado desde grupos_equivalencia (48,580 fixes), Fase2 huérfanos. |
-| `backend/fix_auditoria_conc01..70.py` | **Auditoría INN continua** (rondas 1–70): typos, anglicismos, orden de palabras, merges. Ver sección abajo. |
+| `backend/fix_auditoria_conc01..77.py` | **Auditoría INN continua** (rondas 1–77): typos, anglicismos, orden de palabras, merges. Ver sección abajo. |
 
-## Auditoría INN — convenciones aprendidas (rondas 1–70)
+## Auditoría INN — convenciones aprendidas (rondas 1–77)
 
 ### Reglas de nomenclatura establecidas
 
@@ -84,8 +84,8 @@ Tabla central del sistema. Estado actual (2026-06-24, tras ronda 70):
 - **Vacunas**: no incluir la palabra VACUNA en el DCI (es forma farmacéutica)
 - **Hemaglutinina**: una sola G → HEMAGLUTININA FILAMENTOSA (no HEMAGGLUTININA)
 - **Bordetella**: doble S → BORDETELLA PERTUSSIS (no PERTUSIS)
-- **Poliovirus**: forma abreviada → POLIOVIRUS INACTIVADO TIPO X (no VIRUS DE POLIO INACTIVADO TIPO X)
-- **INN abreviado sobre nombre científico**: TOXINA BOTULINICA TIPO A (no TOXINA DE CLOSTRIDIUM BOTULINUM TIPO A); SESTAMIBI (no TETRAFLUOROBORATO DE [TETRAKIS...])
+- **Poliovirus**: forma abreviada → POLIOVIRUS INACTIVADO TIPO X (no VIRUS DE POLIO INACTIVADO TIPO X, no VIRUS POLIOMIELITIS TIPO X)
+- **INN abreviado sobre nombre científico**: TOXINA BOTULINICA TIPO A; SESTAMIBI (no TETRAFLUOROBORATO/TETRAKIS)
 - **Español sobre inglés**: LUMEFANTRINA, SITAGLIPTINA, DONEPEZILO, CEFTAZIDIMA, PERTUSICO
 - **SOYA** (no SOJA): término colombiano regional, se mantiene
 - **Sin tildes**: DB usa mayúsculas ASCII sin acentos
@@ -94,26 +94,33 @@ Tabla central del sistema. Estado actual (2026-06-24, tras ronda 70):
 - **Hepatitis B canónica**: ANTIGENO DE SUPERFICIE DEL VIRUS DE LA HEPATITIS B (sin HBSAG, sin PURIFICADO, con "LA")
 - **Alfa-1 proteinasa**: INHIBIDOR DE ALFA-1 PROTEINASA (HUMANO) — no ALFA-1 ANTITRIPSINA, no sin "DE", no sin guion
 - **PERTECNETATO DE SODIO** (no PERTECNETATO solo; no TECNECIO TC-99M)
-- **Vacunas influenza cuadrivalente**: componentes diferenciados → INFLUENZA A H1N1||INFLUENZA A H3N2||INFLUENZA B LINAJE VICTORIA||INFLUENZA B LINAJE YAMAGATA
+- **Technescan DTPA**: TECNECIO (99MTC) PENTETATO (no PERTECNETATO; DTPA=pentetato, no pertecnetato)
+- **Vacunas influenza cuadrivalente**: INFLUENZA A H1N1||INFLUENZA A H3N2||INFLUENZA B LINAJE VICTORIA||INFLUENZA B LINAJE YAMAGATA (no cepas anuales específicas)
+- **Neumocócica conjugada**: POLISACARIDO DEL SEROTIPO NEUMOCOCICO X + CRM197 (no POLISACARIDO SEROTIPO X, no PROTEINA TRANSPORTADORA CRM 197)
+- **Antígenos pertussis**: nombre corto sin prefijo bacteriano — HEMAGLUTININA FILAMENTOSA (no BORDETELLA PERTUSSIS HEMAGLUTININA), PERTACTINA, TOXOIDE PERTUSICO
+- **Toxoides difteria/tétanos**: TOXOIDE DIFTERICO / TOXOIDE TETANICO (no CORYNEBACTERIUM DIPHTHERIAE TOXOIDE / CLOSTRIDIUM TETANI TOXOIDE)
+- **Hib**: POLISACARIDO CAPSULAR DE HAEMOPHILUS INFLUENZAE TIPO B (no HAEMOPHILUS INFLUENZAE TIPO B POLISACARIDO)
+- **Virus vacunales vivos atenuados**: cualificador entre paréntesis DESPUÉS del nombre → VIRUS DE LA FIEBRE AMARILLA (VIVO ATENUADO), VIRUS DEL SARAMPION (VIVO ATENUADO), VIRUS DE LA VARICELA (VIVO ATENUADO), VIRUS DENGUE SEROTIPO X (VIVO ATENUADO)
+- **Virus vacunales inactivados**: igual con (INACTIVADO) → VIRUS DE LA HEPATITIS A (INACTIVADO), VIRUS DE LA RABIA (INACTIVADO)
+- **MMR**: VIRUS DE LA PAROTIDITIS (no VIRUS PAROTIDITIS, no PAPERA)
+- **Twinrix HepA+HepB**: ANTIGENO DE SUPERFICIE DEL VIRUS DE LA HEPATITIS B||VIRUS DE LA HEPATITIS A (INACTIVADO)
 
 ### Rondas recientes
 
 | Ronda | Script | Cambio principal |
 |-------|--------|--------|
-| 64 | fix_auditoria_conc64.py | MOLIBDATO (99MO) DE SODIO → MOLIBDATO DE SODIO (99MO) (posición isótopo) |
-| 65 | fix_auditoria_conc65.py | ROTAVIRUS VACUNA→PENTAVALENTE, VIRUS DE POLIO→POLIOVIRUS, BORDETELLA PERTUSIS→PERTUSSIS |
-| 66 | fix_auditoria_conc66.py | HEMAGGLUTININA→HEMAGLUTININA (Adacel), Vaxigrip Tetra componentes duplicados→H1N1/H3N2/Victoria/Yamagata |
-| 67 | fix_auditoria_conc67.py | 5 nombres IUPAC/TETRAMIBI → SESTAMIBI (INN OMS), 4 merges a 1mg |
-| 68 | fix_auditoria_conc68.py | TC-99M→(99MTC), Ga-67→(67GA), MOLIBDENO 99||TECNECIO 99M → nombres canónicos |
-| 69 | fix_auditoria_conc69.py | 4 variantes antígeno HepB → ANTIGENO DE SUPERFICIE DEL VIRUS DE LA HEPATITIS B, 1 merge |
-| 70 | fix_auditoria_conc70.py | IOBENGUANO (I-131)→(131I), 3 variantes alfa-1 antitripsina → INHIBIDOR DE ALFA-1 PROTEINASA (HUMANO) |
+| 71 | fix_auditoria_conc71.py | TECNECIO PERTECNETATO→PENTETATO (DTPA), Prevenar13 POLISACARIDO SEROTIPO→DEL SEROTIPO NEUMOCOCICO + CRM197 |
+| 72 | fix_auditoria_conc72.py | Twinrix HepA+HepB canónico, hexavalente Hexaxim antígenos, DTP+IPV id=3107 POLIOVIRUS INACTIVADO |
+| 73 | fix_auditoria_conc73.py | Adacel DTPa5 y pentavalente: drop prefijos BP/CT/CD, fix Hib, toxoides canónicos |
+| 74 | fix_auditoria_conc74.py | MMR PAROTIDITIS (no PAPERA), ProQuad PAPERA→PAROTIDITIS, DTwP toxoides canónicos |
+| 75 | fix_auditoria_conc75.py | Influenza cepas anuales→subtipos canónicos (merge 3611→3610), VIRUS DE LA RABIA (INACTIVADO) |
+| 76 | fix_auditoria_conc76.py | VIVO ATENUADO con paréntesis (MMR, varicela), VIRUS DE LA VARICELA con artículo |
+| 77 | fix_auditoria_conc77.py | Dengvaxia VIRUS DENGUE SEROTIPO X (VIVO ATENUADO) |
 
-### Pendiente identificado (próximas rondas)
+### Pendiente identificado
 
-- Pneumocócica: `POLISACARIDO SEROTIPO X` (Prevenar 13, id=3391) vs `POLISACARIDO DEL SEROTIPO NEUMOCOCICO X` (Vaxneuvance, id=3687) — naming inconsistente del mismo tipo de componente
-- `id=3689` (Technescan DTPA): DCI asignado como `TECNECIO (99MTC) PERTECNETATO` pero el producto es DTPA→debería ser `TECNECIO (99MTC) PENTETATO`
-- `id=3623` (Technescan MAG3): `BETIATIDA` vs `MERTIATIDA` (id=2010) — posible sinónimo, verificar INN
-- `PROTEINA TRANSPORTADORA CRM 197` (id=3391) vs `CRM197` (id=3687) — inconsistente en vacunas neumocócicas
+- `id=3623` (Technescan MAG3): `BETIATIDA` — verificar si es sinónimo de MERTIATIDA (INN OMS); concentraciones distintas (SIN_CONC vs 0.2mg) → no merge aunque sean iguales
+- `VIRUS DENGUE SEROTIPO X (VIVO ATENUADO)` ya canónico; ROTARIX `ROTAVIRUS HUMANO VIVO ATENUADO (CEPA RIX4414)` — VIVO ATENUADO sin parens (aceptable por complejidad dual-parens)
 
 ## API endpoints clave
 
@@ -137,7 +144,7 @@ Tabla central del sistema. Estado actual (2026-06-24, tras ronda 70):
 
 ## Problemas conocidos / deuda técnica
 
-### SIN_CONCENTRACION (215 grupos, 6.6%)
+### SIN_CONCENTRACION (214 grupos, 6.6%)
 
 Productos donde la concentración no aplica o no tiene una presentación estandarizada:
 - **Vacunas y biológicos complejos**: MMR, Hepatitis A/B, Dengue, BCG, factores de coagulación, inmunoglobulinas
