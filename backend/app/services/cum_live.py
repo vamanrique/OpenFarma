@@ -48,10 +48,55 @@ async def _completar_grupos(filas: list[dict], url: str = API_URL) -> list[dict]
     return list(todas.values())
 
 
+async def _completar_con_grupos_db(
+    resultados: list[MedicamentoTransformado],
+    db: Session,
+) -> list[MedicamentoTransformado]:
+    """
+    Fetch representatives from DB groups not yet covered by Socrata results.
+    Prevents high-frequency drugs (paracetamol) from losing vías when the
+    Socrata $limit returns only the first N alphabetical products.
+    """
+    dci_keys: set[str] = set()
+    for m in resultados:
+        dcis = m.principios_dci or []
+        if dcis:
+            dci_keys.add("||".join(sorted(dcis)))
+
+    if not dci_keys:
+        return resultados
+
+    ks = "','".join(k.replace("'", "''") for k in dci_keys)
+    rows = db.execute(
+        text(f"SELECT cum_ids FROM grupos_equivalencia WHERE dci_key IN ('{ks}')")
+    ).fetchall()
+
+    fetched_exp = {m.cum_id.split('-')[0] for m in resultados if m.cum_id and '-' in m.cum_id}
+
+    missing: list[str] = []
+    for (cum_ids_json,) in rows:
+        cum_ids: list[str] = json.loads(cum_ids_json) if cum_ids_json else []
+        group_exps = {cid.split('-')[0] for cid in cum_ids if '-' in cid}
+        if not group_exps & fetched_exp and cum_ids:
+            missing.append(cum_ids[0])
+
+    if not missing:
+        return resultados
+
+    filas_extra = await _fetch_grupo_expedientes(missing)
+    if not filas_extra:
+        return resultados
+
+    df_extra = pd.DataFrame(filas_extra)
+    meds_extra = agrupar_y_transformar(df_extra)
+    return resultados + meds_extra
+
+
 async def buscar_medicamentos(
     query: str,
     solo_activos: bool = True,
     limit: int = 200,
+    db: Optional[Session] = None,
 ) -> list[MedicamentoTransformado]:
     """
     Busca en la API por nombre de producto o principio activo.
@@ -80,7 +125,12 @@ async def buscar_medicamentos(
 
     filas = await _completar_grupos(filas)
     df = pd.DataFrame(filas)
-    return agrupar_y_transformar(df)
+    resultados = agrupar_y_transformar(df)
+
+    if db is not None and resultados:
+        resultados = await _completar_con_grupos_db(resultados, db)
+
+    return resultados
 
 
 async def obtener_por_cum(expedientecum: str, consecutivocum: str) -> Optional[MedicamentoTransformado]:

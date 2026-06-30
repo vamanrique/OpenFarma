@@ -64,7 +64,7 @@ async def buscar_medicamentos(
 ):
     """Busca en tiempo real: CUM activos + registros en tramite de renovacion."""
     meds_activo, meds_renov = await asyncio.gather(
-        cum_live.buscar_medicamentos(q, solo_activos=solo_activos, limit=limit * 10),
+        cum_live.buscar_medicamentos(q, solo_activos=solo_activos, limit=limit * 10, db=db),
         cum_live.buscar_en_renovacion(q, limit=limit * 5),
     )
     todos = meds_activo + meds_renov
