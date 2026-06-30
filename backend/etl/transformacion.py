@@ -1329,7 +1329,7 @@ def construir_concentracion(row: pd.Series) -> str:
     # para expresar 2 g/100 mL = 2% = 20 mg/mL. Solo aplica cuando la unidad original es
     # ambigua ('U', vacía) o de volumen ('ml') — nunca cuando unidad='mg' (eso sería 0.02 mg/mL real).
     # El pipeline per-mL devuelve "0.02 g/mL" y _normalizar_g_a_mg lo convierte a "20 mg/mL".
-    _FORMAS_SUSPENSION = {'SUSPENSION ORAL', 'SUSPENSION'}
+    _FORMAS_SUSPENSION = {'SUSPENSION ORAL', 'SUSPENSION', 'SOLUCION ORAL', 'JARABE', 'ELIXIR'}
     _unidad_ambigua = (unidad.upper() in _INVALIDOS
                        or unidad.upper() in {'ML', 'L', 'DL', 'CC'}
                        or unidad_medida.upper() in _INVALIDOS)
