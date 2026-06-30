@@ -17,13 +17,13 @@ Deploy: Railway (auto-deploy desde main)
 
 ## Base de datos: grupos_equivalencia
 
-Tabla central del sistema. Estado actual (2026-06-24, tras ronda 81):
+Tabla central del sistema. Estado actual (2026-06-30, tras ronda 102):
 
 | Métrica | Valor |
 |---------|-------|
-| Total grupos | 3,240 |
+| Total grupos | 3,204 |
 | NULL concentracion_norm | **0 (0%)** ✓ |
-| SIN_CONCENTRACION | 214 — vacunas, biológicos, gases, sin cuantificar |
+| SIN_CONCENTRACION | 213 — vacunas, biológicos, gases, sin cuantificar |
 | Duplicados (dci+via+conc) | **0** ✓ |
 | OTRO grupos | 0 |
 
@@ -72,9 +72,16 @@ Tabla central del sistema. Estado actual (2026-06-24, tras ronda 81):
 | `backend/fix_dci_normalization.py` | Normaliza dci_key en grupos_equivalencia + principios_dci en cum_normalizado; fusiona duplicados generados |
 | `backend/fix_null_conc3.py` | **Tercera pasada (definitiva)**: Fase1 reglas, Fase2 DeepSeek 212 grupos, Fase3 SIN_CONCENTRACION, Fase4 merge. NULL=0 |
 | `backend/fix_dci_mismatch.py` | **Corrige DCI contaminados**: Fase1 sincroniza cum_normalizado desde grupos_equivalencia (48,580 fixes), Fase2 huérfanos. |
-| `backend/fix_auditoria_conc01..81.py` | **Auditoría INN continua** (rondas 1–81): typos, anglicismos, orden de palabras, merges. Ver sección abajo. |
+| `backend/fix_auditoria_conc01..102.py` | **Auditoría INN continua** (rondas 1–102): typos, anglicismos, orden de palabras, merges. Ver sección abajo. |
+| `backend/fix_english_dci.py` | ZINC OXIDE→OXIDO DE ZINC, SODIUM IODIDE I-131→YODURO DE SODIO (131I), ZINC ACETATE→ACETATO DE ZINC. |
+| `backend/fix_salt_names.py` | Orden incorrecto sal+catión: CALCIO GLUCONATO→GLUCONATO DE CALCIO, BARIO SULFATO→SULFATO DE BARIO, etc. |
+| `backend/fix_vitamins_units.py` | Vitamina A mal clasificada como ACIDO ASCORBICO; TOCOFEROL 400/800 mg → 400/800 UI. |
+| `backend/fix_zero_mg_conc.py` | Sub-mg parseados como 0: LEVOTIROXINA mcg, CALCITRIOL, PARICALCITOL, FLUTICASONA NASAL, etc. |
+| `backend/fix_remaining_groups.py` | Grupos misceláneos con DCI erróneo o SIN_CONC incorrecto (batch ETL tardío). |
+| `backend/fix_sinconc_batch2.py` | Segunda ronda de SIN_CONC → concentración real (ENOXAPARINA, CLINDAMICINA||CLOTRIMAZOL, etc.). |
+| `backend/fix_batch_contamination.py` | Grupos ids ~3789-3912 con DCI de nombre comercial → INN correcto + merge. |
 
-## Auditoría INN — convenciones aprendidas (rondas 1–81)
+## Auditoría INN — convenciones aprendidas (rondas 1–102)
 
 ### Reglas de nomenclatura establecidas
 
@@ -120,19 +127,65 @@ Tabla central del sistema. Estado actual (2026-06-24, tras ronda 81):
 | 79 | fix_auditoria_conc79.py | Gardasil 9 L1VPH→L1 VPH TIPO (uniform HPV naming), Infanrix Hexa HBsAg sin RECOMBINANTE |
 | 80 | fix_auditoria_conc80.py | Typhim Vi polisacárido-primero: SALMONELLA TYPHI POLISACARIDO VI→POLISACARIDO VI DE SALMONELLA TYPHI; Pneumovax 23 forma adjetival POLISACARIDOS NEUMOCOCICOS |
 | 81 | fix_auditoria_conc81.py | Arexvy RSV GLUCOPROTEINA F drop RECOMBINANTE (proceso de producción, no parte del INN) |
+| 82 | fix_auditoria_conc82.py | Penicilinas INN canónicas: PENICILINA G→BENCILPENICILINA, G BENZATINICA→BENCILPENICILINA BENZATINA, G PROCAINA→BENCILPENICILINA PROCAINA, PENICILINA V→FENOXIMETILPENICILINA |
+| 83 | fix_auditoria_conc83.py | Radiofármacos generadores Mo/Tc: CLORURO DE SODIO\|\|TECNECIO→MOLIBDATO DE SODIO (99MO)\|\|PERTECNETATO DE SODIO (99MTC); LUTECIO (177LU)→CLORURO DE LUTECIO (177LU) |
+| 84 | fix_auditoria_conc84.py | Factores coagulación recombinantes INN: RURIOCTOCOG ALFA PEGOL (Adynovate), OCTOCOG ALFA (Kovaltry), NONACOG GAMMA (Rixubis); fix conc 800→800000 UI BENCILPENICILINA PROCAINA |
+| 85 | fix_auditoria_conc85.py | FOLITROPINA→FOLITROPINA ALFA (Bemfola); EPTACOG ALFA→EPTACOG ALFA (ACTIVADO) (NovoSeven) |
+| 86 | fix_auditoria_conc86.py | Fix conc parseo: DESMOPRESINA 0.1→0.12 mg (Minirin Melt 120μg); VALACICLOVIR 1→1000 mg (Valtrois); merge→1422 |
+| 87 | fix_auditoria_conc87.py | Terapias génicas: VORETIGEN→VORETIGENE NEPARVOVEC (Luxturna); ONASEMNOGEN→ONASEMNOGENE ABEPARVOVEC (Zolgensma); ANTITIMOCITOS HUMANA→(CONEJO) (Timoglobulina) |
+| 88 | fix_auditoria_conc88.py | ACIDO METILENDIFOSFONICO→ACIDO MEDRONICO (Rotop-MDP); TENOFOVIR→TENOFOVIR DISOPROXILO (6 grupos TDF: Truvada, Stribild, Atripla, Delstrigo, Didivir, Tendifu); merge 1306+1683 |
+| 89 | fix_auditoria_conc89.py | BETIATIDA→MERTIATIDA (Technescan MAG3); ALBUMINA HUMANA→ALBUMINA SERICA HUMANA NANOCOLOIDE (Nano-Albumon); Survanta 2878/2879→BERACTANT |
+| 90 | fix_auditoria_conc90.py | BLES 3554 (FOSFOLIPIDOS/LIQUIDO_ORAL)→BERACTANT/INYECTABLE; Blesurf 3600→BERACTANT; merges→3554/3600 |
+| 91 | fix_auditoria_conc91.py | Survanta 4mL (684 FOSFOLIPIDOS TOTALES)→BERACTANT; Infasurf (1088 FOSFOLIPIDOS)→CALFACTANT; merge 684→3554 |
+| 92 | fix_auditoria_conc92.py | AmBisome→ANFOTERICINA B LIPOSOMAL; hierro IV: CARBOXIMALTOSA FERRICA (Ferinject), HIERRO SACAROSA (merge→1500), DERISOMALTOSA FERRICA (Monofer); PROTEINSUCCINILATO FERRICO (Ferroprotina) |
+| 93 | fix_auditoria_conc93.py | HIERRO→SULFATO FERROSO (id=683), GLUCONATO FERROSO (ids 2753/2754); DOXORUBICINA LIPOSOMAL PEGILADA split de id=1045 (Doxopeg, Lipodox, Doxorubicina LD); HIERRO SACAROSA merge 2333+2463 |
+| 94 | fix_auditoria_conc94.py | Split id=2755 (SULFATO FERROSO 7 prod + GLUCONATO FERROSO 5 prod a 25mg/mL); HIERRO→FUMARATO FERROSO (Ferrokids); HIERRO→CITRATO FERRICO AMONICO (Herrex, Eurofer) |
+| 95 | fix_auditoria_conc95.py | CASPOFUNGINA 100x factor fix (0.7mg→70mg, 0.5mg→50mg); HepB antígeno singletons mg→SIN_CONC→merge id=3513; OCTREOTIDA id=2395→EDOTREOTIDA (Tektrotyd Ga-68) |
+| 96 | fix_auditoria_conc96.py | HEPARINA '25 UI' (=25.000, mal parseo separador miles)→SIN_CONC; CLONIXINATO/CLONIXINATO DE LISINA→CLONIXINA en 5 grupos; merges CICLOBENZAPRINA combos |
+| 97 | fix_auditoria_conc97.py | GUAIACOLATO DE GLICERILO→GUAIFENESINA (8 grupos, merges); N-ACETILCISTEINA→ACETILCISTEINA (INN OMS sin prefijo N-) |
+| 98 | fix_auditoria_conc98.py | ISOSORBIDA DINITRATO→DINITRATO DE ISOSORBIDA (INN-Sp #4749); ISOPROPANOL/PROPAN-2-OL→ALCOHOL ISOPROPILICO (merge CLORHEXIDINA combos) |
+| 99 | fix_auditoria_conc99.py | SESTAMIBI→TECNECIO (99MTC) SESTAMIBI; ACIDO PENTETICO→TECNECIO (99MTC) PENTETATO (DTPA renal); ACIDO DIMERCAPTOSUCCINICO→TECNECIO (99MTC) SUCCIMERO (DMSA renal/óseo) |
+| 100 | fix_auditoria_conc100.py | HIDROXICOBALAMINA→HIDROXOCOBALAMINA; FOLINATO DE CALCIO→ACIDO FOLINICO; OXIDRONATO DE SODIO→TECNECIO (99MTC) OXIDRONATO (HDP bone scan); GADOBENATO DE DIMEGLUMINA→ACIDO GADOBENICO; MACROAGREGADOS DE ALBUMINA→TECNECIO (99MTC) MACROSALB |
+| 101 | fix_auditoria_conc101.py | GBq parseados como 'g' (generadores Mo/Lu)→SIN_CONC+merge; MERTIATIDA→TECNECIO (99MTC) MERTIATIDA; EDOTREOTIDA→GALIO (68GA) EDOTREOTIDA |
+| 102 | fix_auditoria_conc102.py | RADIO RA-223→DICLORURO DE RADIO (223RA) (INN #9982); YODO iny 480mg/mL→ACEITE DE ADORMIDERA YODADO (Lipiodol); DEXTRAN 70→DEXTRANO 70 (INN-Sp); HIERRO SACAROSA 100mg→20mg/mL→merge id=1500 |
 
-### Convenciones adicionales (rondas 78-81)
+### Convenciones adicionales (rondas 78-102)
 
 - **CEPA entre paréntesis**: designaciones de cepa vacunal siempre entre paréntesis → `(CEPA JERYL LYNN)`, `(CEPA OKA/MERCK)`, `(CEPA WISTAR RA 27/3)`, `(CEPA EDMONSTON B)`, `(CEPA RIX4414)`
 - **VPH nomenclatura**: `PROTEINA L1 VPH TIPO X` (con espacio entre L1 y VPH, y con TIPO antes del número)
-- **RECOMBINANTE**: NO incluir en INN cuando toda la clase es recombinante (HBsAg vacunal, glucoproteína F RSV). SÍ incluir cuando distingue de versión plasmática (Factor VIII, Factor IX, eritropoyetinas)
+- **RECOMBINANTE**: NO incluir en INN cuando toda la clase es recombinante (HBsAg vacunal, glucoproteína F RSV). SÍ incluir cuando distingue de versión plasmática (eritropoyetinas)
+- **Factores coagulación recombinantes**: usar INN específico OMS — OCTOCOG ALFA (rFVIII Advate/Kovaltry), MOROCTOCOG ALFA (ReFacto), TUROCTOCOG ALFA, SIMOCTOCOG ALFA, RURIOCTOCOG ALFA PEGOL (Adynovate pegilado), NONACOG ALFA (BeneFIX), NONACOG GAMMA (Rixubis). Plasma-derived permanecen como FACTOR VIII / FACTOR IX (sin INN único).
+- **Penicilinas INN canónicas**: BENCILPENICILINA (G sódica/potásica), BENCILPENICILINA BENZATINA, BENCILPENICILINA PROCAINA, FENOXIMETILPENICILINA (Penicilina V oral)
 - **Polisacárido primero**: componente activo antes del organismo — `POLISACARIDO VI DE SALMONELLA TYPHI` (no SALMONELLA TYPHI POLISACARIDO VI)
 - **Forma adjetival para bacterias comunes**: POLISACARIDOS NEUMOCOCICOS (no STREPTOCOCCUS PNEUMONIAE), POLISACARIDO MENINGOCOCICO (no NEISSERIA MENINGITIDIS)
+- **Terapias génicas vocal final -E**: VORETIGENE NEPARVOVEC (no VORETIGEN), ONASEMNOGENE ABEPARVOVEC (no ONASEMNOGEN). INN OMS con -gene en inglés → -gene/-geno en español (vocal final)
+- **ATG especie**: INMUNOGLOBULINA ANTITIMOCITOS (CONEJO) para Thymoglobulin/Timoglobulina (rabbit); si fuera equina/humana se especifica entre paréntesis
+- **Radiofármacos nombre sistemático → INN**: ACIDO METILENDIFOSFONICO (MDP) → ACIDO MEDRONICO; usar nombre INN OMS siempre que exista. OXIDRONATO DE SODIO (HDP) ya correcto.
+- **TENOFOVIR oral 300mg = TDF prodrug**: el INN del compuesto aprobado VO es TENOFOVIR DISOPROXILO; TENOFOVIR (ácido libre) solo aplica si hubiera formulación IV de ácido libre
+- **Surfactantes pulmonares**: BERACTANT (Survanta, BLES, Blesurf = bovino adulto), CALFACTANT (Infasurf = ternera), PORACTANT ALFA (Curosurf = porcino). Todos SIN_CONCENTRACION. FOSFOLIPIDOS/FOSFOLIPIDOS TOTALES son nombres composicionales, no INN.
+- **Anfotericina B formulaciones**: ANFOTERICINA B (convencional/Fungizone) ≠ ANFOTERICINA B LIPOSOMAL (AmBisome/Amphosom-B/Limperic B). Son INN distintos (OMS #7372) con dosificación e indicaciones diferentes.
+- **Preparaciones de hierro IV — INN específicos**: HIERRO SACAROSA (sucrose complex/Venofer), CARBOXIMALTOSA FERRICA (ferric carboxymaltose/Ferinject), DERISOMALTOSA FERRICA (ferric derisomaltose/Monofer, INN OMS 2020). HIERRO dextrano pendiente verificación.
+- **Hierro oral especializado**: PROTEINSUCCINILATO FERRICO (ferric proteinsuccinylate/Ferroprotina, ATC B03AB99).
+- **Hierro sales orales**: SULFATO FERROSO (B03AA07), GLUCONATO FERROSO (B03AA01), FUMARATO FERROSO (B03AB02), CITRATO FERRICO AMONICO (B03AB04). Nombre genérico HIERRO solo si ATC no identifica la sal.
+- **DOXORUBICINA LIPOSOMAL PEGILADA** ≠ DOXORUBICINA convencional (grupos separados). Split id=1045 realizado en ronda 93.
+- **GUAIFENESINA** (INN OMS #3774): no "guaiacolato de glicerilo" ni "gliceril guayacolato".
+- **ACETILCISTEINA** (INN OMS #72): sin prefijo N- (N-ACETILCISTEINA es redundante).
+- **DINITRATO DE ISOSORBIDA** (INN-Sp #4749): no "ISOSORBIDA DINITRATO".
+- **CLONIXINA** (INN base): no CLONIXINATO DE LISINA, no CLONIXINATO.
+- **Radiofármacos Tc-99m — nombre completo**: TECNECIO (99MTC) SESTAMIBI (Cardiolite), TECNECIO (99MTC) PENTETATO (DTPA renal), TECNECIO (99MTC) SUCCIMERO (DMSA renal/óseo), TECNECIO (99MTC) MERTIATIDA (MAG3 renal tubular), TECNECIO (99MTC) OXIDRONATO (HDP bone scan), TECNECIO (99MTC) MACROSALB (MAA pulmón).
+- **Radiofármacos Ga-68**: GALIO (68GA) EDOTREOTIDA (Tektrotyd DOTATOC PET).
+- **DICLORURO DE RADIO (223RA)** (INN #9982, Xofigo): sigue convención isotopo-entre-paréntesis.
+- **ACEITE DE ADORMIDERA YODADO** (Lipiodol 480mgI/mL): no "YODO" (que es antiséptico elemental).
+- **DEXTRANO** (no DEXTRAN): INN-Sp español. Número de peso molecular es parte del INN (DEXTRANO 70).
+- **HIDROXOCOBALAMINA** (no HIDROXICOBALAMINA): "hidroxo" del ligando en química de coordinación.
+- **ACIDO FOLINICO** (no FOLINATO DE CALCIO): convención sal→ácido libre INN, igual que ACIDO FOLICO.
+- **ACIDO GADOBENICO** (INN #9232, no GADOBENATO DE DIMEGLUMINA): igual que ACIDO GADOTERICO y ACIDO GADOXETICO.
+- **GBq → SIN_CONCENTRACION**: actividad en gigabecquerel no es concentración molar — generadores Mo/Lu y similares usan SIN_CONCENTRACION.
 
 ### Pendiente identificado
 
-- `id=3623` (Technescan MAG3): `BETIATIDA` — verificar si es sinónimo de MERTIATIDA (INN OMS); concentraciones distintas (SIN_CONC vs 0.2mg) → no merge aunque sean iguales
-- ROTARIX `ROTAVIRUS HUMANO VIVO ATENUADO (CEPA RIX4414)` — VIVO ATENUADO sin parens (aceptable por complejidad dual-parens; nombre establacido)
+- ROTARIX `ROTAVIRUS HUMANO VIVO ATENUADO (CEPA RIX4414)` — VIVO ATENUADO sin paréntesis externos (aceptable por complejidad dual-parens; nombre establecido)
+- HIERRO dextrano (ATC B03AC): verificar INN específico (HIERRO DEXTRANO vs dextriferron vs ferumoxytol) para grupos con ATC B03AC que no sean hierro sacarosa/carboximaltosa/derisomaltosa
 
 ## API endpoints clave
 
