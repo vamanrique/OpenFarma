@@ -17,7 +17,7 @@ Deploy: Railway (auto-deploy desde main)
 
 ## Base de datos: grupos_equivalencia
 
-Tabla central del sistema. Estado actual (2026-06-30, tras ronda 103):
+Tabla central del sistema. Estado actual (2026-06-30, tras ronda 104):
 
 | Métrica | Valor |
 |---------|-------|
@@ -72,7 +72,7 @@ Tabla central del sistema. Estado actual (2026-06-30, tras ronda 103):
 | `backend/fix_dci_normalization.py` | Normaliza dci_key en grupos_equivalencia + principios_dci en cum_normalizado; fusiona duplicados generados |
 | `backend/fix_null_conc3.py` | **Tercera pasada (definitiva)**: Fase1 reglas, Fase2 DeepSeek 212 grupos, Fase3 SIN_CONCENTRACION, Fase4 merge. NULL=0 |
 | `backend/fix_dci_mismatch.py` | **Corrige DCI contaminados**: Fase1 sincroniza cum_normalizado desde grupos_equivalencia (48,580 fixes), Fase2 huérfanos. |
-| `backend/fix_auditoria_conc01..103.py` | **Auditoría INN continua** (rondas 1–103): typos, anglicismos, orden de palabras, merges. Ver sección abajo. |
+| `backend/fix_auditoria_conc01..104.py` | **Auditoría INN continua** (rondas 1–104): typos, anglicismos, orden de palabras, merges. Ver sección abajo. |
 | `backend/fix_english_dci.py` | ZINC OXIDE→OXIDO DE ZINC, SODIUM IODIDE I-131→YODURO DE SODIO (131I), ZINC ACETATE→ACETATO DE ZINC. |
 | `backend/fix_salt_names.py` | Orden incorrecto sal+catión: CALCIO GLUCONATO→GLUCONATO DE CALCIO, BARIO SULFATO→SULFATO DE BARIO, etc. |
 | `backend/fix_vitamins_units.py` | Vitamina A mal clasificada como ACIDO ASCORBICO; TOCOFEROL 400/800 mg → 400/800 UI. |
@@ -81,7 +81,7 @@ Tabla central del sistema. Estado actual (2026-06-30, tras ronda 103):
 | `backend/fix_sinconc_batch2.py` | Segunda ronda de SIN_CONC → concentración real (ENOXAPARINA, CLINDAMICINA||CLOTRIMAZOL, etc.). |
 | `backend/fix_batch_contamination.py` | Grupos ids ~3789-3912 con DCI de nombre comercial → INN correcto + merge. |
 
-## Auditoría INN — convenciones aprendidas (rondas 1–103)
+## Auditoría INN — convenciones aprendidas (rondas 1–104)
 
 ### Reglas de nomenclatura establecidas
 
@@ -149,8 +149,9 @@ Tabla central del sistema. Estado actual (2026-06-30, tras ronda 103):
 | 101 | fix_auditoria_conc101.py | GBq parseados como 'g' (generadores Mo/Lu)→SIN_CONC+merge; MERTIATIDA→TECNECIO (99MTC) MERTIATIDA; EDOTREOTIDA→GALIO (68GA) EDOTREOTIDA |
 | 102 | fix_auditoria_conc102.py | RADIO RA-223→DICLORURO DE RADIO (223RA) (INN #9982); YODO iny 480mg/mL→ACEITE DE ADORMIDERA YODADO (Lipiodol); DEXTRAN 70→DEXTRANO 70 (INN-Sp); HIERRO SACAROSA 100mg→20mg/mL→merge id=1500 |
 | 103 | fix_auditoria_conc103.py | Completar V09 con prefijo Tc: EXAMETAZIMA→TECNECIO (99MTC) EXAMETAZIMA; ACIDO MEDRONICO→MEDRONATO; MEBROFENINA (3 grupos); TETRAFOSMINA→TETROFOSMINA (typo+prefijo); PIROFOSFATO DE SODIO→TECNECIO (99MTC) PIROFOSFATO |
+| 104 | fix_auditoria_conc104.py | IOPRAMIDA (typo Ultravist 300)→IOPROMIDA; ALBUMINA SERICA HUMANA NANOCOLOIDE (V09DB01+V09GA04)→TECNECIO (99MTC) ALBUMINA SERICA HUMANA NANOCOLOIDE |
 
-### Convenciones adicionales (rondas 78-103)
+### Convenciones adicionales (rondas 78-104)
 
 - **CEPA entre paréntesis**: designaciones de cepa vacunal siempre entre paréntesis → `(CEPA JERYL LYNN)`, `(CEPA OKA/MERCK)`, `(CEPA WISTAR RA 27/3)`, `(CEPA EDMONSTON B)`, `(CEPA RIX4414)`
 - **VPH nomenclatura**: `PROTEINA L1 VPH TIPO X` (con espacio entre L1 y VPH, y con TIPO antes del número)
@@ -173,7 +174,8 @@ Tabla central del sistema. Estado actual (2026-06-30, tras ronda 103):
 - **ACETILCISTEINA** (INN OMS #72): sin prefijo N- (N-ACETILCISTEINA es redundante).
 - **DINITRATO DE ISOSORBIDA** (INN-Sp #4749): no "ISOSORBIDA DINITRATO".
 - **CLONIXINA** (INN base): no CLONIXINATO DE LISINA, no CLONIXINATO.
-- **Radiofármacos Tc-99m — nombre completo**: TECNECIO (99MTC) SESTAMIBI (Cardiolite), TECNECIO (99MTC) PENTETATO (DTPA renal), TECNECIO (99MTC) SUCCIMERO (DMSA renal/óseo), TECNECIO (99MTC) MERTIATIDA (MAG3 renal tubular), TECNECIO (99MTC) OXIDRONATO (HDP bone scan), TECNECIO (99MTC) MACROSALB (MAA pulmón), TECNECIO (99MTC) EXAMETAZIMA (HMPAO brain/Ceretec), TECNECIO (99MTC) MEDRONATO (MDP bone scan), TECNECIO (99MTC) MEBROFENINA (Choletec hepatobiliary), TECNECIO (99MTC) TETROFOSMINA (Myoview cardiac), TECNECIO (99MTC) PIROFOSFATO (PYP bone/cardiac). Todos los kits V09 siguen esta convención: INN del radiofármaco final, no del ligando/sal precursor.
+- **Radiofármacos Tc-99m — nombre completo**: TECNECIO (99MTC) SESTAMIBI (Cardiolite), TECNECIO (99MTC) PENTETATO (DTPA renal), TECNECIO (99MTC) SUCCIMERO (DMSA renal/óseo), TECNECIO (99MTC) MERTIATIDA (MAG3 renal tubular), TECNECIO (99MTC) OXIDRONATO (HDP bone scan), TECNECIO (99MTC) MACROSALB (MAA pulmón), TECNECIO (99MTC) EXAMETAZIMA (HMPAO brain/Ceretec), TECNECIO (99MTC) MEDRONATO (MDP bone scan), TECNECIO (99MTC) MEBROFENINA (Choletec hepatobiliary), TECNECIO (99MTC) TETROFOSMINA (Myoview cardiac), TECNECIO (99MTC) PIROFOSFATO (PYP bone/cardiac), TECNECIO (99MTC) ALBUMINA SERICA HUMANA NANOCOLOIDE (Nano-Albumon/Rotop NanoHSA). Todos los kits V09 siguen esta convención: INN del radiofármaco final, no del ligando/sal precursor.
+- **IOPROMIDA** (no IOPRAMIDA): INN OMS para iopromide (Ultravist, Bayer). Forma correcta en -a.
 - **Radiofármacos Ga-68**: GALIO (68GA) EDOTREOTIDA (Tektrotyd DOTATOC PET).
 - **DICLORURO DE RADIO (223RA)** (INN #9982, Xofigo): sigue convención isotopo-entre-paréntesis.
 - **ACEITE DE ADORMIDERA YODADO** (Lipiodol 480mgI/mL): no "YODO" (que es antiséptico elemental).
