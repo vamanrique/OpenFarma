@@ -1540,7 +1540,7 @@ export default function BuscadorMedicamentos() {
                         row.meds.flatMap(m => m.principios_dci)
                           .map(normalizeDCIName)
                           .filter(d => d.length >= 3 && !isExcipient(d))
-                      )]
+                      )].sort()
                       const dcisGrupo   = allDcisFilt.slice(0, 2)
                       const dcisExtra   = Math.max(0, allDcisFilt.length - 2)
                       const tiposDistinct = [...new Set(row.meds.map(m => m.tipo_formula))]
