@@ -1408,9 +1408,12 @@ def construir_concentracion(row: pd.Series) -> str:
             val = float(m_oral.group(1).replace(',', '.'))
             u_name = m_oral.group(2).lower()
             if u_name in ('g', 'gr'):
+                # Solo sobreescribir para conversiones g→mg (ej. "VALTROIS 1 G" con cantidad=1 U)
+                # No sobreescribir si el nombre tiene "mg" — en ese caso cantidad ya es correcta
+                # y el nombre puede corresponder a otro componente del combo (ej. "GLUCOVANCE 500/2.5 MG")
                 val *= 1000
                 u_name = 'mg'
-            base = f"{val:g} {u_name}"
+                base = f"{val:g} {u_name}"
 
     # Agregar referencia SOLO si contiene un valor numérico real (volumen, masa, etc.)
     # Excluir: nombres de forma farmacéutica sin dígitos, conteos de dosis,
