@@ -66,7 +66,6 @@ const TABS: {
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('busqueda')
-  const active = TABS.find(t => t.id === tab)!
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
