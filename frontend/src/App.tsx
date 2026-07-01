@@ -139,15 +139,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* Contexto de sección */}
-      <div className="bg-white border-b border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex items-center gap-3">
-          <p className="text-[11px] text-slate-400">{active.meta}</p>
-          <span className="text-slate-200">·</span>
-          <span className="text-[11px] text-slate-400">Fuente: CUM-INVIMA</span>
-        </div>
-      </div>
-
       {/* Contenido principal */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-4">
         {tab === 'busqueda' && <BuscadorMedicamentos />}
