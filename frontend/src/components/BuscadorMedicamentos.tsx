@@ -1259,13 +1259,12 @@ export default function BuscadorMedicamentos() {
               )
             })()}
 
-            {/* ── Filtro 2: Presentación (vía/forma + concentración) — route filter as chips ── */}
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 select-none">
-                Presentación
-              </p>
-              <div className="space-y-2">
-                {/* Route/form chips */}
+            {/* ── Filtro 2: Forma farmacéutica ── */}
+            {grupos.length > 1 && (
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 select-none">
+                  Forma farmacéutica
+                </p>
                 <div className="flex flex-wrap gap-1.5">
                   {grupos.map(([g, n]) => {
                     const sel = filtroGrupo === g
@@ -1281,21 +1280,26 @@ export default function BuscadorMedicamentos() {
                     )
                   })}
                 </div>
+              </div>
+            )}
 
-                {/* Concentration select + clear + count */}
+            {/* ── Filtro 3: Concentración ── */}
+            {concentraciones.length > 1 && (
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 select-none">
+                  Concentración
+                </p>
                 <div className="flex items-center gap-2 flex-wrap">
-                  {concentraciones.length > 0 && (
-                    <select
-                      value={filtroConc ?? ''}
-                      onChange={e => setFiltroConc(e.target.value || null)}
-                      className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400 cursor-pointer"
-                    >
-                      <option value="">Concentración · dosis</option>
-                      {concentraciones.map(([c, n]) => (
-                        <option key={c} value={c}>{c}{n > 1 ? ` (${n})` : ''}</option>
-                      ))}
-                    </select>
-                  )}
+                  <select
+                    value={filtroConc ?? ''}
+                    onChange={e => setFiltroConc(e.target.value || null)}
+                    className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400 cursor-pointer"
+                  >
+                    <option value="">Todas las concentraciones</option>
+                    {concentraciones.map(([c, n]) => (
+                      <option key={c} value={c}>{c}{n > 1 ? ` (${n})` : ''}</option>
+                    ))}
+                  </select>
 
                   {hayFiltros && (
                     <button
@@ -1307,21 +1311,35 @@ export default function BuscadorMedicamentos() {
                     </button>
                   )}
 
-                  <span className="text-xs text-slate-400 ml-auto">
+                  <span className="text-xs text-slate-400 ml-auto tabular-nums">
                     {hayFiltros
-                      ? <>{resultadosFiltrados.length} <span className="text-slate-300">de {resultados.length}</span></>
+                      ? <>{resultadosFiltrados.length}<span className="text-slate-300"> / {resultados.length}</span></>
                       : resultados.length
-                    } resultados
-                    {selectedGroupKey && medSeleccionado && (
-                      <span className="ml-2 text-blue-500">
-                        · {medSeleccionado.principios_dci[0] ?? medSeleccionado.nombre_comercial}
-                        {medSeleccionado.concentracion_display && ` ${medSeleccionado.concentracion_display}`}
-                      </span>
-                    )}
+                    }
                   </span>
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* Contador cuando no hay filtro de concentración */}
+            {concentraciones.length <= 1 && (
+              <div className="flex items-center gap-2">
+                {hayFiltros && (
+                  <button
+                    onClick={() => setFiltroDCI(null)}
+                    className="text-xs text-slate-400 hover:text-red-500 transition-colors"
+                  >
+                    × limpiar filtros
+                  </button>
+                )}
+                <span className="text-xs text-slate-400 ml-auto tabular-nums">
+                  {hayFiltros
+                    ? <>{resultadosFiltrados.length}<span className="text-slate-300"> / {resultados.length}</span></>
+                    : resultados.length
+                  }
+                </span>
+              </div>
+            )}
 
           </div>
         )}
@@ -1514,63 +1532,73 @@ export default function BuscadorMedicamentos() {
 
                     {/* Filas seleccionables por cantidad total */}
                     {rows.map(row => {
-                      const sel      = selectedGroupKey === row.key
-                      const hasNTI   = row.meds.some(m => esNTI(m.principios_dci))
-                      const isRenov  = row.meds.every(m => m.fuente === 'CUM_RENOVACION')
-                      const dcisGrupo = [...new Set(row.meds.flatMap(m => m.principios_dci))].slice(0, 3)
+                      const sel         = selectedGroupKey === row.key
+                      const hasNTI      = row.meds.some(m => esNTI(m.principios_dci))
+                      const isRenov     = row.meds.every(m => m.fuente === 'CUM_RENOVACION')
+                      const allDcisFilt = [...new Set(
+                        row.meds.flatMap(m => m.principios_dci)
+                          .map(normalizeDCIName)
+                          .filter(d => d.length >= 3 && !isExcipient(d))
+                      )]
+                      const dcisGrupo   = allDcisFilt.slice(0, 2)
+                      const dcisExtra   = Math.max(0, allDcisFilt.length - 2)
                       const tiposDistinct = [...new Set(row.meds.map(m => m.tipo_formula))]
                       const labs = row.meds
-                        .slice(0, 3)
+                        .slice(0, 2)
                         .map(m => m.laboratorio.split(/[\s(]/)[0])
                         .join(', ')
-                      const more = row.meds.length > 3 ? ` +${row.meds.length - 3}` : ''
+                      const labsMore = row.meds.length > 2 ? ` +${row.meds.length - 2}` : ''
                       return (
                         <button
                           key={row.key}
                           onClick={() => seleccionarGrupo(row)}
-                          className={`w-full flex items-center gap-3 px-4 py-3 border-b border-slate-50 last:border-0 transition-colors text-left ${
-                            sel
-                              ? 'bg-blue-50 border-l-[3px] border-l-blue-500'
-                              : 'hover:bg-slate-50 border-l-[3px] border-l-transparent'
+                          className={`w-full flex items-stretch border-b border-slate-100 last:border-0 text-left transition-colors group ${
+                            sel ? 'bg-blue-50' : 'hover:bg-slate-50'
                           }`}
                         >
-                          {/* Cantidad total — label clínico principal */}
-                          <div className={`shrink-0 text-right min-w-[60px] ${sel ? 'text-blue-700' : 'text-slate-800'}`}>
-                            <p className="text-sm font-bold font-mono leading-tight">{row.totalLabel}</p>
+                          {/* Accent bar */}
+                          <div className={`w-[3px] shrink-0 transition-colors ${sel ? 'bg-blue-500' : 'bg-transparent group-hover:bg-slate-200'}`} />
+
+                          {/* Dosis — elemento clínico principal */}
+                          <div className={`shrink-0 w-[80px] text-right py-3.5 pr-3 pl-2 flex flex-col justify-center ${sel ? 'text-blue-700' : 'text-slate-800'}`}>
+                            <p className="text-base font-bold font-mono leading-tight tabular-nums">{row.totalLabel}</p>
                             {row.detalles && (
-                              <p className="text-[10px] text-slate-400 font-normal mt-0.5 leading-tight">{row.detalles}</p>
+                              <p className="text-[10px] text-slate-400 font-mono mt-0.5 leading-tight truncate">{row.detalles}</p>
                             )}
                           </div>
 
-                          {/* Separador */}
-                          <div className={`w-px self-stretch shrink-0 ${sel ? 'bg-blue-200' : 'bg-slate-100'}`} />
+                          {/* Divider */}
+                          <div className={`w-px my-3 shrink-0 ${sel ? 'bg-blue-200' : 'bg-slate-100'}`} />
 
-                          {/* DCIs + badges + laboratorios */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1 flex-wrap">
-                              {dcisGrupo.length > 0
-                                ? dcisGrupo.map((dci, j) => (
-                                    <span key={j} className={`text-xs font-semibold ${sel ? 'text-blue-800' : 'text-slate-700'}`}>{dci}</span>
-                                  ))
-                                : <span className={`text-xs font-semibold ${sel ? 'text-blue-700' : 'text-slate-500'}`}>
-                                    {row.meds[0]?.nombre_comercial ?? '—'}
-                                  </span>
-                              }
+                          {/* DCIs + meta */}
+                          <div className="flex-1 min-w-0 px-3 py-3 flex flex-col justify-center">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className={`text-xs font-semibold truncate ${sel ? 'text-blue-800' : 'text-slate-700'}`}>
+                                {dcisGrupo.length > 0
+                                  ? dcisGrupo.join(' · ')
+                                  : (row.meds[0]?.nombre_comercial ?? '—')}
+                              </span>
+                              {dcisExtra > 0 && (
+                                <span className="text-[10px] text-slate-400 shrink-0">+{dcisExtra}</span>
+                              )}
                               {hasNTI && <BadgeNTI />}
                               {tiposDistinct.length === 1 && <BadgeFormula tipo={tiposDistinct[0]} />}
-                              {isRenov && <BadgeEstadoReg estado_cum={row.meds[0]?.estado_cum ?? ''} estado_registro={row.meds[0]?.estado_registro} fuente="CUM_RENOVACION" />}
+                              {isRenov && (
+                                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-700 shrink-0 whitespace-nowrap">
+                                  Renovación
+                                </span>
+                              )}
                             </div>
                             <p className="text-[11px] text-slate-400 truncate mt-0.5">
-                              {row.meds.length} {row.meds.length === 1 ? 'producto' : 'productos'} · {labs}{more}
+                              {row.meds.length === 1 ? '1 producto' : `${row.meds.length} productos`} · {labs}{labsMore}
                             </p>
                           </div>
 
-                          <svg
-                            className={`w-3.5 h-3.5 shrink-0 ${sel ? 'text-blue-400' : 'text-slate-300'}`}
-                            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" />
-                          </svg>
+                          <div className="flex items-center pr-3 shrink-0">
+                            <svg className={`w-3.5 h-3.5 ${sel ? 'text-blue-400' : 'text-slate-300'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" />
+                            </svg>
+                          </div>
                         </button>
                       )
                     })}
@@ -1595,15 +1623,27 @@ export default function BuscadorMedicamentos() {
               />
             </div>
           ) : (
-            <div className="hidden lg:flex bg-white border border-slate-200 rounded-xl items-center justify-center py-16 text-center">
-              <div>
-                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3">
-                  <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.042 21.672 13.684 16.6m0 0-2.51 2.225.569-9.47 5.227 7.917-3.286-.672Zm-7.518-.267A8.25 8.25 0 1 1 20.25 10.5M8.288 14.212A5.25 5.25 0 1 1 17.25 10.5" />
-                  </svg>
-                </div>
-                <p className="text-sm font-medium text-slate-500">Selecciona una presentación</p>
-                <p className="text-xs text-slate-300 mt-1">para ver sus sustitutos y alternativas</p>
+            <div className="hidden lg:block bg-white border border-slate-200 rounded-xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-100">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Alternativas clínicas</p>
+                <p className="text-sm text-slate-500 mt-0.5">Selecciona una presentación de la lista para ver sus alternativas ordenadas por cascada clínica.</p>
+              </div>
+              <div className="p-4 space-y-1.5">
+                {[
+                  { n:'1', color:'bg-emerald-500', label:'Sustituto directo', sub:'Mismo producto, distinto titular' },
+                  { n:'2', color:'bg-teal-500',    label:'Diferente concentración', sub:'Ajuste de dosis por el clínico' },
+                  { n:'3', color:'bg-sky-500',     label:'Diferente forma', sub:'Misma dosis, farmacocinética varía' },
+                  { n:'4', color:'bg-amber-500',   label:'Diferente vía', sub:'Oral, inyectable, tópico...' },
+                  { n:'5', color:'bg-slate-400',   label:'Otra molécula · misma clase ATC', sub:'Requiere aval CFT' },
+                ].map(s => (
+                  <div key={s.n} className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg">
+                    <span className={`w-4 h-4 rounded-full ${s.color} text-white text-[9px] font-bold flex items-center justify-center shrink-0`}>{s.n}</span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-slate-600 leading-tight">{s.label}</p>
+                      <p className="text-[10px] text-slate-400 leading-tight">{s.sub}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
