@@ -1,25 +1,70 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pathlib import Path
+import asyncio
+import logging
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
 import app.models  # noqa: F401 — registra todos los modelos antes de init_db
-from app.database import init_db
+from app.database import init_db, SessionLocal
 from app.api.router import api_router
 from app.migrations import run_all as run_migrations
 
+logger = logging.getLogger(__name__)
+
 init_db()
 run_migrations()
+
+
+async def _loop_diario():
+    """Background task: sincroniza estado_cum con Socrata cada 24 horas y reconstruye el índice."""
+    from etl.actualizacion_diaria import actualizar
+    from app.services import grupos_index
+
+    while True:
+        await asyncio.sleep(24 * 60 * 60)
+        db = SessionLocal()
+        try:
+            await actualizar(db)
+            grupos_index.construir(db)
+        except Exception as exc:
+            logger.error("Error en actualización diaria: %s", exc)
+        finally:
+            db.close()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: construir índice en memoria desde grupos_equivalencia
+    from app.services import grupos_index
+    db = SessionLocal()
+    try:
+        n = grupos_index.construir(db)
+        logger.info("grupos_index listo: %d CUMs", n)
+    except Exception as exc:
+        logger.error("Error construyendo grupos_index: %s", exc)
+    finally:
+        db.close()
+
+    # Lanzar tarea de refresco diario en background
+    task = asyncio.create_task(_loop_diario())
+
+    yield
+
+    task.cancel()
+
 
 app = FastAPI(
     title="OpenFarma API",
     description="Alternativas farmacológicas y predicción de desabastecimiento — Colombia",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")

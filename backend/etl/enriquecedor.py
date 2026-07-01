@@ -1,5 +1,5 @@
 """
-Enriquece MedicamentoTransformado con datos normalizados por LLM del caché cum_normalizado.
+Enriquece MedicamentoTransformado con datos normalizados de cum_normalizado y grupos_equivalencia.
 Opera con una sola query para toda la lista (sin N+1).
 """
 from sqlalchemy.orm import Session
@@ -7,6 +7,7 @@ from sqlalchemy import or_, and_
 
 from etl.transformacion import MedicamentoTransformado
 from app.models.cum_normalizado import CumNormalizado
+from app.services import grupos_index
 
 
 def enriquecer_con_llm(
@@ -94,5 +95,22 @@ def enriquecer_con_llm(
                         med.concentraciones = [corrected]
             except (ValueError, TypeError):
                 pass
+
+    # Sobreescribir concentracion_display desde grupos_equivalencia (fuente canónica).
+    # Corrige combos incompletos (ej. "2.5 mg" → "GLIBENCLAMIDA 2.5 mg + METFORMINA 500 mg")
+    # y cualquier error de parseo live de Socrata. Se aplica al final para tener la última palabra.
+    if grupos_index.esta_listo():
+        for med in meds:
+            ge = grupos_index.buscar(med.cum_id)
+            if ge is None:
+                continue
+            dci_key, conc_norm, _grupo_via = ge
+            if not conc_norm or conc_norm == 'SIN_CONCENTRACION':
+                continue
+            display = grupos_index.concentracion_display(dci_key, conc_norm)
+            if display and display != med.concentracion_display:
+                med.concentracion_display = display
+                partes = [p.strip() for p in conc_norm.split('+')]
+                med.concentraciones = partes
 
     return meds
