@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 # Sufijos de sal/éster/forma a eliminar para obtener la DCI (nombre genérico)
 _SUFIJOS_SAL = re.compile(
     r"\b(TRIHIDRATO|MONOHIDRATO|DIHIDRATO|ANHIDRO|HEMIHIDRATO|TETRAHIDRATO|PENTAHIDRATO|"
+    r"TRIHIDRATADO?|DIHIDRATADO?|MONOHIDRATADO?|HEMIHIDRATADO?|"
     r"SODICO|SODICA|POTASICO|POTASICA|CALCICO|CALCICA|MAGNESICO|MAGNESICA|"
     r"CLORHIDRATO|DICLORHIDRATO|HIDROCLORURO|BROMHIDRATO|YODHIDRATO|BROMURO|HCL|"
     r"FOSFATO|BISFOSFATO|DIFOSFATO|TRIFOSFATO|SULFATO|BISULFATO|TARTRATO|BITARTRATO|HEMITARTRATO|"
@@ -60,13 +61,29 @@ _CONCENTRACION_INCRUSTADA = re.compile(
 
 # Descriptores físicos/farmacopeicos que NO son parte del INN:
 #   "ACICLOVIR POLVO MICRONIZADO USP" → "ACICLOVIR"
+#   "ESOMEPRAZOL MICROGRANULOS" → "ESOMEPRAZOL"
 _DESCRIPTORES_FISICOS = re.compile(
     r"\s+\b(POLVO\s+MICRONIZAD[AO]|MICRONIZAD[AO]|NANOCRISTALES|LIPOSOMICO|LIPOSOMAL|"
+    r"MICROGRANULOS?|PELLETS?|MICROCAPSULAS?|MICROESFERAS?|GRAGEAS?|"
     r"USP|BP|EP|FCC|DAB|FU|FISPQ|PHARMAEUROPA)\b.*$",
     re.IGNORECASE,
 )
 # POLVO suelto al final (pero no dentro del nombre, ej. "RINGER LACTATO" queda intacto)
 _POLVO_FINAL = re.compile(r"\s+\bPOLVO\b\s*$", re.IGNORECASE)
+
+# Prefijo de forma farmacéutica antes del INN: "PELLETS DE ESOMEPRAZOL" → "ESOMEPRAZOL"
+_PREFIJO_FORMA = re.compile(
+    r"^(?:PELLETS?|MICROGRANULOS?|MICROCAPSULAS?|MICROESFERAS?|GRANULOS?)\s+DE\s+",
+    re.IGNORECASE,
+)
+
+# Paréntesis con descripción de formulación (no radioisótopos tipo "(99MTC)"):
+# "ESOMEPRAZOL (CONTENIDO EN LOS MICROGRANULOS...)" → "ESOMEPRAZOL"
+_PAREN_FORMULACION = re.compile(
+    r"\s*\([^)]*(?:CONTENIDO|PELLETS?|MICROGRANULOS?|MICROCAPSULAS?|MICROESFERAS?|"
+    r"GRANULOS?|\d+[.,]\d+\s*%)[^)]*\).*$",
+    re.IGNORECASE,
+)
 
 # Patrón CUM frecuente: "5 MG DE MIDAZOLAM", "0.5MG DE ALPRAZOLAM CADA TABLETA"
 # La DCI real es la parte posterior a "DE".
@@ -919,6 +936,17 @@ def normalizar_principio(principio: str) -> str:
     p = unicodedata.normalize("NFD", str(principio))
     p = "".join(c for c in p if unicodedata.category(c) != "Mn")
     p = p.strip().upper()
+
+    # Limpiar caracteres editoriales del CUM (asteriscos, paréntesis con formulación)
+    p = p.replace('*', '').strip()
+    p = _PAREN_FORMULACION.sub("", p).strip()
+
+    # Prefijo de forma antes del INN: "PELLETS DE ESOMEPRAZOL" → "ESOMEPRAZOL"
+    p = _PREFIJO_FORMA.sub("", p).strip()
+
+    # Normalizar números pegados a palabras de sal: "TRIHIDRATO22.5" → "TRIHIDRATO 22.5"
+    # permite que _SUFIJOS_SAL y _CONCENTRACION_INCRUSTADA actúen correctamente
+    p = re.sub(r'(HIDRATO[S]?|HIDRATADO?[S]?|HIDRATADA?[S]?|MONONITRATO)(\d)', r'\1 \2', p, flags=re.IGNORECASE)
 
     # Patrón "5 MG DE MIDAZOLAM [CADA AMPOLLA]" → extraer solo el INN
     m_de = _DOSIS_DE_INN.match(p)

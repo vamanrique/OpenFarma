@@ -1207,56 +1207,43 @@ export default function BuscadorMedicamentos() {
 
             {/* ── Filtro 1: Principio activo ── */}
             {dciCombos.length > 1 && (() => {
-              const LIMIT = 8
+              const LIMIT = 6
               const visible = showAllDCI ? dciCombos : dciCombos.slice(0, LIMIT)
               const hasMore = dciCombos.length > LIMIT
               return (
                 <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 select-none">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 select-none">
                     Principio activo
                   </p>
-                  <div className="flex flex-wrap gap-1.5 items-center">
+                  <div className="divide-y divide-slate-100 rounded-lg border border-slate-200 overflow-hidden">
                     {visible.map(([k, n]) => {
-                      const isMono = !k.includes(' + ')
-                      const sel    = filtroDCI === k
+                      const sel = filtroDCI === k
                       return (
                         <button
                           key={k}
-                          title={k}
                           onClick={() => setFiltroDCI(sel ? null : k)}
-                          className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border transition-all select-none ${
+                          className={`w-full flex items-center justify-between px-3 py-2 text-left transition-colors select-none ${
                             sel
-                              ? 'bg-blue-600 text-white border-blue-600 font-semibold shadow-sm'
-                              : isMono
-                                ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:border-blue-400'
-                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-400'
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-white text-slate-700 hover:bg-slate-50'
                           }`}
                         >
-                          {isMono && (
-                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${sel ? 'bg-blue-200' : 'bg-blue-400'}`} />
-                          )}
-                          <span>{chipLabel(k)}</span>
-                          <span className={`text-[10px] tabular-nums shrink-0 ${sel ? 'text-blue-200' : 'text-slate-400'}`}>{n}</span>
+                          <span className="text-xs font-medium truncate pr-2">{chipLabel(k)}</span>
+                          <span className={`text-[10px] tabular-nums shrink-0 font-mono ${sel ? 'text-blue-200' : 'text-slate-400'}`}>
+                            {n}
+                          </span>
                         </button>
                       )
                     })}
-                    {hasMore && !showAllDCI && (
-                      <button
-                        onClick={() => setShowAllDCI(true)}
-                        className="text-xs text-slate-400 hover:text-blue-600 px-2 py-1 rounded-full border border-dashed border-slate-200 hover:border-blue-300 transition-colors"
-                      >
-                        +{dciCombos.length - LIMIT} más
-                      </button>
-                    )}
-                    {showAllDCI && dciCombos.length > LIMIT && (
-                      <button
-                        onClick={() => setShowAllDCI(false)}
-                        className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1 transition-colors"
-                      >
-                        Ver menos
-                      </button>
-                    )}
                   </div>
+                  {(hasMore || showAllDCI) && (
+                    <button
+                      onClick={() => setShowAllDCI(v => !v)}
+                      className="mt-1 text-[11px] text-slate-400 hover:text-blue-600 transition-colors"
+                    >
+                      {showAllDCI ? 'Ver menos' : `+${dciCombos.length - LIMIT} más`}
+                    </button>
+                  )}
                 </div>
               )
             })()}
