@@ -106,8 +106,9 @@ def enriquecer_con_llm(
                 continue
             dci_key, conc_norm, _grupo_via = ge
 
-            # Llenar DCIs desde grupos_equivalencia si no llegaron por otro camino
-            if dci_key and not med.principios_dci_llm:
+            # grupos_equivalencia es la fuente canónica de DCIs (104 rondas de auditoría).
+            # Siempre gana sobre cum_normalizado y sobre normalizar_principio() live.
+            if dci_key:
                 dcis_from_group = [d.strip() for d in dci_key.split('||') if d.strip()]
                 if dcis_from_group:
                     med.principios_dci_llm = dcis_from_group
