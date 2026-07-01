@@ -55,9 +55,13 @@ _EQUIV_RESIDUO = re.compile(r"\s+EQUIVALENTES?(?:A|\s).*$", re.IGNORECASE)
 
 # Patrón para limpiar concentraciones incrustadas en el nombre
 _CONCENTRACION_INCRUSTADA = re.compile(
-    r"\s+\d[\d.,]*\s*(?:MG|MCG|G|UI|U|ML|%)\b.*$",
+    r"\s+\d[\d.,]*\s*(?:(?:MG|MCG|G|UI|U|ML)\b|%).*$",
     re.IGNORECASE,
 )
+
+# Strips "AL 30%" / "AL 30 %" / "AL 30" concentration phrases in principioactivo
+# "SIMETICONA AL 30%" → "SIMETICONA"
+_AL_CONCENTRACION = re.compile(r"\s+AL\s+\d[\d.,]*\s*%?\s*$", re.IGNORECASE)
 
 # Descriptores físicos/farmacopeicos que NO son parte del INN:
 #   "ACICLOVIR POLVO MICRONIZADO USP" → "ACICLOVIR"
@@ -81,7 +85,7 @@ _PREFIJO_FORMA = re.compile(
 # "ESOMEPRAZOL (CONTENIDO EN LOS MICROGRANULOS...)" → "ESOMEPRAZOL"
 _PAREN_FORMULACION = re.compile(
     r"\s*\([^)]*(?:CONTENIDO|PELLETS?|MICROGRANULOS?|MICROCAPSULAS?|MICROESFERAS?|"
-    r"GRANULOS?|EQUIVALENTE|\d+[.,]\d+\s*%)[^)]*\).*$",
+    r"GRANULOS?|EQUIVALENTE|DIMETILPOLISILOXANO|\d+[.,]\d+\s*%)[^)]*\).*$",
     re.IGNORECASE,
 )
 
@@ -869,6 +873,11 @@ _SINONIMOS: dict[str, str] = {
     "CEFPODOXIME":      "CEFPODOXIMA",
     "CEFDITOREN":       "CEFDITOREN",
     "LORACARBEF":       "LORACARBEF",
+    # Sales concatenadas sin espacio (Socrata data quality) → INN base
+    "TRIMEBUTINAMALEATO":        "TRIMEBUTINA",
+    "SIMETICONA30":              "SIMETICONA",
+    "SIMETICONA30%":             "SIMETICONA",
+    "SIMETICONAAL":              "SIMETICONA",
 }
 
 # ─── Normalización de unidades ────────────────────────────────────────────────
@@ -947,6 +956,9 @@ def normalizar_principio(principio: str) -> str:
         if after:
             p = after
 
+    # Strip "S.A." / "S A" prefix (sustancia activa notation or data artifact)
+    p = re.sub(r"^S\.?\s*A\.?\s+", "", p).strip()
+
     # Prefijo de forma antes del INN: "PELLETS DE ESOMEPRAZOL" → "ESOMEPRAZOL"
     p = _PREFIJO_FORMA.sub("", p).strip()
 
@@ -984,6 +996,9 @@ def normalizar_principio(principio: str) -> str:
     # Limpiar cualquier residuo "EQUIVALENTE ..." que no capturó el patrón principal
     p = _EQUIV_RESIDUO.sub("", p).strip()
 
+    # "SIMETICONA AL 30%" / "AL 30 %" / "AL 30" — concentración tras artículo español
+    p = _AL_CONCENTRACION.sub("", p).strip()
+
     # "CLORHIDRATO DE METFORMINA" → _SUFIJOS_SAL quita CLORHIDRATO → " DE METFORMINA" → strip "DE "
     p = re.sub(r"^DE\s+", "", p.strip())
 
@@ -991,6 +1006,12 @@ def normalizar_principio(principio: str) -> str:
     # ej. "ACICLOVIR :" → "ACICLOVIR" (colon del campo Socrata "...EQUIVALENTE A ACLICLOVIR BASE:")
     p = re.sub(r"\s{2,}", " ", p).strip()
     p = re.sub(r"[^A-Z0-9ÁÉÍÓÚÜÑ]+$", "", p).strip()
+
+    # Eliminar número suelto al final sin unidad: "SIMETICONA 100" → "SIMETICONA"
+    p = re.sub(r"\s+\d[\d.,]*\s*$", "", p).strip()
+
+    # Eliminar preposiciones/artículos residuales al final que no son parte del INN
+    p = re.sub(r"\s+\b(AL|DE|EN|A|Y|O|VA)\b\s*$", "", p, flags=re.IGNORECASE).strip()
 
     # Unificar grafías inglés→español para DCI de un solo token (metotrexate → metotrexato)
     p = _SINONIMOS.get(p, p)
