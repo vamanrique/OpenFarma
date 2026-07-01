@@ -1228,7 +1228,7 @@ export default function BuscadorMedicamentos() {
                               : 'bg-white text-slate-700 hover:bg-slate-50'
                           }`}
                         >
-                          <span className="text-xs font-medium truncate pr-2">{chipLabel(k)}</span>
+                          <span className="text-xs font-medium break-words leading-snug pr-2">{chipLabel(k)}</span>
                           <span className={`text-[10px] tabular-nums shrink-0 font-mono ${sel ? 'text-blue-200' : 'text-slate-400'}`}>
                             {n}
                           </span>

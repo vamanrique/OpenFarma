@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 _SUFIJOS_SAL = re.compile(
     r"\b(TRIHIDRATO|MONOHIDRATO|DIHIDRATO|ANHIDRO|HEMIHIDRATO|TETRAHIDRATO|PENTAHIDRATO|"
     r"TRIHIDRATADO?|DIHIDRATADO?|MONOHIDRATADO?|HEMIHIDRATADO?|"
-    r"SODICO|SODICA|POTASICO|POTASICA|CALCICO|CALCICA|MAGNESICO|MAGNESICA|"
+    r"SODICO|SODICA|POTASICO|POTASICA|CALCICO|CALCICA|MAGNESICO|MAGNESICA|MAGNESIO|"
     r"CLORHIDRATO|DICLORHIDRATO|HIDROCLORURO|BROMHIDRATO|YODHIDRATO|BROMURO|HCL|"
     r"FOSFATO|BISFOSFATO|DIFOSFATO|TRIFOSFATO|SULFATO|BISULFATO|TARTRATO|BITARTRATO|HEMITARTRATO|"
     r"MALEATO|FUMARATO|SUCCINATO|GLUCONATO|ACETATO|PROPIONATO|"
@@ -43,15 +43,15 @@ _CONC_EN_NOMBRE = re.compile(
     re.IGNORECASE,
 )
 
-# Patrón para extraer el DCI de "NOMBRE EQUIVALENTE A DCI" — tolera espacio faltante antes del DCI
-# cubre tanto "EQUIVALENTE A FENTANILO" como "EQUIVALENTE AFENTANILO" (sin espacio, frecuente en CUM)
+# Patrón para extraer el DCI de "NOMBRE EQUIVALENTE A DCI" — tolera espacio faltante antes de A
+# cubre "EQUIVALENTE A FENTANILO", "EQUIVALENTE AFENTANILO" y "EQUIVALENTEA FENTANILO"
 _EQUIV_PATRON = re.compile(
-    r"EQUIVALENTE\s+A?\s*(.+?)(?:\s*\d[\d.,]*\s*(?:MG|MCG|G|UI|U|ML))?$",
+    r"EQUIVALENTE\s*A?\s*(.+?)(?:\s*\d[\d.,]*\s*(?:MG|MCG|G|UI|U|ML))?$",
     re.IGNORECASE,
 )
 
-# Limpia cualquier residuo "EQUIVALENTE [A] X" que quede tras la extracción parcial
-_EQUIV_RESIDUO = re.compile(r"\s+EQUIVALENTE\b.*$", re.IGNORECASE)
+# Limpia cualquier residuo "EQUIVALENTE[A] X" que quede tras la extracción parcial
+_EQUIV_RESIDUO = re.compile(r"\s+EQUIVALENTE(?:A|\s).*$", re.IGNORECASE)
 
 # Patrón para limpiar concentraciones incrustadas en el nombre
 _CONCENTRACION_INCRUSTADA = re.compile(
@@ -81,7 +81,7 @@ _PREFIJO_FORMA = re.compile(
 # "ESOMEPRAZOL (CONTENIDO EN LOS MICROGRANULOS...)" → "ESOMEPRAZOL"
 _PAREN_FORMULACION = re.compile(
     r"\s*\([^)]*(?:CONTENIDO|PELLETS?|MICROGRANULOS?|MICROCAPSULAS?|MICROESFERAS?|"
-    r"GRANULOS?|\d+[.,]\d+\s*%)[^)]*\).*$",
+    r"GRANULOS?|EQUIVALENTE|\d+[.,]\d+\s*%)[^)]*\).*$",
     re.IGNORECASE,
 )
 

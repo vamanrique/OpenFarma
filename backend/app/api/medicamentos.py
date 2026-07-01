@@ -48,8 +48,13 @@ def _deduplicar(meds: list[MedicamentoTransformado], limit: int) -> list[Medicam
     unicos: list[MedicamentoLiveRead] = []
     for m in meds:
         conc = (m.concentracion_display or '').upper().strip()
-        # Renovacion tiene namespace propio para no suprimir duplicados cross-fuente
-        key = f"{m.fuente}|{m.nombre_comercial.upper().strip()}|{m.forma_farmaceutica.upper().strip()}|{conc}"
+        dcis = sorted(m.principios_dci_llm or m.principios_dci or [])
+        dci_key = '||'.join(dcis)
+        # Use normalized form when available (more consistent across brands)
+        forma = (m.forma_normalizada or m.forma_farmaceutica or '').upper().strip()
+        # Deduplicate by clinical entity: PA + form + concentration
+        # Brand name is irrelevant — same PA + concentration + form = same product
+        key = f"{dci_key}|{forma}|{conc}"
         if key not in vistos:
             vistos.add(key)
             unicos.append(_to_live_read(m))
