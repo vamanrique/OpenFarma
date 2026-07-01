@@ -43,15 +43,15 @@ _CONC_EN_NOMBRE = re.compile(
     re.IGNORECASE,
 )
 
-# Patrón para extraer el DCI de "NOMBRE EQUIVALENTE A DCI" — tolera espacio faltante antes de A
-# cubre "EQUIVALENTE A FENTANILO", "EQUIVALENTE AFENTANILO" y "EQUIVALENTEA FENTANILO"
+# Patrón para extraer el DCI de "NOMBRE EQUIVALENTE[S] [A] DCI"
+# cubre: "EQUIVALENTE A FENTANILO", "EQUIVALENTEA FENTANILO", "EQUIVALENTES A ESOMEPRAZOL"
 _EQUIV_PATRON = re.compile(
-    r"EQUIVALENTE\s*A?\s*(.+?)(?:\s*\d[\d.,]*\s*(?:MG|MCG|G|UI|U|ML))?$",
+    r"EQUIVALENTES?\s*A?\s*(.+?)(?:\s*\d[\d.,]*\s*(?:MG|MCG|G|UI|U|ML))?$",
     re.IGNORECASE,
 )
 
-# Limpia cualquier residuo "EQUIVALENTE[A] X" que quede tras la extracción parcial
-_EQUIV_RESIDUO = re.compile(r"\s+EQUIVALENTE(?:A|\s).*$", re.IGNORECASE)
+# Limpia cualquier residuo "EQUIVALENTE[S][A] X" que quede tras la extracción parcial
+_EQUIV_RESIDUO = re.compile(r"\s+EQUIVALENTES?(?:A|\s).*$", re.IGNORECASE)
 
 # Patrón para limpiar concentraciones incrustadas en el nombre
 _CONCENTRACION_INCRUSTADA = re.compile(
@@ -940,6 +940,12 @@ def normalizar_principio(principio: str) -> str:
     # Limpiar caracteres editoriales del CUM (asteriscos, paréntesis con formulación)
     p = p.replace('*', '').strip()
     p = _PAREN_FORMULACION.sub("", p).strip()
+
+    # "MICROGRANULOS GASTRORESISTENTES: ESOMEPRAZOL MAGNESICO TRIHIDRATO" → take part after colon
+    if ':' in p:
+        after = p.split(':', 1)[1].strip()
+        if after:
+            p = after
 
     # Prefijo de forma antes del INN: "PELLETS DE ESOMEPRAZOL" → "ESOMEPRAZOL"
     p = _PREFIJO_FORMA.sub("", p).strip()
