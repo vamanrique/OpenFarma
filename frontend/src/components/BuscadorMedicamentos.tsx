@@ -1050,9 +1050,10 @@ export default function BuscadorMedicamentos() {
         totalValor = nums.length > 0 ? parseFloat(nums[0]!) : 0
         detalles   = ''
       } else {
-        totalLabel = t?.label ?? ([conc, pres].filter(Boolean).join(' · ') || '—')
+        const presDistinct = (pres && pres !== conc) ? pres : ''
+        totalLabel = t?.label ?? ([conc, presDistinct].filter(Boolean).join(' · ') || '—')
         totalValor = t?.valor ?? parseFloat(conc) ?? 0
-        detalles   = (conc && pres) ? `${conc} · ${pres}` : conc || pres || ''
+        detalles   = (conc && presDistinct) ? `${conc} · ${presDistinct}` : ''
       }
       // Agrupar por concentración normalizada (no por total clínico calculado).
       // Así, "50 mg/mL" sin presentación y "50 mg/mL · 100 mL" caen en la misma fila.
