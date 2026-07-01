@@ -96,15 +96,22 @@ def enriquecer_con_llm(
             except (ValueError, TypeError):
                 pass
 
-    # Sobreescribir concentracion_display desde grupos_equivalencia (fuente canónica).
-    # Corrige combos incompletos (ej. "2.5 mg" → "GLIBENCLAMIDA 2.5 mg + METFORMINA 500 mg")
-    # y cualquier error de parseo live de Socrata. Se aplica al final para tener la última palabra.
+    # Sobreescribir DCIs y concentracion_display desde grupos_equivalencia (fuente canónica).
+    # Corrige DCIs faltantes (Socrata no parsea, cum_normalizado sin registro) y combos incompletos.
+    # Se aplica al final para tener la última palabra sobre ambos campos.
     if grupos_index.esta_listo():
         for med in meds:
             ge = grupos_index.buscar(med.cum_id)
             if ge is None:
                 continue
             dci_key, conc_norm, _grupo_via = ge
+
+            # Llenar DCIs desde grupos_equivalencia si no llegaron por otro camino
+            if dci_key and not med.principios_dci_llm:
+                dcis_from_group = [d.strip() for d in dci_key.split('||') if d.strip()]
+                if dcis_from_group:
+                    med.principios_dci_llm = dcis_from_group
+
             if not conc_norm or conc_norm == 'SIN_CONCENTRACION':
                 continue
             display = grupos_index.concentracion_display(dci_key, conc_norm)
