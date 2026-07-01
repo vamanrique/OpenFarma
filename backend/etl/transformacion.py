@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 _SUFIJOS_SAL = re.compile(
     r"\b(TRIHIDRATO|MONOHIDRATO|DIHIDRATO|ANHIDRO|HEMIHIDRATO|TETRAHIDRATO|PENTAHIDRATO|"
     r"SODICO|SODICA|POTASICO|POTASICA|CALCICO|CALCICA|MAGNESICO|MAGNESICA|"
-    r"CLORHIDRATO|DICLORHIDRATO|HIDROCLORURO|BROMHIDRATO|YODHIDRATO|BROMURO|"
+    r"CLORHIDRATO|DICLORHIDRATO|HIDROCLORURO|BROMHIDRATO|YODHIDRATO|BROMURO|HCL|"
     r"FOSFATO|BISFOSFATO|DIFOSFATO|TRIFOSFATO|SULFATO|BISULFATO|TARTRATO|BITARTRATO|HEMITARTRATO|"
     r"MALEATO|FUMARATO|SUCCINATO|GLUCONATO|ACETATO|PROPIONATO|"
     r"MESILATO|TOSILATO|BESILATO|ACESULATO|ADIPATO|ESTEARATO|"
@@ -61,7 +61,7 @@ _CONCENTRACION_INCRUSTADA = re.compile(
 # Descriptores físicos/farmacopeicos que NO son parte del INN:
 #   "ACICLOVIR POLVO MICRONIZADO USP" → "ACICLOVIR"
 _DESCRIPTORES_FISICOS = re.compile(
-    r"\s+\b(POLVO\s+MICRONIZADO|MICRONIZADO|NANOCRISTALES|LIPOSOMICO|LIPOSOMAL|"
+    r"\s+\b(POLVO\s+MICRONIZAD[AO]|MICRONIZAD[AO]|NANOCRISTALES|LIPOSOMICO|LIPOSOMAL|"
     r"USP|BP|EP|FCC|DAB|FU|FISPQ|PHARMAEUROPA)\b.*$",
     re.IGNORECASE,
 )
@@ -151,6 +151,9 @@ _SINONIMOS: dict[str, str] = {
     "METFORMIN":        "METFORMINA",
     "GLIBENCLAMIDE":    "GLIBENCLAMIDA",
     "GLIBENCLAMIDA":    "GLIBENCLAMIDA",
+    "SITAGLITINA":      "SITAGLIPTINA",   # typo en Socrata (falta P)
+    "SITAGLIPINA":      "SITAGLIPTINA",   # typo en Socrata (falta T)
+    "DAPAGLIFOZINA":    "DAPAGLIFLOZINA", # typo en Socrata (falta L)
     "ATORVASTATIN":     "ATORVASTATINA",
     "SIMVASTATIN":      "SIMVASTATINA",
     "LOVASTATINA":      "LOVASTATINA",
@@ -928,6 +931,11 @@ def normalizar_principio(principio: str) -> str:
     m = _EQUIV_PATRON.search(p)
     if m:
         p = m.group(1).strip()
+        # EQUIVALENTE A puede capturar "50MG DE SITAGLIPTINA BASE" — aplicar _DOSIS_DE_INN de nuevo
+        m_de2 = _DOSIS_DE_INN.match(p)
+        if m_de2:
+            p = m_de2.group(1).strip()
+            p = re.sub(r'\s+(?:CADA|POR)\s+\w+$', '', p).strip()
 
     # Quitar concentraciones incrustadas al final
     p = _CONCENTRACION_INCRUSTADA.sub("", p).strip()
@@ -941,6 +949,9 @@ def normalizar_principio(principio: str) -> str:
 
     # Limpiar cualquier residuo "EQUIVALENTE ..." que no capturó el patrón principal
     p = _EQUIV_RESIDUO.sub("", p).strip()
+
+    # "CLORHIDRATO DE METFORMINA" → _SUFIJOS_SAL quita CLORHIDRATO → " DE METFORMINA" → strip "DE "
+    p = re.sub(r"^DE\s+", "", p.strip())
 
     # Limpiar espacios múltiples y puntuación residual al final
     # ej. "ACICLOVIR :" → "ACICLOVIR" (colon del campo Socrata "...EQUIVALENTE A ACLICLOVIR BASE:")

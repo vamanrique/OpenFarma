@@ -897,9 +897,10 @@ function normalizeDCIName(raw: string): string {
     .replace(/\s+-\s+\w.*$/, '')
     .replace(/^DE\s+/, '')
     // Strip pharmacopoeial specs and physical form descriptors that are not part of the INN
-    // "ACICLOVIR POLVO MICRONIZADO USP" → "ACICLOVIR"
-    .replace(/\s+(POLVO\s+MICRONIZADO|MICRONIZADO|NANOCRISTALES|LIPOSOMICO|LIPOSOMAL|USP|BP|EP|FCC)\b.*$/i, '')
+    // "ACICLOVIR POLVO MICRONIZADO USP" → "ACICLOVIR"; "GLIMEPIRIDA MICRONIZADA" → "GLIMEPIRIDA"
+    .replace(/\s+(POLVO\s+MICRONIZAD[AO]|MICRONIZAD[AO]|NANOCRISTALES|LIPOSOMICO|LIPOSOMAL|USP|BP|EP|FCC)\b.*$/i, '')
     .replace(/\s+POLVO\s*$/i, '')
+    .replace(/\s+HCL\b.*$/i, '')
     .trim()
     .toUpperCase()
     .normalize('NFD').replace(/[̀-ͯ]/g, '')  // CODEÍNA → CODEINA
