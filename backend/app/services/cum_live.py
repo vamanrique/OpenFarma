@@ -14,7 +14,7 @@ from etl.alternativas import generar_alternativas, ParAlternativa
 
 API_URL        = "https://www.datos.gov.co/resource/i7cb-raxc.json"
 RENOVACION_URL = "https://www.datos.gov.co/resource/vgr4-gemg.json"
-TIMEOUT = 20.0
+TIMEOUT = 30.0
 
 
 async def _get(params: dict, url: str = API_URL) -> list[dict]:
@@ -134,17 +134,22 @@ async def buscar_medicamentos(
 
 
 async def obtener_por_cum(expedientecum: str, consecutivocum: str) -> Optional[MedicamentoTransformado]:
-    """Obtiene un medicamento específico desde la API."""
+    """Obtiene un medicamento específico desde la API (activos + renovación)."""
     params = {
         "$where": f"expedientecum='{expedientecum}' AND consecutivocum='{consecutivocum}'",
         "$limit": 50,
     }
     filas = await _get(params)
     if not filas:
+        # Producto puede estar solo en el dataset de renovación
+        filas = await _get(params, url=RENOVACION_URL)
+    if not filas:
         return None
 
     df = pd.DataFrame(filas)
     meds = agrupar_y_transformar(df)
+    if meds and not filas[0].get('estadocum'):
+        meds[0].fuente = 'CUM_RENOVACION'
     return meds[0] if meds else None
 
 

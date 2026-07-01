@@ -1,7 +1,10 @@
 import asyncio
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List
+
+logger = logging.getLogger(__name__)
 
 from app.database import get_db
 from app.schemas.medicamento import MedicamentoLiveRead, AlternativaLiveRead
@@ -89,7 +92,14 @@ async def obtener_alternativas_live(cum_id: str, db: Session = Depends(get_db)):
 
     # Pares A0-A3 desde grupos_equivalencia (todos los productos del grupo),
     # A4-A7 desde query ATC usando atc_llm cuando esté disponible.
-    pares, lookup = await cum_live.alternativas_para(med, db=db)
+    try:
+        pares, lookup = await asyncio.wait_for(
+            cum_live.alternativas_para(med, db=db),
+            timeout=28.0,
+        )
+    except (asyncio.TimeoutError, Exception) as exc:
+        logger.warning("alternativas_para(%s) falló: %s", cum_id, exc)
+        return []
 
     # Enriquecer todos los del lookup en una sola query
     enriquecer_con_llm(list(lookup.values()), db)
