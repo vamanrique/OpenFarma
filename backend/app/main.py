@@ -7,16 +7,32 @@ from pathlib import Path
 import asyncio
 import logging
 import os
+import shutil
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
+
+# ── Seed DB from bundled file if Railway volume path differs ─────────────────
+# The bundled farmavigia.db (committed to git) is always the canonical source.
+# On Railway, DATABASE_URL points to /data/farmavigia.db (persistent volume).
+# Without this step, the volume keeps an old DB and git DB fixes are never used.
+_DATABASE_URL = os.getenv("DATABASE_URL", "")
+if _DATABASE_URL.startswith("sqlite:///") and _DATABASE_URL != "sqlite:///./farmavigia.db":
+    _volume_path = Path(_DATABASE_URL.replace("sqlite:///", ""))
+    _bundled_db  = Path(__file__).parent.parent / "farmavigia.db"
+    if _bundled_db.exists() and _bundled_db.stat().st_size > 0:
+        _volume_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(str(_bundled_db), str(_volume_path))
+        logger.info("DB seed: copied %s → %s (%d MB)",
+                    _bundled_db, _volume_path,
+                    _bundled_db.stat().st_size // 1_000_000)
 
 import app.models  # noqa: F401 — registra todos los modelos antes de init_db
 from app.database import init_db, SessionLocal
 from app.api.router import api_router
 from app.migrations import run_all as run_migrations
-
-logger = logging.getLogger(__name__)
 
 init_db()
 run_migrations()
