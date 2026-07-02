@@ -2,6 +2,18 @@ from pydantic import BaseModel
 from typing import Optional, Any
 
 
+class EstadoInvimaRead(BaseModel):
+    estado: str
+    estado_label: str
+    mes: int
+    anio: int
+    principio_activo: str
+    forma: str
+    concentracion: str
+    causas: str
+    atc: Optional[str] = None
+
+
 # DTO para resultados del servicio live (no pasan por DB)
 class MedicamentoLiveRead(BaseModel):
     cum_id: str
@@ -19,7 +31,9 @@ class MedicamentoLiveRead(BaseModel):
     estado_registro: str
     estado_cum: str
     # Fuente del registro
-    fuente:                str                = 'CUM_ACTIVO'  # CUM_ACTIVO | CUM_RENOVACION
+    fuente:                str                      = 'CUM_ACTIVO'  # CUM_ACTIVO | CUM_RENOVACION
+    # Estado INVIMA de abastecimiento (del mes más reciente disponible)
+    estado_invima:         Optional[EstadoInvimaRead] = None
     # Campos enriquecidos por LLM — presentes si el CUM ya fue procesado
     dosis_total_mg:        Optional[float]     = None
     concentracion_mg_ml:   Optional[float]     = None

@@ -135,6 +135,35 @@ def _fix_tipo_formula(db) -> int:
     return fixed
 
 
+def _crear_invima_seguimiento(db) -> bool:
+    """Crea la tabla invima_seguimiento e índices si no existen. Idempotente."""
+    db.execute(text("""
+        CREATE TABLE IF NOT EXISTS invima_seguimiento (
+            id                     INTEGER PRIMARY KEY AUTOINCREMENT,
+            mes                    INTEGER NOT NULL,
+            anio                   INTEGER NOT NULL,
+            numero_entrada         TEXT,
+            nombre_medicamento     TEXT,
+            principio_activo       TEXT,
+            forma                  TEXT,
+            concentracion          TEXT,
+            atc                    TEXT,
+            estado                 TEXT,
+            causas                 TEXT,
+            fecha_inicio           TEXT,
+            fecha_ultimo           TEXT,
+            total_titulares        INTEGER,
+            disponibilidad_total_umd REAL,
+            UNIQUE(mes, anio, principio_activo, forma, concentracion, estado)
+        )
+    """))
+    db.execute(text("CREATE INDEX IF NOT EXISTS idx_invima_atc ON invima_seguimiento(atc, anio, mes)"))
+    db.execute(text("CREATE INDEX IF NOT EXISTS idx_invima_estado ON invima_seguimiento(estado, anio, mes)"))
+    db.execute(text("CREATE INDEX IF NOT EXISTS idx_invima_pa ON invima_seguimiento(principio_activo, anio, mes)"))
+    db.commit()
+    return True
+
+
 def run_all():
     """Ejecuta todas las migraciones pendientes al iniciar la app."""
     db = SessionLocal()
@@ -145,6 +174,7 @@ def run_all():
         m = _fix_tipo_formula(db)
         if m:
             logger.info("Migración tipo_formula: %d productos corregidos.", m)
+        _crear_invima_seguimiento(db)
     except Exception as e:
         logger.error("Error en migraciones de startup: %s", e)
         db.rollback()

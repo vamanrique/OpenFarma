@@ -41,7 +41,7 @@ run_migrations()
 async def _loop_diario():
     """Background task: sincroniza estado_cum con Socrata cada 24 horas y reconstruye el índice."""
     from etl.actualizacion_diaria import actualizar
-    from app.services import grupos_index
+    from app.services import grupos_index, invima_service
 
     while True:
         await asyncio.sleep(24 * 60 * 60)
@@ -49,6 +49,7 @@ async def _loop_diario():
         try:
             await actualizar(db)
             grupos_index.construir(db)
+            invima_service.construir(db)
         except Exception as exc:
             logger.error("Error en actualización diaria: %s", exc)
         finally:
@@ -57,14 +58,16 @@ async def _loop_diario():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: construir índice en memoria desde grupos_equivalencia
-    from app.services import grupos_index
+    # Startup: construir índices en memoria
+    from app.services import grupos_index, invima_service
     db = SessionLocal()
     try:
         n = grupos_index.construir(db)
         logger.info("grupos_index listo: %d CUMs", n)
+        n_inv = invima_service.construir(db)
+        logger.info("invima_cache listo: %d entradas", n_inv)
     except Exception as exc:
-        logger.error("Error construyendo grupos_index: %s", exc)
+        logger.error("Error construyendo índices de startup: %s", exc)
     finally:
         db.close()
 

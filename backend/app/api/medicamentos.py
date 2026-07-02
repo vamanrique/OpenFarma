@@ -7,15 +7,23 @@ from typing import List
 logger = logging.getLogger(__name__)
 
 from app.database import get_db
-from app.schemas.medicamento import MedicamentoLiveRead, AlternativaLiveRead
-from app.services import cum_live
+from app.schemas.medicamento import MedicamentoLiveRead, AlternativaLiveRead, EstadoInvimaRead
+from app.services import cum_live, invima_service
 from etl.enriquecedor import enriquecer_con_llm
 from etl.transformacion import MedicamentoTransformado
 
 router = APIRouter()
 
 
+def _invima_read(atc: str | None) -> EstadoInvimaRead | None:
+    ei = invima_service.estado_actual(atc)
+    if ei is None:
+        return None
+    return EstadoInvimaRead(**ei.to_dict())
+
+
 def _to_live_read(m: MedicamentoTransformado) -> MedicamentoLiveRead:
+    atc_efectivo = m.atc_llm or m.atc
     return MedicamentoLiveRead(
         cum_id=m.cum_id,
         nombre_comercial=m.nombre_comercial,
@@ -25,13 +33,14 @@ def _to_live_read(m: MedicamentoTransformado) -> MedicamentoLiveRead:
         presentacion=m.presentacion,
         forma_farmaceutica=m.forma_farmaceutica,
         via_administracion=m.via_administracion,
-        atc=m.atc_llm or m.atc,
+        atc=atc_efectivo,
         descripcion_atc=m.descripcion_atc,
         laboratorio=m.laboratorio,
         registro_sanitario=m.registro_sanitario,
         estado_registro=m.estado_registro,
         estado_cum=m.estado_cum,
         fuente=m.fuente,
+        estado_invima=_invima_read(atc_efectivo),
         dosis_total_mg=m.dosis_total_mg,
         concentracion_mg_ml=m.concentracion_mg_ml,
         volumen_ml_por_unidad=m.volumen_ml_por_unidad,
