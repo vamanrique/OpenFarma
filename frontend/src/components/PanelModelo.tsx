@@ -309,7 +309,6 @@ export default function PanelModelo() {
                   <th className="px-4 py-2.5 font-medium text-slate-500 w-32">Estado</th>
                   <th className="px-4 py-2.5 font-medium text-slate-500">Principio activo</th>
                   <th className="px-4 py-2.5 font-medium text-slate-500 hidden sm:table-cell">Forma / Concentración</th>
-                  <th className="px-4 py-2.5 font-medium text-slate-500 hidden md:table-cell">Causas</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -326,9 +325,6 @@ export default function PanelModelo() {
                     </td>
                     <td className="px-4 py-2.5 hidden sm:table-cell text-slate-500">
                       {d.forma}{d.concentracion ? ` · ${d.concentracion}` : ''}
-                    </td>
-                    <td className="px-4 py-2.5 hidden md:table-cell text-slate-500 max-w-xs truncate" title={d.causas}>
-                      {d.causas || '—'}
                     </td>
                   </tr>
                 ))}
