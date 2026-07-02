@@ -56,6 +56,56 @@ async def _loop_diario():
             db.close()
 
 
+async def _loop_viernes_invima():
+    """
+    Background task: comprueba cada 6 horas si hay nuevos PDFs INVIMA.
+    Solo descarga e inserta cuando detecta un PDF con mes/año nuevo.
+    En producción corre los viernes; fuera de viernes el scrape es rápido (solo HTML).
+    """
+    import datetime
+    from etl.invima_scraper import verificar_y_actualizar
+    from app.services import invima_service
+
+    _ultima_ejecucion: datetime.date | None = None
+
+    while True:
+        await asyncio.sleep(6 * 60 * 60)   # revisar cada 6 horas
+
+        hoy = datetime.date.today()
+        es_viernes = hoy.weekday() == 4    # 4 = viernes
+
+        # Ejecutar siempre los viernes (una vez por día) y también al arrancar si hay datos pendientes
+        if not es_viernes or _ultima_ejecucion == hoy:
+            continue
+
+        _ultima_ejecucion = hoy
+        logger.info("Viernes — verificando nuevos PDFs INVIMA...")
+
+        db_path = Path(__file__).parent.parent / "farmavigia.db"
+        _db_env = os.getenv("DATABASE_URL", "")
+        if _db_env.startswith("sqlite:///") and _db_env != "sqlite:///./farmavigia.db":
+            db_path = Path(_db_env.replace("sqlite:///", ""))
+
+        try:
+            res = await asyncio.get_event_loop().run_in_executor(
+                None, lambda: verificar_y_actualizar(db_path)
+            )
+            logger.info(
+                "INVIMA update: %d nuevos PDFs, %d insertados, %d errores",
+                res["pdfs_procesados"], res["registros_insertados"], res["errores"],
+            )
+            if res["pdfs_procesados"] > 0:
+                # Reconstruir cache en memoria con los nuevos datos
+                db = SessionLocal()
+                try:
+                    invima_service.construir(db)
+                    logger.info("invima_cache reconstruido tras update semanal")
+                finally:
+                    db.close()
+        except Exception as exc:
+            logger.error("Error en actualización semanal INVIMA: %s", exc)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: construir índices en memoria
@@ -71,12 +121,14 @@ async def lifespan(app: FastAPI):
     finally:
         db.close()
 
-    # Lanzar tarea de refresco diario en background
-    task = asyncio.create_task(_loop_diario())
+    # Lanzar tareas de refresco en background
+    task_diario  = asyncio.create_task(_loop_diario())
+    task_invima  = asyncio.create_task(_loop_viernes_invima())
 
     yield
 
-    task.cancel()
+    task_diario.cancel()
+    task_invima.cancel()
 
 
 app = FastAPI(

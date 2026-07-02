@@ -10,21 +10,29 @@ interface ModeloInfo {
 }
 
 const FEATURE_LABELS: Record<string, string> = {
+  // Features temporales INVIMA (señal más predictiva)
+  invima_sev_actual:        'Severidad INVIMA actual',
+  invima_sev_t3_avg:        'Severidad INVIMA (promedio 3 meses)',
+  invima_peor_sev_hist:     'Peor historial INVIMA',
+  invima_meses_monitoreado: 'Meses en seguimiento INVIMA',
+  invima_tendencia:         'Tendencia INVIMA',
+  // Features estructurales CUM
+  tasa_inactivacion_atc5:   'Tasa inactivación ATC',
+  num_competidores:         'Competidores en mercado',
+  tiene_alternativas:       'Tiene alternativas',
+  monopolio:                'Monopolio de mercado',
+  es_combinado:             'Fórmula combinada',
+  tipo_formula_num:         'Complejidad de fórmula',
+  grupo_atc_enc:            'Grupo ATC anatómico',
   num_presentaciones_activas: 'Presentaciones activas',
-  tasa_inactivacion_atc5: 'Tasa inactivación ATC',
-  busquedas_norm: 'Búsquedas recientes',
-  reportes_norm: 'Reportes ciudadanos',
-  num_competidores: 'Competidores en mercado',
-  grupo_atc_enc: 'Grupo ATC anatómico',
-  tipo_formula_num: 'Complejidad de fórmula',
-  es_combinado: 'Fórmula combinada',
-  tiene_alternativas: 'Tiene alternativas',
-  monopolio: 'Monopolio de mercado',
+  busquedas_norm:           'Búsquedas recientes',
+  reportes_norm:            'Reportes ciudadanos',
 }
 
 const BAR_COLORS = [
-  '#1d4ed8', '#2563eb', '#3b82f6', '#60a5fa',
-  '#93c5fd', '#bfdbfe', '#dbeafe', '#eff6ff', '#f0f9ff', '#f8fafc',
+  '#1d4ed8', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd',
+  '#1e3a5f', '#2d6a9f', '#4f8fbf', '#7eb6d9', '#aed4ed',
+  '#bfdbfe', '#dbeafe', '#eff6ff', '#f0f9ff', '#f8fafc',
 ]
 
 function MetricCard({
@@ -122,7 +130,7 @@ export default function PanelModelo() {
           </p>
         </div>
         <div className="p-4">
-          <ResponsiveContainer width="100%" height={280}>
+          <ResponsiveContainer width="100%" height={340}>
             <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 32, top: 4, bottom: 4 }}>
               <XAxis
                 type="number"
@@ -162,10 +170,10 @@ export default function PanelModelo() {
       <div className="bg-blue-50 border border-blue-100 rounded-xl p-5 text-sm text-blue-900 space-y-2">
         <p className="font-semibold text-blue-800">¿Cómo funciona el modelo?</p>
         <p className="text-blue-700 text-xs leading-relaxed">
-          Utiliza un <strong>Random Forest calibrado (Platt scaling)</strong> entrenado sobre los 65,420
-          medicamentos del CUM-INVIMA. Para cada par (medicamento, departamento) genera una probabilidad
-          de desabastecimiento en los próximos 30 días. Los factores más relevantes son la presencia de
-          alternativas terapéuticas y el historial de consultas y reportes ciudadanos de esa región.
+          Utiliza un <strong>Random Forest calibrado (Platt scaling)</strong> entrenado sobre los 65,000+
+          medicamentos del CUM-INVIMA, usando como ground truth el historial real de desabastecimientos
+          publicado por INVIMA (17 meses, ene 2025 – may 2026). Las variables con mayor poder predictivo
+          son la severidad INVIMA reciente y la tendencia histórica de alertas del principio activo.
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
           {[

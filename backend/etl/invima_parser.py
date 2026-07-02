@@ -1190,6 +1190,61 @@ def parsear_pdf(pdf_path: str | Path, mes: int, anio: int) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# Inferencia de mes/año desde contenido del PDF
+# ---------------------------------------------------------------------------
+
+_MESES_MAP_PARSER = {
+    "enero": 1, "febrero": 2, "marzo": 3, "abril": 4,
+    "mayo": 5, "junio": 6, "julio": 7, "agosto": 8,
+    "septiembre": 9, "octubre": 10, "noviembre": 11, "diciembre": 12,
+    "ene": 1, "feb": 2, "mar": 3, "abr": 4,
+    "jun": 6, "jul": 7, "ago": 8,
+    "sep": 9, "oct": 10, "nov": 11, "dic": 12,
+}
+
+def inferir_mes_anio_desde_pdf(pdf_path: str | Path) -> tuple[int, int] | None:
+    """
+    Lee el encabezado del PDF para extraer mes y año del listado INVIMA.
+    Busca el año (202x) y nombre de mes en español en las primeras ~2000 chars.
+    Retorna (mes, anio) o None si no puede inferirlos.
+    """
+    pdf_path = Path(pdf_path)
+    try:
+        doc = fitz.open(str(pdf_path))
+        header_text = ""
+        for page_num in range(min(2, len(doc))):
+            header_text += doc[page_num].get_text()
+            if len(header_text) > 2000:
+                break
+        doc.close()
+    except Exception:
+        return None
+
+    # Buscar año en los primeros 2000 caracteres del texto
+    header_lower = header_text[:2000].lower()
+    year_m = re.search(r"\b(202[0-9])\b", header_lower)
+    if not year_m:
+        return None
+    anio = int(year_m.group(1))
+
+    # Buscar nombre de mes cerca del año (ventana ±200 chars alrededor del año)
+    y_start = max(0, year_m.start() - 200)
+    y_end   = min(len(header_lower), year_m.end() + 200)
+    window  = header_lower[y_start:y_end]
+
+    for mes_str, mes_num in sorted(_MESES_MAP_PARSER.items(), key=lambda x: -len(x[0])):
+        if re.search(r"\b" + re.escape(mes_str) + r"\b", window):
+            return mes_num, anio
+
+    # Fallback: buscar mes en todo el header sin restricción de ventana
+    for mes_str, mes_num in sorted(_MESES_MAP_PARSER.items(), key=lambda x: -len(x[0])):
+        if re.search(r"\b" + re.escape(mes_str) + r"\b", header_lower):
+            return mes_num, anio
+
+    return None
+
+
+# ---------------------------------------------------------------------------
 # CLI para pruebas rápidas
 # ---------------------------------------------------------------------------
 

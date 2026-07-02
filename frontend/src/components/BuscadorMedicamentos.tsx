@@ -1381,7 +1381,7 @@ export default function BuscadorMedicamentos() {
             <h2 className="text-xl font-bold text-slate-900 leading-snug">¿Qué medicamento necesitas?</h2>
             <p className="text-sm text-slate-500 mt-1.5 max-w-lg mx-auto">
               Busca por principio activo (DCI), nombre comercial o código ATC.
-              Consulta los <strong className="text-slate-700">65 000+ registros CUM-INVIMA</strong> en tiempo real.
+              Consulta los <strong className="text-slate-700 whitespace-nowrap">65&nbsp;000+ registros CUM-INVIMA</strong> en tiempo real.
             </p>
             <div className="flex flex-wrap justify-center gap-1.5 mt-3">
               {['paracetamol', 'enalapril', 'metformina', 'amoxicilina', 'omeprazol', 'furosemida', 'losartan', 'vancomicina'].map(ex => (
