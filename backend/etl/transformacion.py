@@ -24,7 +24,7 @@ _SUFIJOS_SAL = re.compile(
     r"PALMITATO|ESTEARATO|BENZOATO|SALICILATO|NAPADISILATO|XINAFOATO|"
     r"LISINA|LISATO|EDETATO|GLUCURONATO|GLUCEPTATO|LACTOBIONATO|"
     r"LAURILSULFATO|ESTEARATO|NAPSYLATO|HIBENZATO|OROTATO|"
-    r"TRIHIDRATADA?|DIHIDRATADA?|MONOHIDRATADA?|BASE)\b",
+    r"TRIHIDRATADA?|DIHIDRATADA?|MONOHIDRATADA?|ANHIDRA|BASE)\b",
     re.IGNORECASE,
 )
 
@@ -43,15 +43,16 @@ _CONC_EN_NOMBRE = re.compile(
     re.IGNORECASE,
 )
 
-# Patrón para extraer el DCI de "NOMBRE EQUIVALENTE[S] [A] DCI"
-# cubre: "EQUIVALENTE A FENTANILO", "EQUIVALENTEA FENTANILO", "EQUIVALENTES A ESOMEPRAZOL"
+# Patrón para extraer el DCI de "NOMBRE EQUIVALENTE[S] [A] DCI" o "NOMBRE EQUIVALE A DCI"
+# cubre: "EQUIVALENTE A FENTANILO", "EQUIVALENTEA FENTANILO", "EQUIVALENTES A ESOMEPRAZOL",
+#        "EQUIVALE A AMOXICILINA ANHIDRA" (forma abreviada usada en algunos registros CUM)
 _EQUIV_PATRON = re.compile(
-    r"EQUIVALENTES?\s*A?\s*(.+?)(?:\s*\d[\d.,]*\s*(?:MG|MCG|G|UI|U|ML))?$",
+    r"EQUIVALE(?:NTE)?S?\s*(?:A\s+)?\s*(.+?)(?:\s*\d[\d.,]*\s*(?:MG|MCG|G|UI|U|ML))?$",
     re.IGNORECASE,
 )
 
-# Limpia cualquier residuo "EQUIVALENTE[S][A] X" que quede tras la extracción parcial
-_EQUIV_RESIDUO = re.compile(r"\s+EQUIVALENTES?(?:A|\s).*$", re.IGNORECASE)
+# Limpia cualquier residuo "EQUIVALENTE[S][A] X" o "EQUIVALE A X" que quede
+_EQUIV_RESIDUO = re.compile(r"\s+EQUIVALE(?:NTE)?S?(?:A|\s).*$", re.IGNORECASE)
 
 # Patrón para limpiar concentraciones incrustadas en el nombre
 _CONCENTRACION_INCRUSTADA = re.compile(
@@ -85,7 +86,7 @@ _PREFIJO_FORMA = re.compile(
 # "ESOMEPRAZOL (CONTENIDO EN LOS MICROGRANULOS...)" → "ESOMEPRAZOL"
 _PAREN_FORMULACION = re.compile(
     r"\s*\([^)]*(?:CONTENIDO|PELLETS?|MICROGRANULOS?|MICROCAPSULAS?|MICROESFERAS?|"
-    r"GRANULOS?|EQUIVALENTE|DIMETILPOLISILOXANO|\d+[.,]\d+\s*%)[^)]*\).*$",
+    r"GRANULOS?|EQUIVALE(?:NTE)?|DIMETILPOLISILOXANO|\d+[.,]\d+\s*%)[^)]*\).*$",
     re.IGNORECASE,
 )
 
@@ -856,6 +857,7 @@ _SINONIMOS: dict[str, str] = {
     "PENICILLIN V":     "PENICILINA V",
     "PENICILLIN G":     "PENICILINA G",
     "AMOXICILLIN":      "AMOXICILINA",
+    "CLAVULANATO DE POTASIO": "ACIDO CLAVULANICO",
     "NAFCILLIN":        "NAFCILINA",
     "CLOXACILLIN":      "CLOXACILINA",
     "DICLOXACILLIN":    "DICLOXACILINA",

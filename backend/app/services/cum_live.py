@@ -127,6 +127,11 @@ async def buscar_medicamentos(
     df = pd.DataFrame(filas)
     resultados = agrupar_y_transformar(df)
 
+    # _completar_grupos fetches all rows for found expedientes without an estadocum
+    # filter, so inactive variants of the same expediente can slip through. Remove them.
+    if solo_activos:
+        resultados = [m for m in resultados if m.estado_cum.lower() == 'activo']
+
     if db is not None and resultados:
         resultados = await _completar_con_grupos_db(resultados, db)
 
