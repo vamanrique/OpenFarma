@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { medicamentosApi, type MedicamentoLive, type AlternativaLive, type GruposEquivalencia, type GrupoDetalle } from '../api/client'
+import { medicamentosApi, type MedicamentoLive, type AlternativaLive, type EstadoInvima, type GruposEquivalencia, type GrupoDetalle } from '../api/client'
 
 // ─── Configuración de fórmulas ───────────────────────────────────────────────
 const FORMULA_CFG: Record<string, { label: string; color: string }> = {
@@ -160,6 +160,42 @@ function BadgeNTI() {
   return (
     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-200 uppercase tracking-wide shrink-0">
       MTE
+    </span>
+  )
+}
+
+const INVIMA_CFG: Record<string, { label: string; color: string }> = {
+  DESABASTECIDO:      { label: 'Desabastecido',   color: 'bg-red-100 text-red-700 border-red-300' },
+  EN_RIESGO:          { label: 'En riesgo',        color: 'bg-orange-100 text-orange-700 border-orange-300' },
+  EN_MONITORIZACION:  { label: 'Monitorización',   color: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
+  NO_COMERCIALIZADO:  { label: 'No comercializado',color: 'bg-slate-100 text-slate-600 border-slate-300' },
+  DESCONTINUADO:      { label: 'Descontinuado',    color: 'bg-slate-100 text-slate-500 border-slate-300' },
+}
+
+const INVIMA_SEVERIDAD: Record<string, number> = {
+  DESABASTECIDO: 5, EN_RIESGO: 4, EN_MONITORIZACION: 3,
+  NO_COMERCIALIZADO: 2, DESCONTINUADO: 1,
+}
+
+function peorEstadoInvima(meds: MedicamentoLive[]): EstadoInvima | null {
+  let best: EstadoInvima | null = null
+  for (const m of meds) {
+    if (!m.estado_invima) continue
+    const sev = INVIMA_SEVERIDAD[m.estado_invima.estado] ?? 0
+    if (best === null || sev > (INVIMA_SEVERIDAD[best.estado] ?? 0)) best = m.estado_invima
+  }
+  return best
+}
+
+function BadgeInvima({ estado }: { estado: EstadoInvima }) {
+  const cfg = INVIMA_CFG[estado.estado]
+  if (!cfg) return null
+  return (
+    <span
+      className={`text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0 whitespace-nowrap ${cfg.color}`}
+      title={`INVIMA ${estado.anio}/${String(estado.mes).padStart(2,'0')}: ${estado.estado_label}${estado.causas ? ' — ' + estado.causas : ''}`}
+    >
+      ⚠ {cfg.label}
     </span>
   )
 }
@@ -475,6 +511,7 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
           <span className="text-slate-300 text-xs">·</span>
           <span className="text-xs text-slate-400 truncate max-w-[130px]">{dest.laboratorio}</span>
           <BadgeEstadoReg estado_cum={dest.estado_cum} estado_registro={dest.estado_registro} fuente={dest.fuente} />
+          {dest.estado_invima && <BadgeInvima estado={dest.estado_invima} />}
         </div>
         {/* Fila 3: forma + detalle técnico (secundario) */}
         <div className="flex items-center gap-1.5 mt-1 flex-wrap">
@@ -1524,6 +1561,7 @@ export default function BuscadorMedicamentos() {
                       const sel         = selectedGroupKey === row.key
                       const hasNTI      = row.meds.some(m => esNTI(m.principios_dci))
                       const isRenov     = row.meds.every(m => m.fuente === 'CUM_RENOVACION')
+                      const invima      = peorEstadoInvima(row.meds)
                       const allDcisFilt = [...new Set(
                         row.meds.flatMap(m => m.principios_dci)
                           .map(normalizeDCIName)
@@ -1578,9 +1616,12 @@ export default function BuscadorMedicamentos() {
                                 </span>
                               )}
                             </div>
-                            <p className="text-[11px] text-slate-400 truncate mt-0.5">
-                              {row.meds.length === 1 ? '1 producto' : `${row.meds.length} productos`} · {labs}{labsMore}
-                            </p>
+                            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                              <p className="text-[11px] text-slate-400 truncate">
+                                {row.meds.length === 1 ? '1 producto' : `${row.meds.length} productos`} · {labs}{labsMore}
+                              </p>
+                              {invima && <BadgeInvima estado={invima} />}
+                            </div>
                           </div>
 
                           <div className="flex items-center pr-3 shrink-0">

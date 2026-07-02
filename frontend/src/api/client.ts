@@ -2,6 +2,18 @@ import axios from 'axios'
 
 const api = axios.create({ baseURL: '/api/v1' })
 
+export interface EstadoInvima {
+  estado: string              // DESABASTECIDO | EN_RIESGO | EN_MONITORIZACION | NO_COMERCIALIZADO | DESCONTINUADO
+  estado_label: string
+  mes: number
+  anio: number
+  principio_activo: string
+  forma: string
+  concentracion: string
+  causas: string
+  atc: string | null
+}
+
 export interface MedicamentoLive {
   cum_id: string
   nombre_comercial: string
@@ -18,6 +30,7 @@ export interface MedicamentoLive {
   estado_registro: string
   estado_cum: string
   fuente?: string             // CUM_ACTIVO | CUM_RENOVACION
+  estado_invima?: EstadoInvima | null
 }
 
 export interface AlternativaLive {
