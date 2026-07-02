@@ -66,6 +66,71 @@ FORMA_WORDS = re.compile(
 
 CONC_RE = re.compile(r"\d+\s*(?:mg|ml|mcg|ug|g|%|mEq|UI|IU|MG|ML|MCG|UG)\b", re.I)
 
+# ---------------------------------------------------------------------------
+# Post-processing: clean and validate
+# ---------------------------------------------------------------------------
+
+_GARBAGE_PA_RE = re.compile(
+    r"UNIDADES\s+DISPONIBLES|CUENTA\s+CON\s*:|"
+    r"\(UMD\)\s*:|EN\s+EL\s+MERCADO\b|CANAL\s+COMERCIAL|"
+    r"TITULARES?\s+DE\s+REGISTRO|DECLARADOS?\s+COMO|"
+    r"A\s+LA\s+FECHA\s*=|PRODUCTO\s+DISPONIBLE",
+    re.I,
+)
+
+_ESTADO_PA_RE = re.compile(
+    r"^(En\s+riesgo|Desabastecido|En\s+monitoriz|No\s+comercializ|"
+    r"Descontinuado|No\s+desabastecido|Productos\s+declarados)",
+    re.I,
+)
+
+_VALID_ESTADOS = {
+    "DESABASTECIDO", "EN_RIESGO", "EN_MONITORIZACION",
+    "NO_DESABASTECIDO", "NO_COMERCIALIZADO", "DESCONTINUADO",
+}
+
+# Sin \b: captura ATC concatenado directamente al nombre (CICLOFOSFAMIDAL01AA01)
+_ATC_CONCAT_RE = re.compile(r"([A-Z]\d{2}[A-Z]{2}\d{2})")
+
+
+def _limpiar_entrada(e: dict) -> bool:
+    """
+    Limpia y valida una entrada parseada del PDF.
+    - Si el ATC quedó concatenado al principio_activo, lo separa.
+    - Descarta entradas con texto de pie de tabla o descripciones de estado como nombre.
+    Retorna True si la entrada es válida, False si debe descartarse.
+    """
+    pa = e.get("principio_activo", "").strip()
+
+    # Intentar recuperar cuando el ATC quedó pegado al nombre sin separador
+    # Ej: "CICLOFOSFAMIDAL01AA01" → principio_activo="CICLOFOSFAMIDA", atc="L01AA01"
+    # Usamos _ATC_CONCAT_RE (sin \b) porque entre letra mayúscula y letra no hay word boundary
+    atc_m = _ATC_CONCAT_RE.search(pa)
+    if atc_m:
+        pa_before = pa[:atc_m.start()].strip().rstrip("–-·,").strip()
+        if (len(pa_before) >= 3
+                and not _GARBAGE_PA_RE.search(pa_before)
+                and not _ESTADO_PA_RE.match(pa_before)):
+            if not e.get("atc"):
+                e["atc"] = atc_m.group()
+            e["principio_activo"] = pa_before
+            pa = pa_before
+        else:
+            return False  # texto basura o descripción de estado — descartar
+
+    if len(pa) < 3:
+        return False
+    if len(pa) > 150:
+        return False
+    if _GARBAGE_PA_RE.search(pa):
+        return False
+    if _ESTADO_PA_RE.match(pa):
+        return False
+    if e.get("estado") not in _VALID_ESTADOS:
+        return False
+
+    return True
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -1122,7 +1187,7 @@ def parsear_pdf(pdf_path: str | Path, mes: int, anio: int) -> list[dict]:
     doc = fitz.open(str(pdf_path))
 
     if anio >= 2026:
-        return _parse_2026(doc, mes, anio)
+        raw = _parse_2026(doc, mes, anio)
     else:
         # Detectar formato Excel-exportado (abril–noviembre 2025):
         # contiene bloque "A\nB\nC\nD\nE..." de letras de columna Excel en las primeras páginas.
@@ -1135,35 +1200,28 @@ def parsear_pdf(pdf_path: str | Path, mes: int, anio: int) -> list[dict]:
             if _is_excel_fmt:
                 break
         if _is_excel_fmt:
-            result = _parse_excel_2025(doc, mes, anio)
+            raw = _parse_excel_2025(doc, mes, anio)
             doc.close()
-            return result
-
-        # Detectar si el 2025 tiene layout de columnas (como 2026) o compacto
-        if len(doc) > 2:
+        elif len(doc) > 2:
             p1_blocks = doc[1].get_text("blocks")
-            # Si hay bloques en x~139-280 con ATC y sin titular → layout columnar
             has_cols = any(
                 130 <= b[0] < 290 and ATC_RE.search(b[4] if len(b) > 4 else "") and not TITULAR_RE.search(b[4] if len(b) > 4 else "")
                 for b in p1_blocks
             )
             if has_cols:
-                # El 2025 con layout columnar (como diciembre 2025) no tiene sección 2/3 en columnas
-                # Tratar solo sección 1 como columnar
                 all_blocks = []
                 page_sections: dict[int, str] = {}
                 current_section = "MON"
                 for page_num in range(len(doc)):
-                    raw = doc[page_num].get_text("blocks")
-                    sec = _detect_section_from_blocks(raw)
+                    raw_b = doc[page_num].get_text("blocks")
+                    sec = _detect_section_from_blocks(raw_b)
                     if sec:
                         current_section = sec
                     page_sections[page_num] = current_section
-                    for b in raw:
+                    for b in raw_b:
                         if len(b) >= 5:
                             all_blocks.append((b[0], b[1], b[2], b[3], b[4], page_num))
 
-                # Verificar si hay sección 2 y 3 con distinto layout
                 blocks_mon    = [b for b in all_blocks if page_sections[b[5]] == "MON"]
                 blocks_no_des = [b for b in all_blocks if page_sections[b[5]] == "NO_DESAB"]
                 blocks_no_com = [b for b in all_blocks if page_sections[b[5]] == "NO_COM"]
@@ -1172,7 +1230,7 @@ def parsear_pdf(pdf_path: str | Path, mes: int, anio: int) -> list[dict]:
                 e2 = _parse_compact_section_2026(blocks_no_des, mes, anio, "NO_DESAB")
                 e3 = _parse_compact_section_2026(blocks_no_com, mes, anio, "NO_COM")
 
-                result = []
+                raw = []
                 for entries, default_estado in [(e1, None), (e2, "NO_DESABASTECIDO"), (e3, "NO_COMERCIALIZADO")]:
                     for num, e in sorted(entries.items()):
                         sec = e.pop("_section", "MON")
@@ -1180,13 +1238,27 @@ def parsear_pdf(pdf_path: str | Path, mes: int, anio: int) -> list[dict]:
                         if not e["estado"]:
                             if sec == "NO_DESAB": e["estado"] = "NO_DESABASTECIDO"
                             elif sec == "NO_COM": e["estado"] = "NO_COMERCIALIZADO"
-                        result.append(_finalize_entry(e))
+                        raw.append(_finalize_entry(e))
                 doc.close()
-                return result
+            else:
+                raw = _parse_2025(doc, mes, anio)
+                doc.close()
+        else:
+            raw = _parse_2025(doc, mes, anio)
+            doc.close()
 
-        result = _parse_2025(doc, mes, anio)
-        doc.close()
-        return result
+    # Post-processing: limpiar y descartar entradas malformadas
+    result = []
+    for e in raw:
+        if _limpiar_entrada(e):
+            result.append(e)
+        else:
+            import logging as _log
+            _log.getLogger(__name__).debug(
+                "Entrada descartada (malformada): %s",
+                (e.get("principio_activo") or "")[:80],
+            )
+    return result
 
 
 # ---------------------------------------------------------------------------
