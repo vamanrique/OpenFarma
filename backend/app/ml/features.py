@@ -1,7 +1,9 @@
 """
 Ingeniería de features para el modelo de predicción de desabastecimiento.
 
-Variables explicativas construidas del CUM (via cum_normalizado):
+Variables explicativas (15 total):
+
+  Estructurales CUM (10):
   - tasa_inactivacion_atc5   : % de CUMs inactivos en la clase ATC de 5 chars
   - num_competidores         : titulares distintos con misma forma farmacéutica activa
   - tiene_alternativas       : ≥1 competidor disponible
@@ -13,8 +15,15 @@ Variables explicativas construidas del CUM (via cum_normalizado):
   - busquedas_norm           : búsquedas recientes normalizadas (0–1)
   - reportes_norm            : reportes de no disponibilidad normalizados (0–1)
 
-Target:
-  - desabastecido            : 1 si estado_registro=Vigente y estado_cum=Inactivo
+  Temporales INVIMA (5) — escala 0-5:
+  - invima_sev_actual        : severidad en el mes más reciente disponible (lag-1)
+  - invima_sev_t3_avg        : promedio severidad últimos 3 meses históricos
+  - invima_meses_monitoreado : meses con cualquier estado en invima_seguimiento
+  - invima_peor_sev_hist     : severidad máxima histórica
+  - invima_tendencia         : promedio(últimos 3) − promedio(anteriores 3) ∈ [-5,5]
+
+Target (ground truth INVIMA, no proxy CUM):
+  - desabastecido = 1 si ATC7 tiene DESABASTECIDO o EN_RIESGO en mes más reciente
 """
 import pandas as pd
 import numpy as np
@@ -27,7 +36,16 @@ TIPO_FORMULA_NUM = {
     "MONO": 1, "BI": 2, "TRI": 3, "TETRA": 4,
 }
 
-FEATURE_COLS = [
+INVIMA_SEV_SCORE = {
+    "DESABASTECIDO":     5,
+    "EN_RIESGO":         4,
+    "EN_MONITORIZACION": 3,
+    "NO_COMERCIALIZADO": 2,
+    "DESCONTINUADO":     1,
+    "NO_DESABASTECIDO":  0,
+}
+
+FEATURE_COLS_BASE = [
     "tasa_inactivacion_atc5",
     "num_competidores",
     "tiene_alternativas",
@@ -39,6 +57,16 @@ FEATURE_COLS = [
     "busquedas_norm",
     "reportes_norm",
 ]
+
+FEATURE_COLS_INVIMA = [
+    "invima_sev_actual",
+    "invima_sev_t3_avg",
+    "invima_meses_monitoreado",
+    "invima_peor_sev_hist",
+    "invima_tendencia",
+]
+
+FEATURE_COLS = FEATURE_COLS_BASE + FEATURE_COLS_INVIMA
 
 
 def construir_features_desde_db(db_session) -> pd.DataFrame:
@@ -118,12 +146,75 @@ def construir_features_desde_db(db_session) -> pd.DataFrame:
     pres["tiene_alternativas"] = (pres["num_competidores"] > 1).astype(int)
     pres["grupo_atc_enc"] = pres["atc_grupo"].map(_ATC_ENC).fillna(len(ATC_GRUPOS)).astype(int)
 
-    # Señales colaborativas (0 hasta que haya datos reales en consultas_region)
     pres["busquedas_norm"] = 0.0
     pres["reportes_norm"] = 0.0
 
-    # Target: activo→0, inactivo→1 (proxy de desabastecimiento)
-    pres["desabastecido"] = (pres["estado_cum_low"] == "inactivo").astype(int)
+    # ── Features y target INVIMA ──────────────────────────────────────────────
+    from sqlalchemy import text
+
+    row = db_session.execute(
+        text("SELECT anio, mes FROM invima_seguimiento ORDER BY anio DESC, mes DESC LIMIT 1")
+    ).fetchone()
+
+    if row:
+        target_anio, target_mes = row
+
+        # Target: ATC7 con DESABASTECIDO o EN_RIESGO en mes más reciente
+        target_rows = db_session.execute(text("""
+            SELECT atc, MAX(CASE estado
+                WHEN 'DESABASTECIDO' THEN 5 WHEN 'EN_RIESGO' THEN 4
+                WHEN 'EN_MONITORIZACION' THEN 3 WHEN 'NO_COMERCIALIZADO' THEN 2
+                WHEN 'DESCONTINUADO' THEN 1 ELSE 0 END) AS sev
+            FROM invima_seguimiento
+            WHERE anio=:ta AND mes=:tm AND atc IS NOT NULL
+            GROUP BY atc
+        """), {"ta": target_anio, "tm": target_mes}).fetchall()
+        target_by_atc7 = {r[0]: int(r[1] or 0) for r in target_rows if r[0]}
+
+        # Historial (excluye mes target)
+        hist = db_session.execute(text("""
+            SELECT atc, estado, anio*100+mes AS period
+            FROM invima_seguimiento
+            WHERE atc IS NOT NULL
+              AND NOT (anio=:ta AND mes=:tm)
+        """), {"ta": target_anio, "tm": target_mes}).fetchall()
+
+        if hist:
+            dh = pd.DataFrame(hist, columns=["atc7", "estado", "period"])
+            dh["sev"] = dh["estado"].map(INVIMA_SEV_SCORE).fillna(0).astype(float)
+            monthly = dh.groupby(["atc7", "period"])["sev"].max().reset_index()
+            periods_desc = sorted(monthly["period"].unique(), reverse=True)
+            lag1    = periods_desc[0] if periods_desc else None
+            rec3    = set(periods_desc[:3])
+            prev3   = set(periods_desc[3:6])
+
+            inv_records = []
+            for atc7, grp in monthly.groupby("atc7"):
+                rv = grp.loc[grp["period"].isin(rec3), "sev"].values
+                pv = grp.loc[grp["period"].isin(prev3), "sev"].values
+                inv_records.append({
+                    "atc7": atc7,
+                    "invima_sev_actual":        float(grp.loc[grp["period"]==lag1,"sev"].max()) if lag1 and lag1 in set(grp["period"]) else 0.0,
+                    "invima_sev_t3_avg":        float(rv.mean()) if len(rv) > 0 else 0.0,
+                    "invima_meses_monitoreado": int(grp["period"].nunique()),
+                    "invima_peor_sev_hist":     float(grp["sev"].max()),
+                    "invima_tendencia":         float(rv.mean() - pv.mean()) if len(rv) > 0 and len(pv) > 0 else 0.0,
+                    "desabastecido": int(target_by_atc7.get(atc7, 0) >= 4),
+                })
+            df_inv = pd.DataFrame(inv_records)
+            pres = pres.merge(df_inv, left_on="atc_upper", right_on="atc7", how="left")
+        else:
+            for c in FEATURE_COLS_INVIMA: pres[c] = 0.0
+            pres["desabastecido"] = pres["atc_upper"].map(
+                lambda a: int(target_by_atc7.get(a, 0) >= 4)
+            )
+    else:
+        for c in FEATURE_COLS_INVIMA: pres[c] = 0.0
+        pres["desabastecido"] = 0
+
+    for c in FEATURE_COLS_INVIMA:
+        pres[c] = pres[c].fillna(0.0)
+    pres["desabastecido"] = pres["desabastecido"].fillna(0).astype(int)
 
     return pres[FEATURE_COLS + ["desabastecido", "cum_id", "atc5"]].copy()
 
