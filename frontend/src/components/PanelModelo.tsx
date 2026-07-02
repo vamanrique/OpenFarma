@@ -175,7 +175,7 @@ export default function PanelModelo() {
           </p>
         </div>
         <div className="p-4">
-          <ResponsiveContainer width="100%" height={360}>
+          <ResponsiveContainer width="100%" height={480}>
             <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 32, top: 4, bottom: 4 }}>
               <XAxis
                 type="number"
@@ -188,6 +188,7 @@ export default function PanelModelo() {
                 type="category"
                 dataKey="name"
                 width={210}
+                interval={0}
                 tick={{ fontSize: 11, fill: '#475569' }}
                 axisLine={false}
                 tickLine={false}
