@@ -10,10 +10,51 @@ Deploy: Railway (auto-deploy desde main)
 ## Stack
 
 - **Backend**: FastAPI + SQLAlchemy + SQLite (`backend/farmavigia.db`)
-- **Frontend**: React (directorio `frontend/`)
-- **DB en Railway**: `/data/farmavigia.db` (montado como volumen persistente)
-- **Python env**: activar con `source .venv/Scripts/activate` o usar directamente desde `backend/`
+- **Frontend**: React + Vite + Tailwind (directorio `frontend/`)
+- **DB en Railway**: `/data/farmavigia.db` (volumen persistente, se sobrescribe desde bundle en cada deploy)
+- **Python env**: `.venv/Scripts/python.exe` o `source .venv/Scripts/activate`
 - **AI**: DeepSeek API para clasificación farmacológica (clave en `backend/.env`)
+
+## Deploy — Railway
+
+- Auto-deploy desde `main` via GitHub webhook
+- **nixpacks.toml** (raíz): instala Python + Node 20, ejecuta `pip install` + `npm ci && npm run build`
+- **start.sh**: copia siempre `backend/farmavigia.db` → `/data/farmavigia.db` (fuente de verdad = git)
+- Cambios a `frontend/src/**` → hacer `npm run build` localmente + commitear `frontend/dist/` (Railway también lo recompila, pero es más rápido commitear el dist)
+- **WAL checkpoint**: antes de commitear `farmavigia.db`, abrir conexión SQLite y ejecutar `PRAGMA wal_checkpoint(TRUNCATE)` para que los cambios pasen del WAL al archivo principal
+
+## Pipeline INVIMA
+
+**Tablas**: `invima_seguimiento` (17 meses: ene 2025 – may 2026, 9,795 registros tras limpieza)
+
+**Flujo de actualización**:
+1. `etl/invima_scraper.py` — descarga PDFs del portal INVIMA, infiere mes/año leyendo contenido
+2. `etl/invima_parser.py` — extrae entradas del PDF (3 secciones: MON/NO_DESAB/NO_COM) + `_limpiar_entrada()` post-proceso
+3. `app/services/invima_service.py` — cache en memoria, reconstruida al arrancar; indexada por ATC7 y ATC5
+4. Background task `_loop_viernes_invima()` en `main.py` — verifica PDFs nuevos cada 6h, procesa solo viernes
+5. Cloud trigger `trig_01YUczECNbarwSQfQu9ew4hr` (cron `0 14 * * 5`) — disparo adicional vía Claude Code Remote
+
+**Parser — casos edge conocidos**:
+- `_limpiar_entrada()` separa ATC pegado al nombre (`CICLOFOSFAMIDAL01AA01` → `CICLOFOSFAMIDA` + ATC) y descarta texto de pie de tabla
+- Algunos campos `forma`/`concentracion` quedan fragmentados en entradas largas (ej: ALENDRONATO forma="A ACIDO ALENDRONICO") — artefacto del layout PDF, no bloquea funcionalidad
+- Para re-parsear un PDF manualmente: `python actualizar_invima.py --retrain`
+
+## Modelo ML — predicción de desabastecimiento
+
+**Archivo**: `backend/app/ml/artefacto_modelo.pkl`
+**Tipo**: `CalibratedClassifierCV` (Platt scaling) sobre `RandomForestClassifier`
+**Features** (15): 10 estructurales CUM + 5 temporales INVIMA (`invima_sev_actual`, `invima_sev_t3_avg`, `invima_peor_sev_hist`, `invima_meses_monitoreado`, `invima_tendencia`)
+**Ground truth**: historial INVIMA 17 meses, ~42,264 muestras
+
+**⚠️ Problema activo**: modelo entrenado con `scikit-learn==1.9.0` (local) pero `requirements.txt` pone `==1.5.2` (Railway). Railway muestra `InconsistentVersionWarning` al cargar el pickle. Solución pendiente: actualizar `requirements.txt` a `1.9.0` o reentrenar con `1.5.2`.
+
+**Reentrenar**:
+```bash
+cd backend
+.venv/Scripts/python.exe retrain_invima.py --db farmavigia.db
+```
+
+**⚠️ Overfitting probable**: ROC-AUC 1.000 y Avg Precision 0.999 son métricas sospechosamente perfectas. El split train/test puede estar mezclando datos temporales. Revisar `retrain_invima.py` para usar split temporal (entrenar en meses 1-12, evaluar en 13-17).
 
 ## Base de datos: grupos_equivalencia
 
@@ -234,19 +275,26 @@ La ETL no genera esta categoría porque los granulados/polvos se clasifican bajo
 ## Flujo de trabajo Git
 
 ```bash
-# Siempre trabajar en: C:\Users\aewal\farmavigia-concurso\backend\
+# Backend (Python)
 cd backend
+.venv/Scripts/python.exe fix_xxx.py --dry-run   # verificar
+.venv/Scripts/python.exe fix_xxx.py              # aplicar
 
-# Activar contexto Python
-python fix_xxx.py --dry-run   # verificar
-python fix_xxx.py             # aplicar
+# Antes de commitear farmavigia.db — checkpoint WAL obligatorio:
+.venv/Scripts/python.exe -c "import sqlite3; c=sqlite3.connect('farmavigia.db'); c.execute('PRAGMA wal_checkpoint(TRUNCATE)'); c.close()"
 
-# Commit y push (Railway auto-deploya desde main)
+# Frontend (si se cambia código React)
+cd frontend && npm run build   # genera frontend/dist/
 cd ..
-git add backend/farmavigia.db
-git commit -m "fix: descripcion"
+
+# Commit y push
+git add backend/farmavigia.db frontend/dist/ ...
+git commit -m "tipo: descripcion"
 git push
+# Railway hace redeploy automático desde main
 ```
+
+**Nota**: Railway ahora ejecuta `npm run build` en cada deploy (via nixpacks.toml), así que commitear `frontend/dist/` es opcional pero acelera la verificación local.
 
 ## Reglas del proyecto
 
