@@ -35,7 +35,7 @@ const TABS: {
         <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75zm9.75-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.625c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.25zm9.75-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V20.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V3.375z" />
       </svg>
     ),
-    meta: 'Random Forest · ROC-AUC 0.97',
+    meta: 'Random Forest · ROC-AUC 0.87',
     badge: 'ML',
   },
   {
@@ -71,12 +71,12 @@ export default function App() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-[15px] tracking-tight text-white">OpenFarma</span>
-                <span className="hidden sm:inline text-[11px] font-medium px-1.5 py-0.5 rounded bg-blue-800/60 text-blue-200 border border-blue-700/40">
+                <span className="hidden sm:inline text-xs font-medium px-1.5 py-0.5 rounded bg-blue-800/60 text-blue-200 border border-blue-700/40">
                   Colombia
                 </span>
               </div>
-              <p className="hidden sm:block text-[11px] text-blue-300/70 leading-none mt-0.5">
-                Alternativas farmacológicas · predicción de desabastecimiento
+              <p className="text-xs text-blue-300/70 leading-none mt-0.5">
+                Alternativas farmacológicas · predicción IA
               </p>
             </div>
           </div>
@@ -85,7 +85,7 @@ export default function App() {
           <div className="flex items-center gap-2 text-xs">
             <div className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-full px-2.5 py-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-slate-300 text-[11px]">INVIMA · datos.gov.co</span>
+              <span className="text-slate-300 text-xs">INVIMA · datos.gov.co</span>
             </div>
           </div>
         </div>
@@ -95,26 +95,21 @@ export default function App() {
       <div className="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <nav className="flex -mb-px overflow-x-auto scrollbar-none">
-            {TABS.map((t, i) => (
+            {TABS.map((t) => (
               <Fragment key={t.id}>
-                {t.secondary && !TABS[i - 1]?.secondary && (
-                  <div className="self-stretch w-px my-2 bg-slate-200 mx-1 shrink-0" aria-hidden />
-                )}
                 <button
                   onClick={() => setTab(t.id)}
-                  className={`relative flex items-center gap-2 px-4 py-3.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors focus:outline-none ${
+                  className={`relative flex items-center gap-2 px-4 py-3.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset ${
                     tab === t.id
                       ? 'border-blue-600 text-blue-600'
-                      : t.secondary
-                        ? 'border-transparent text-slate-400 hover:text-slate-600 hover:border-slate-200'
-                        : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+                      : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
                   }`}
                 >
                   {t.icon}
                   <span className="hidden md:inline">{t.label}</span>
                   <span className="md:hidden">{t.short}</span>
                   {t.badge && (
-                    <span className="hidden sm:inline text-[9px] font-bold px-1 py-0.5 rounded bg-violet-100 text-violet-600 leading-none">
+                    <span className="hidden sm:inline text-xs font-bold px-1 py-0.5 rounded bg-violet-100 text-violet-600 leading-none">
                       {t.badge}
                     </span>
                   )}

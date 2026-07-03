@@ -153,12 +153,12 @@ function esNTI(dcis: string[]): boolean {
 // ─── Badges ───────────────────────────────────────────────────────────────────
 function BadgeFormula({ tipo }: { tipo: string }) {
   const cfg = FORMULA_CFG[tipo] ?? { label: tipo, color: 'bg-slate-100 text-slate-600' }
-  return <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${cfg.color}`}>{cfg.label}</span>
+  return <span className={`text-xs font-semibold px-1.5 py-0.5 rounded leading-none ${cfg.color}`}>{cfg.label}</span>
 }
 
 function BadgeNTI() {
   return (
-    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-200 uppercase tracking-wide shrink-0">
+    <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-200 uppercase tracking-wide shrink-0 leading-none">
       MTE
     </span>
   )
@@ -192,7 +192,7 @@ function BadgeInvima({ estado }: { estado: EstadoInvima }) {
   if (!cfg) return null
   return (
     <span
-      className={`text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0 whitespace-nowrap ${cfg.color}`}
+      className={`text-xs font-semibold px-1.5 py-0.5 rounded border shrink-0 whitespace-nowrap leading-none ${cfg.color}`}
       title={`INVIMA ${estado.anio}/${String(estado.mes).padStart(2,'0')}: ${estado.estado_label}${estado.causas ? ' — ' + estado.causas : ''}`}
     >
       ⚠ {cfg.label}
@@ -206,7 +206,7 @@ function BadgeEstadoReg({ estado_cum, estado_registro, fuente }: {
   if (fuente === 'CUM_RENOVACION') {
     const sufijo = estado_cum === 'Activo' ? ' · Activo' : estado_cum ? ` · ${estado_cum}` : ''
     return (
-      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-700 whitespace-nowrap shrink-0">
+      <span className="text-xs font-semibold px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-700 whitespace-nowrap shrink-0">
         En renovación{sufijo}
       </span>
     )
@@ -215,20 +215,20 @@ function BadgeEstadoReg({ estado_cum, estado_registro, fuente }: {
   const activo  = estado_cum === 'Activo'
   if (vigente && activo) {
     return (
-      <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-700 whitespace-nowrap shrink-0">
+      <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-700 whitespace-nowrap shrink-0">
         Vigente · Activo
       </span>
     )
   }
   if (activo) {
     return (
-      <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-700 whitespace-nowrap shrink-0">
+      <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-700 whitespace-nowrap shrink-0">
         Activo
       </span>
     )
   }
   return (
-    <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-red-100 text-red-600 whitespace-nowrap shrink-0">
+    <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-red-100 text-red-600 whitespace-nowrap shrink-0">
       {estado_cum || 'Inactivo'}
     </span>
   )
@@ -236,7 +236,7 @@ function BadgeEstadoReg({ estado_cum, estado_registro, fuente }: {
 
 function TagDCI({ dci, highlight }: { dci: string; highlight?: boolean }) {
   return (
-    <span className={`text-[11px] px-2 py-0.5 rounded-full border ${
+    <span className={`text-xs px-2 py-0.5 rounded-full border leading-none ${
       highlight
         ? 'bg-emerald-50 border-emerald-300 text-emerald-700 font-medium'
         : 'bg-slate-100 border-slate-200 text-slate-600'
@@ -250,14 +250,14 @@ function TagDCI({ dci, highlight }: { dci: string; highlight?: boolean }) {
 function BadgeEstadoSimple({ estado_cum, fuente }: { estado_cum: string; fuente: string }) {
   if (fuente === 'CUM_RENOVACION') {
     return (
-      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-700 whitespace-nowrap shrink-0">
+      <span className="text-xs font-semibold px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-700 whitespace-nowrap shrink-0">
         Renovacion
       </span>
     )
   }
   const activo = estado_cum === 'Activo'
   return (
-    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium whitespace-nowrap shrink-0 ${
+    <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium whitespace-nowrap shrink-0 ${
       activo ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'
     }`}>
       {activo ? 'Activo' : (estado_cum || 'Inactivo')}
@@ -287,10 +287,10 @@ function GrupoSection({
       >
         <div className="min-w-0">
           <p className="text-xs font-bold leading-tight truncate">{titulo}</p>
-          {subtitulo && <p className="text-[10px] opacity-70 mt-0.5">{subtitulo}</p>}
+          {subtitulo && <p className="text-xs opacity-70 mt-0.5">{subtitulo}</p>}
         </div>
         <div className="flex items-center gap-2 shrink-0 ml-2">
-          <span className="text-[10px] font-semibold opacity-60">{grupo.n_productos} prod.</span>
+          <span className="text-xs font-semibold opacity-60">{grupo.n_productos} prod.</span>
           <svg
             className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-90' : ''}`}
             fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
@@ -306,7 +306,7 @@ function GrupoSection({
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-slate-800 truncate">{p.nombre_comercial}</p>
                 {p.laboratorio && (
-                  <p className="text-[10px] text-slate-400 truncate mt-0.5">{p.laboratorio}</p>
+                  <p className="text-xs text-slate-400 truncate mt-0.5">{p.laboratorio}</p>
                 )}
               </div>
               <BadgeEstadoSimple estado_cum={p.estado_cum} fuente={p.fuente} />
@@ -341,7 +341,7 @@ function PanelGrupos({ gruposEq, cargando }: {
     <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
       {/* Header — redesigned */}
       <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200">
-        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
           GRUPOS CUM · {dci}
         </p>
       </div>
@@ -351,7 +351,7 @@ function PanelGrupos({ gruposEq, cargando }: {
         {/* Mi grupo: sustitutos directos */}
         {mi_grupo && (
           <div className="space-y-2">
-            <p className="text-[10px] font-semibold text-emerald-700 uppercase tracking-wider border-b border-emerald-100 pb-1">
+            <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wider border-b border-emerald-100 pb-1">
               Este grupo
             </p>
             <GrupoSection
@@ -367,7 +367,7 @@ function PanelGrupos({ gruposEq, cargando }: {
         {/* Misma via, otras concentraciones */}
         {misma_via.length > 0 && (
           <div className="space-y-2">
-            <p className="text-[10px] font-semibold text-blue-700 uppercase tracking-wider border-b border-blue-100 pb-1">
+            <p className="text-xs font-semibold text-blue-700 uppercase tracking-wider border-b border-blue-100 pb-1">
               Misma vía · otras dosis
             </p>
             {misma_via.map(g => (
@@ -385,7 +385,7 @@ function PanelGrupos({ gruposEq, cargando }: {
         {/* Otras vias */}
         {otras_vias.length > 0 && (
           <div className="space-y-2">
-            <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-wider border-b border-amber-100 pb-1">
+            <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider border-b border-amber-100 pb-1">
               Otras vías
             </p>
             {otras_vias.map(g => (
@@ -430,7 +430,7 @@ function SubSection({ label, count }: { label: string; count: number }) {
   return (
     <div className="flex items-center gap-1.5 mb-2">
       <span className="text-xs font-semibold text-slate-600">{label}</span>
-      <span className="text-[10px] text-slate-400 tabular-nums">({count})</span>
+      <span className="text-xs text-slate-400 tabular-nums">({count})</span>
     </div>
   )
 }
@@ -439,7 +439,7 @@ function CascadeConnector({ label }: { label?: string }) {
   return (
     <div className="flex items-center gap-2 py-0.5 select-none">
       <div className="flex-1 h-px bg-slate-100" />
-      <span className="text-[10px] text-slate-400 font-medium px-2.5 py-1 rounded-full border border-slate-100 bg-slate-50 whitespace-nowrap leading-tight">
+      <span className="text-xs text-slate-400 font-medium px-2.5 py-1 rounded-full border border-slate-100 bg-slate-50 whitespace-nowrap leading-tight">
         {label ?? 'si no hay disponibilidad ↓'}
       </span>
       <div className="flex-1 h-px bg-slate-100" />
@@ -515,11 +515,11 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
         </div>
         {/* Fila 3: forma + detalle técnico (secundario) */}
         <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-          <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+          <span className="text-xs text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
             {labelGrupo(grupoForma(dest.forma_farmaceutica, dest.via_administracion))}
           </span>
           {concDetail && (
-            <span className="text-[10px] text-slate-400 font-mono">{concDetail}</span>
+            <span className="text-xs text-slate-400 font-mono">{concDetail}</span>
           )}
         </div>
         {mostrarCompartidos && (
@@ -664,7 +664,7 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
                                 : <p className="text-xs font-mono text-slate-600">{dest.concentracion_display}</p>
                               }
                               {dest.presentacion && (
-                                <p className="text-[10px] text-slate-400 font-mono mt-0.5">{dest.presentacion}</p>
+                                <p className="text-xs text-slate-400 font-mono mt-0.5">{dest.presentacion}</p>
                               )}
                             </div>
                             <div className="w-px self-stretch bg-lime-100 shrink-0" />
@@ -673,7 +673,7 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
                                 <p className="text-xs font-medium text-slate-700 truncate">{dest.nombre_comercial}</p>
                                 {esNTI(dest.principios_dci) && <BadgeNTI />}
                               </div>
-                              <p className="text-[11px] text-slate-400 truncate mt-0.5">{dest.laboratorio}</p>
+                              <p className="text-xs text-slate-400 truncate mt-0.5">{dest.laboratorio}</p>
                             </div>
                             <BadgeEstadoReg estado_cum={dest.estado_cum} estado_registro={dest.estado_registro} fuente={dest.fuente} />
                           </div>
@@ -730,7 +730,7 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
                             : <p className="text-xs font-mono text-slate-600">{dest.concentracion_display}</p>
                           }
                           {dest.concentracion_display && (
-                            <p className="text-[10px] text-slate-400 font-mono mt-0.5">{dest.concentracion_display}</p>
+                            <p className="text-xs text-slate-400 font-mono mt-0.5">{dest.concentracion_display}</p>
                           )}
                         </div>
                         <div className="w-px self-stretch bg-teal-100 shrink-0" />
@@ -740,10 +740,10 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
                             {esNTI(dest.principios_dci) && <BadgeNTI />}
                           </div>
                           <div className="flex items-center gap-1 mt-0.5">
-                            <span className="text-[10px] text-slate-400 bg-slate-100 px-1 py-0.5 rounded">
+                            <span className="text-xs text-slate-400 bg-slate-100 px-1 py-0.5 rounded">
                               {labelGrupo(grupoForma(dest.forma_farmaceutica, dest.via_administracion))}
                             </span>
-                            <span className="text-[11px] text-slate-400 truncate">{dest.laboratorio}</span>
+                            <span className="text-xs text-slate-400 truncate">{dest.laboratorio}</span>
                           </div>
                         </div>
                         <BadgeEstadoReg estado_cum={dest.estado_cum} estado_registro={dest.estado_registro} fuente={dest.fuente} />
@@ -823,7 +823,7 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-slate-700">Alternativas terapéuticas · misma clase ATC</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">Molécula distinta — requieren aval del Comité de Farmacia y Terapéutica</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Molécula distinta — requieren aval del Comité de Farmacia y Terapéutica</p>
                   </div>
                   <span className="text-xs font-bold tabular-nums px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 mr-1">{terapeuticas.length}</span>
                   <svg className={`w-4 h-4 text-slate-400 transition-transform ${terapExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -867,7 +867,7 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
             <svg className="w-3.5 h-3.5 text-slate-300 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zm-9-3.75h.008v.008H12V8.25z" />
             </svg>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
+            <p className="text-xs text-slate-400 leading-relaxed">
               Datos en tiempo real del <strong>CUM-INVIMA</strong> vía datos.gov.co. <strong>No reemplazan el criterio clínico ni farmacéutico.</strong> Sustitutos directos: pueden dispensarse bajo protocolo. Alternativas terapéuticas en IPS: requieren aval del <strong>Comité de Farmacia y Terapéutica</strong> (Res. 1403/2007).
             </p>
           </div>
@@ -1214,10 +1214,28 @@ export default function BuscadorMedicamentos() {
     <div className="space-y-3">
 
       {/* Buscador */}
-      <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
-        <form onSubmit={buscar} className="flex gap-2">
+      <div className={`bg-white border border-slate-200 rounded-xl shadow-sm transition-all ${!hasBuscado ? 'px-5 py-9 sm:px-12 sm:py-14' : 'px-3 py-3'}`}>
+
+        {/* Hero — visible solo antes de la primera búsqueda */}
+        {!hasBuscado && (
+          <div className="max-w-2xl mx-auto text-center mb-7">
+            <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-2.5">Alternativas farmacológicas · Colombia</p>
+            <h1 className="text-2xl sm:text-4xl font-bold text-slate-900 leading-tight tracking-tight">
+              ¿Qué medicamento necesitas?
+            </h1>
+            <p className="text-sm sm:text-base text-slate-500 mt-3 leading-relaxed max-w-lg mx-auto">
+              Busca por principio activo, nombre comercial o código ATC.
+              Consulta los <strong className="text-slate-700 font-semibold">65&thinsp;000+ registros CUM-INVIMA</strong> en tiempo real.
+            </p>
+          </div>
+        )}
+
+        <form onSubmit={buscar} className={`flex gap-2 ${!hasBuscado ? 'max-w-2xl mx-auto' : ''}`}>
           <div className="relative flex-1">
-            <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg
+              className={`text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none transition-all ${!hasBuscado ? 'w-5 h-5' : 'w-4 h-4'}`}
+              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+            >
               <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607z" />
             </svg>
             <input
@@ -1225,18 +1243,44 @@ export default function BuscadorMedicamentos() {
               value={query}
               onChange={e => setQuery(e.target.value)}
               placeholder="Principio activo, nombre comercial o código ATC..."
-              className="w-full border border-slate-200 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              autoFocus={!hasBuscado}
+              className={`w-full border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                !hasBuscado
+                  ? 'pl-11 pr-4 py-3.5 text-base placeholder:text-slate-400'
+                  : 'pl-9 pr-4 py-2 text-sm'
+              }`}
             />
           </div>
           <button
             type="submit"
             disabled={buscando || query.trim().length < 2}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shrink-0"
+            className={`bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white rounded-xl font-semibold transition-colors shrink-0 ${
+              !hasBuscado ? 'px-7 py-3.5 text-base' : 'px-4 py-2 text-sm font-medium'
+            }`}
           >
-            {buscando ? 'Buscando...' : 'Buscar'}
+            {buscando ? 'Buscando…' : 'Buscar'}
           </button>
         </form>
-        {errorBusq && <p className="text-red-500 text-xs mt-2">{errorBusq}</p>}
+        {errorBusq && <p className="text-red-500 text-xs mt-2 max-w-2xl mx-auto">{errorBusq}</p>}
+
+        {/* Chips de búsqueda rápida — solo en estado vacío */}
+        {!hasBuscado && (
+          <div className="max-w-2xl mx-auto mt-6">
+            <p className="text-xs text-slate-400 text-center mb-3">Búsquedas frecuentes</p>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {['Paracetamol', 'Ibuprofeno', 'Metformina', 'Amoxicilina', 'Atorvastatina', 'Omeprazol', 'Losartán', 'Vancomicina'].map(q => (
+                <button
+                  key={q}
+                  type="button"
+                  onClick={() => buscarQuery(q)}
+                  className="text-sm px-3.5 py-1.5 rounded-full border border-slate-200 bg-slate-50 text-slate-600 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Filtros */}
         {resultados.length > 0 && !buscando && (
@@ -1249,7 +1293,7 @@ export default function BuscadorMedicamentos() {
               const hasMore = dciCombos.length > LIMIT
               return (
                 <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 select-none">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 select-none">
                     Principio activo
                   </p>
                   <div className="divide-y divide-slate-100 rounded-lg border border-slate-200 overflow-hidden">
@@ -1266,7 +1310,7 @@ export default function BuscadorMedicamentos() {
                           }`}
                         >
                           <span className="text-xs font-medium break-words leading-snug pr-2">{chipLabel(k)}</span>
-                          <span className={`text-[10px] tabular-nums shrink-0 font-mono ${sel ? 'text-blue-200' : 'text-slate-400'}`}>
+                          <span className={`text-xs tabular-nums shrink-0 font-mono ${sel ? 'text-blue-200' : 'text-slate-400'}`}>
                             {n}
                           </span>
                         </button>
@@ -1276,7 +1320,7 @@ export default function BuscadorMedicamentos() {
                   {(hasMore || showAllDCI) && (
                     <button
                       onClick={() => setShowAllDCI(v => !v)}
-                      className="mt-1 text-[11px] text-slate-400 hover:text-blue-600 transition-colors"
+                      className="mt-1 text-xs text-slate-400 hover:text-blue-600 transition-colors"
                     >
                       {showAllDCI ? 'Ver menos' : `+${dciCombos.length - LIMIT} más`}
                     </button>
@@ -1288,7 +1332,7 @@ export default function BuscadorMedicamentos() {
             {/* ── Filtro 2: Forma farmacéutica ── */}
             {grupos.length > 1 && (
               <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 select-none">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 select-none">
                   Forma farmacéutica
                 </p>
                 <div className="flex flex-wrap gap-1.5">
@@ -1301,7 +1345,7 @@ export default function BuscadorMedicamentos() {
                               : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-400'
                         }`}>
                         {labelGrupo(g)}
-                        <span className={`text-[10px] tabular-nums ${sel ? 'text-slate-300' : 'text-slate-400'}`}>{n}</span>
+                        <span className={`text-xs tabular-nums ${sel ? 'text-slate-300' : 'text-slate-400'}`}>{n}</span>
                       </button>
                     )
                   })}
@@ -1312,7 +1356,7 @@ export default function BuscadorMedicamentos() {
             {/* ── Filtro 3: Concentración ── */}
             {concentraciones.length > 1 && (
               <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 select-none">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 select-none">
                   Concentración
                 </p>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -1375,28 +1419,10 @@ export default function BuscadorMedicamentos() {
       {!hasBuscado && (
         <div className="space-y-5 pt-2">
 
-          {/* Intro + ejemplos */}
-          <div className="text-center px-2">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-blue-600 mb-1.5">Buscador de alternativas clínicas</p>
-            <h2 className="text-xl font-bold text-slate-900 leading-snug">¿Qué medicamento necesitas?</h2>
-            <p className="text-sm text-slate-500 mt-1.5 max-w-lg mx-auto">
-              Busca por principio activo (DCI), nombre comercial o código ATC.
-              Consulta los <strong className="text-slate-700 whitespace-nowrap">65&nbsp;000+ registros CUM-INVIMA</strong> en tiempo real.
-            </p>
-            <div className="flex flex-wrap justify-center gap-1.5 mt-3">
-              {['paracetamol', 'enalapril', 'metformina', 'amoxicilina', 'omeprazol', 'furosemida', 'losartan', 'vancomicina'].map(ex => (
-                <button key={ex} onClick={() => buscarQuery(ex)}
-                  className="text-xs px-3 py-1.5 rounded-full border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-400 transition-colors">
-                  {ex}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Cascada clínica — visible por defecto */}
           <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
             <div className="px-5 pt-4 pb-2">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
                 Orden de preferencia clínica cuando un medicamento no está disponible
               </p>
             </div>
@@ -1406,11 +1432,11 @@ export default function BuscadorMedicamentos() {
                 {/* Paso 1 */}
                 <div className="flex-1 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5">
                   <div className="flex items-center gap-1.5 mb-1.5">
-                    <span className="text-[10px] font-bold w-4.5 h-4.5 min-w-[18px] min-h-[18px] rounded-full bg-emerald-600 text-white flex items-center justify-center leading-none">1</span>
-                    <span className="text-[9px] font-bold uppercase tracking-wide text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">Directo</span>
+                    <span className="text-xs font-bold w-4.5 h-4.5 min-w-[18px] min-h-[18px] rounded-full bg-emerald-600 text-white flex items-center justify-center leading-none">1</span>
+                    <span className="text-xs font-bold uppercase tracking-wide text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">Directo</span>
                   </div>
                   <p className="text-xs font-bold text-emerald-900 leading-snug">Mismo producto</p>
-                  <p className="text-[11px] text-emerald-700 mt-1 leading-snug">Distinto titular o tamaño de envase. Intercambiable directamente.</p>
+                  <p className="text-xs text-emerald-700 mt-1 leading-snug">Distinto titular o tamaño de envase. Intercambiable directamente.</p>
                 </div>
                 <div className="flex items-center px-1.5 text-slate-300 shrink-0">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>
@@ -1418,11 +1444,11 @@ export default function BuscadorMedicamentos() {
                 {/* Paso 2 */}
                 <div className="flex-1 rounded-xl border border-teal-200 bg-teal-50 p-3.5">
                   <div className="flex items-center gap-1.5 mb-1.5">
-                    <span className="text-[10px] font-bold min-w-[18px] min-h-[18px] rounded-full bg-teal-600 text-white flex items-center justify-center leading-none">2</span>
-                    <span className="text-[9px] font-bold uppercase tracking-wide text-teal-600 bg-teal-100 px-1.5 py-0.5 rounded">Ajuste dosis</span>
+                    <span className="text-xs font-bold min-w-[18px] min-h-[18px] rounded-full bg-teal-600 text-white flex items-center justify-center leading-none">2</span>
+                    <span className="text-xs font-bold uppercase tracking-wide text-teal-600 bg-teal-100 px-1.5 py-0.5 rounded">Ajuste dosis</span>
                   </div>
                   <p className="text-xs font-bold text-teal-900 leading-snug">Diferente concentración</p>
-                  <p className="text-[11px] text-teal-700 mt-1 leading-snug">Mismo PA y vía. El profesional ajusta la posología.</p>
+                  <p className="text-xs text-teal-700 mt-1 leading-snug">Mismo PA y vía. El profesional ajusta la posología.</p>
                 </div>
                 <div className="flex items-center px-1.5 text-slate-300 shrink-0">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>
@@ -1430,11 +1456,11 @@ export default function BuscadorMedicamentos() {
                 {/* Paso 3 */}
                 <div className="flex-1 rounded-xl border border-sky-200 bg-sky-50 p-3.5">
                   <div className="flex items-center gap-1.5 mb-1.5">
-                    <span className="text-[10px] font-bold min-w-[18px] min-h-[18px] rounded-full bg-sky-600 text-white flex items-center justify-center leading-none">3</span>
-                    <span className="text-[9px] font-bold uppercase tracking-wide text-sky-600 bg-sky-100 px-1.5 py-0.5 rounded">Eval. clínica</span>
+                    <span className="text-xs font-bold min-w-[18px] min-h-[18px] rounded-full bg-sky-600 text-white flex items-center justify-center leading-none">3</span>
+                    <span className="text-xs font-bold uppercase tracking-wide text-sky-600 bg-sky-100 px-1.5 py-0.5 rounded">Eval. clínica</span>
                   </div>
                   <p className="text-xs font-bold text-sky-900 leading-snug">Diferente forma</p>
-                  <p className="text-[11px] text-sky-700 mt-1 leading-snug">Misma dosis, distinta forma farmacéutica. Farmacocinética varía.</p>
+                  <p className="text-xs text-sky-700 mt-1 leading-snug">Misma dosis, distinta forma farmacéutica. Farmacocinética varía.</p>
                 </div>
                 <div className="flex items-center px-1.5 text-slate-300 shrink-0">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>
@@ -1442,11 +1468,11 @@ export default function BuscadorMedicamentos() {
                 {/* Paso 4 */}
                 <div className="flex-1 rounded-xl border border-amber-200 bg-amber-50 p-3.5">
                   <div className="flex items-center gap-1.5 mb-1.5">
-                    <span className="text-[10px] font-bold min-w-[18px] min-h-[18px] rounded-full bg-amber-600 text-white flex items-center justify-center leading-none">4</span>
-                    <span className="text-[9px] font-bold uppercase tracking-wide text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded">Eval. clínica</span>
+                    <span className="text-xs font-bold min-w-[18px] min-h-[18px] rounded-full bg-amber-600 text-white flex items-center justify-center leading-none">4</span>
+                    <span className="text-xs font-bold uppercase tracking-wide text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded">Eval. clínica</span>
                   </div>
                   <p className="text-xs font-bold text-amber-900 leading-snug">Diferente vía</p>
-                  <p className="text-[11px] text-amber-700 mt-1 leading-snug">Oral vs. inyectable, tópico vs. sistémico. Biodisponibilidad varía.</p>
+                  <p className="text-xs text-amber-700 mt-1 leading-snug">Oral vs. inyectable, tópico vs. sistémico. Biodisponibilidad varía.</p>
                 </div>
                 <div className="flex items-center px-1.5 text-slate-300 shrink-0">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>
@@ -1454,11 +1480,11 @@ export default function BuscadorMedicamentos() {
                 {/* Paso 5 */}
                 <div className="flex-1 rounded-xl border border-slate-200 bg-slate-50 p-3.5">
                   <div className="flex items-center gap-1.5 mb-1.5">
-                    <span className="text-[10px] font-bold min-w-[18px] min-h-[18px] rounded-full bg-slate-500 text-white flex items-center justify-center leading-none">5</span>
-                    <span className="text-[9px] font-bold uppercase tracking-wide text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded">CFT</span>
+                    <span className="text-xs font-bold min-w-[18px] min-h-[18px] rounded-full bg-slate-500 text-white flex items-center justify-center leading-none">5</span>
+                    <span className="text-xs font-bold uppercase tracking-wide text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded">CFT</span>
                   </div>
                   <p className="text-xs font-bold text-slate-700 leading-snug">Otra molécula</p>
-                  <p className="text-[11px] text-slate-500 mt-1 leading-snug">Misma clase ATC. Requiere aval del Comité de Farmacia y Terapéutica.</p>
+                  <p className="text-xs text-slate-500 mt-1 leading-snug">Misma clase ATC. Requiere aval del Comité de Farmacia y Terapéutica.</p>
                 </div>
               </div>
 
@@ -1473,13 +1499,13 @@ export default function BuscadorMedicamentos() {
                 ].map((s, i) => (
                   <div key={s.n}>
                     <div className={`flex items-center gap-3 rounded-xl border p-3 ${s.border}`}>
-                      <span className={`text-[10px] font-bold min-w-[20px] min-h-[20px] rounded-full ${s.nBg} text-white flex items-center justify-center shrink-0`}>{s.n}</span>
+                      <span className={`text-xs font-bold min-w-[20px] min-h-[20px] rounded-full ${s.nBg} text-white flex items-center justify-center shrink-0`}>{s.n}</span>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 mb-0.5">
                           <p className={`text-xs font-bold ${s.text}`}>{s.label}</p>
-                          <span className={`text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${s.tagCl}`}>{s.tag}</span>
+                          <span className={`text-xs font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${s.tagCl}`}>{s.tag}</span>
                         </div>
-                        <p className={`text-[11px] ${s.sub} leading-snug`}>{s.desc}</p>
+                        <p className={`text-xs ${s.sub} leading-snug`}>{s.desc}</p>
                       </div>
                     </div>
                     {i < 4 && (
@@ -1495,14 +1521,14 @@ export default function BuscadorMedicamentos() {
             {/* Footer de la cascada */}
             <div className="border-t border-slate-100 px-5 py-2.5 bg-slate-50 flex flex-wrap items-center gap-x-4 gap-y-1.5">
               <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-200">MTE</span>
-                <span className="text-[11px] text-slate-500">Margen terapéutico estrecho — monitoreo estricto obligatorio</span>
+                <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-200">MTE</span>
+                <span className="text-xs text-slate-500">Margen terapéutico estrecho — monitoreo estricto obligatorio</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">Mono</span>
-                <span className="text-[11px] text-slate-500">Mono/Bi/Tri/Tetra = número de principios activos</span>
+                <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">Mono</span>
+                <span className="text-xs text-slate-500">Mono/Bi/Tri/Tetra = número de principios activos</span>
               </div>
-              <span className="text-[11px] text-slate-400 ml-auto">CUM-INVIMA · datos.gov.co</span>
+              <span className="text-xs text-slate-400 ml-auto">CUM-INVIMA · datos.gov.co</span>
             </div>
           </div>
 
@@ -1541,7 +1567,7 @@ export default function BuscadorMedicamentos() {
                 {/* INN normalizado — banner cuando hay filtro por DCI */}
                 {filtroDCI && (
                   <div className="sticky top-0 z-20 px-4 py-2.5 bg-blue-600 border-b border-blue-700 flex items-center gap-2">
-                    <span className="text-[10px] font-bold text-blue-300 uppercase tracking-wide shrink-0">DCI</span>
+                    <span className="text-xs font-bold text-blue-300 uppercase tracking-wide shrink-0">DCI</span>
                     <span className="text-sm font-semibold text-white flex-1 min-w-0 truncate">{filtroDCI}</span>
                     <span className="text-xs text-blue-300 font-mono shrink-0">{resultadosFiltrados.length} prod.</span>
                   </div>
@@ -1550,10 +1576,10 @@ export default function BuscadorMedicamentos() {
                   <div key={forma}>
                     {/* Cabecera de forma farmacéutica */}
                     <div className="px-3 py-2 bg-slate-50 border-b border-slate-200 sticky top-0 z-10 flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                         {labelGrupo(forma)}
                       </span>
-                      <span className="text-[10px] text-slate-400">{total} productos</span>
+                      <span className="text-xs text-slate-400">{total} productos</span>
                     </div>
 
                     {/* Filas seleccionables por cantidad total */}
@@ -1590,7 +1616,7 @@ export default function BuscadorMedicamentos() {
                           <div className={`shrink-0 w-[80px] text-right py-3.5 pr-3 pl-2 flex flex-col justify-center ${sel ? 'text-blue-700' : 'text-slate-800'}`}>
                             <p className="text-base font-bold font-mono leading-tight tabular-nums">{row.totalLabel}</p>
                             {row.detalles && (
-                              <p className="text-[10px] text-slate-400 font-mono mt-0.5 leading-tight truncate">{row.detalles}</p>
+                              <p className="text-xs text-slate-400 font-mono mt-0.5 leading-tight truncate">{row.detalles}</p>
                             )}
                           </div>
 
@@ -1606,18 +1632,18 @@ export default function BuscadorMedicamentos() {
                                   : (row.meds[0]?.nombre_comercial ?? '—')}
                               </span>
                               {dcisExtra > 0 && (
-                                <span className="text-[10px] text-slate-400 shrink-0">+{dcisExtra}</span>
+                                <span className="text-xs text-slate-400 shrink-0">+{dcisExtra}</span>
                               )}
                               {hasNTI && <BadgeNTI />}
                               {tiposDistinct.length === 1 && <BadgeFormula tipo={tiposDistinct[0]} />}
                               {isRenov && (
-                                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-700 shrink-0 whitespace-nowrap">
+                                <span className="text-xs font-semibold px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-700 shrink-0 whitespace-nowrap">
                                   Renovación
                                 </span>
                               )}
                             </div>
                             <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                              <p className="text-[11px] text-slate-400 truncate">
+                              <p className="text-xs text-slate-400 truncate">
                                 {row.meds.length === 1 ? '1 producto' : `${row.meds.length} productos`} · {labs}{labsMore}
                               </p>
                               {invima && <BadgeInvima estado={invima} />}
@@ -1667,10 +1693,10 @@ export default function BuscadorMedicamentos() {
                   { n:'5', color:'bg-slate-400',   label:'Otra molécula · misma clase ATC', sub:'Requiere aval CFT' },
                 ].map(s => (
                   <div key={s.n} className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg">
-                    <span className={`w-4 h-4 rounded-full ${s.color} text-white text-[9px] font-bold flex items-center justify-center shrink-0`}>{s.n}</span>
+                    <span className={`w-4 h-4 rounded-full ${s.color} text-white text-xs font-bold flex items-center justify-center shrink-0`}>{s.n}</span>
                     <div className="min-w-0">
                       <p className="text-xs font-medium text-slate-600 leading-tight">{s.label}</p>
-                      <p className="text-[10px] text-slate-400 leading-tight">{s.sub}</p>
+                      <p className="text-xs text-slate-400 leading-tight">{s.sub}</p>
                     </div>
                   </div>
                 ))}

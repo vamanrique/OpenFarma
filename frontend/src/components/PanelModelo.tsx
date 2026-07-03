@@ -58,7 +58,7 @@ const MESES = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep'
 function EstadoBadge({ estado }: { estado: string }) {
   const cfg = ESTADO_CONFIG[estado] ?? { bg: 'bg-slate-100', text: 'text-slate-600', label: estado }
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${cfg.bg} ${cfg.text}`}>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide ${cfg.bg} ${cfg.text}`}>
       {cfg.label}
     </span>
   )
@@ -246,7 +246,7 @@ export default function PanelModelo() {
             <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
               Medicamentos bajo vigilancia INVIMA
               {refMes && (
-                <span className="text-[11px] font-normal text-slate-400">
+                <span className="text-xs font-normal text-slate-400">
                   {MESES[refMes.mes]} {refMes.anio}
                 </span>
               )}
@@ -256,10 +256,10 @@ export default function PanelModelo() {
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[11px] text-red-600 font-semibold bg-red-50 border border-red-100 px-2 py-0.5 rounded-full">
+            <span className="text-xs text-red-600 font-semibold bg-red-50 border border-red-100 px-2 py-0.5 rounded-full">
               {cuentaDesab} desabastecidos
             </span>
-            <span className="text-[11px] text-orange-600 font-semibold bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-full">
+            <span className="text-xs text-orange-600 font-semibold bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-full">
               {cuentaRiesgo} en riesgo
             </span>
           </div>
@@ -320,7 +320,7 @@ export default function PanelModelo() {
                     <td className="px-4 py-2.5">
                       <span className="font-medium text-slate-800">{d.principio_activo}</span>
                       {d.atc && (
-                        <span className="ml-1.5 text-slate-400 font-mono text-[10px]">{d.atc}</span>
+                        <span className="ml-1.5 text-slate-400 font-mono text-xs">{d.atc}</span>
                       )}
                     </td>
                     <td className="px-4 py-2.5 hidden sm:table-cell text-slate-500">
@@ -330,7 +330,7 @@ export default function PanelModelo() {
                 ))}
               </tbody>
             </table>
-            <p className="px-4 py-2.5 text-[11px] text-slate-400 border-t border-slate-100">
+            <p className="px-4 py-2.5 text-xs text-slate-400 border-t border-slate-100">
               Mostrando {listaFiltrada.length} de {desabastecidos.length} registros
             </p>
           </div>
