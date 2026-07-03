@@ -41,20 +41,67 @@ Deploy: Railway (auto-deploy desde main)
 
 ## Modelo ML — predicción de desabastecimiento
 
-**Archivo**: `backend/app/ml/artefacto_modelo.pkl`
-**Tipo**: `CalibratedClassifierCV` (Platt scaling) sobre `RandomForestClassifier`
-**Features** (15): 10 estructurales CUM + 5 temporales INVIMA (`invima_sev_actual`, `invima_sev_t3_avg`, `invima_peor_sev_hist`, `invima_meses_monitoreado`, `invima_tendencia`)
-**Ground truth**: historial INVIMA 17 meses, ~42,264 muestras
+**Archivo**: `backend/data/modelo_rf.pkl`
+**Tipo**: `CalibratedClassifierCV` (Platt scaling) sobre `RandomForestClassifier` (scikit-learn 1.9.0)
+**Métricas actuales** (2026-07-02, split temporal honesto): ROC-AUC **0.8732** | Avg Precision **0.1720**
 
-**⚠️ Problema activo**: modelo entrenado con `scikit-learn==1.9.0` (local) pero `requirements.txt` pone `==1.5.2` (Railway). Railway muestra `InconsistentVersionWarning` al cargar el pickle. Solución pendiente: actualizar `requirements.txt` a `1.9.0` o reentrenar con `1.5.2`.
+### ¿Qué predice?
 
-**Reentrenar**:
+Para cada medicamento del CUM (~52,000 presentaciones), asigna una probabilidad de que esté desabastecido o en riesgo el próximo mes. La probabilidad se convierte en nivel: Bajo (<25%) / Medio (25–50%) / Alto (50–75%) / Crítico (>75%).
+
+### Cómo aprendió (estrategia temporal)
+
+El historial INVIMA tiene 17 meses (ene 2025 – may 2026). Para evitar data leakage, el entrenamiento genera **una fila por (principio_activo_ATC7 × mes_target)**:
+
+- **Features**: todo lo observable *antes* del mes target (historial de meses anteriores + estructura CUM)
+- **Target (y=1)**: ese ATC aparece como DESABASTECIDO o EN_RIESGO en INVIMA en el mes target
+- **Split temporal**: últimos 3 meses (mar–may 2026) = test; resto = train. El modelo nunca vio el futuro.
+- Esto genera ~7,100 filas INVIMA × ~52,000 productos CUM ≈ 450,000 muestras totales
+
+El **modelo de producción** (`modelo_prod`) se reentrena sobre todos los datos con el snapshot más reciente de features, para máxima cobertura. Las métricas honestas se calculan del `modelo_eval` sobre el split temporal.
+
+### Las 15 features
+
+**Estructura de mercado (CUM — 10 variables)**
+
+| Feature | Qué mide |
+|---|---|
+| `tasa_inactivacion_atc5` | % registros del mismo grupo ATC ya inactivos |
+| `num_competidores` | Cuántos titulares distintos comercializan la misma forma farmacéutica |
+| `monopolio` | Un solo comercializador (1/0) |
+| `tiene_alternativas` | Más de un comercializador (1/0) |
+| `num_presentaciones_activas` | Presentaciones activas del mismo expediente |
+| `es_combinado` | Fórmula con más de un principio activo (1/0) |
+| `tipo_formula_num` | Complejidad de fórmula (1=simple, 2=2 activos, etc.) |
+| `grupo_atc_enc` | Categoría anatómica ATC (A=digestivo, C=cardiovascular, J=antiinfeccioso...) |
+| `busquedas_norm` | Búsquedas recientes — actualmente 0, pendiente conectar |
+| `reportes_norm` | Reportes ciudadanos de no disponibilidad — actualmente 0, pendiente conectar |
+
+**Historial INVIMA (5 variables — las de mayor importancia)**
+
+| Feature | Qué mide | Importancia |
+|---|---|---|
+| `invima_sev_actual` | Severidad el mes inmediatamente anterior (escala 0–5) | 28.3% |
+| `invima_peor_sev_hist` | Severidad máxima histórica | 21.7% |
+| `invima_meses_monitoreado` | Meses con cualquier estado en INVIMA | 12.0% |
+| `invima_sev_t3_avg` | Promedio de severidad de los últimos 3 meses | 11.1% |
+| `invima_tendencia` | ¿Mejorando o empeorando? (promedio últimos 3m − anteriores 3m) | 1.2% |
+
+Escala de severidad: 0=sin alerta, 1=descontinuado, 2=no comercializado, 3=en monitorización, 4=en riesgo, 5=desabastecido.
+
+### Por qué las métricas son lo que son
+
+- **ROC-AUC 0.87**: buena discriminación. Si tomas un medicamento desabastecido y uno sin problema al azar, el modelo le asigna mayor probabilidad al correcto el 87% de las veces.
+- **Avg Precision 0.17**: parece baja, pero el test tiene solo 1.6% de positivos (real imbalance). Es difícil tener alta precisión sin muchas falsas alarmas. Es útil como sistema de alerta temprana, no oráculo definitivo.
+- **Antes era ROC-AUC 1.000**: con split aleatorio, el mismo ATC aparecía en train (mes 3) y test (mes 8). Los desabastecimientos duran meses — `invima_sev_actual` del mes anterior era casi idéntico al target. Data leakage trivial.
+
+### Reentrenar
+
 ```bash
-cd backend
+# Desde la raíz del repo (no desde backend/)
 .venv/Scripts/python.exe retrain_invima.py --db farmavigia.db
+# Luego commitear backend/data/modelo_rf.pkl
 ```
-
-**⚠️ Overfitting probable**: ROC-AUC 1.000 y Avg Precision 0.999 son métricas sospechosamente perfectas. El split train/test puede estar mezclando datos temporales. Revisar `retrain_invima.py` para usar split temporal (entrenar en meses 1-12, evaluar en 13-17).
 
 ## Base de datos: grupos_equivalencia
 
