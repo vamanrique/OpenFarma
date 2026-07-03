@@ -147,10 +147,28 @@ def construir_features_desde_db(db_session) -> pd.DataFrame:
     pres["grupo_atc_enc"] = pres["atc_grupo"].map(_ATC_ENC).fillna(len(ATC_GRUPOS)).astype(int)
 
     pres["busquedas_norm"] = 0.0
-    pres["reportes_norm"] = 0.0
 
     # ── Features y target INVIMA ──────────────────────────────────────────────
     from sqlalchemy import text
+
+    # ── Reportes ciudadanos de no disponibilidad ──────────────────────────────
+    try:
+        rep_rows = db_session.execute(text("""
+            SELECT cum_id, COUNT(*) AS n
+            FROM reportes_no_disponibilidad
+            WHERE cum_id IS NOT NULL
+            GROUP BY cum_id
+        """)).fetchall()
+        if rep_rows:
+            rep_df = pd.DataFrame(rep_rows, columns=["cum_id", "n_reportes"])
+            pres = pres.merge(rep_df, on="cum_id", how="left")
+            pres["n_reportes"] = pres["n_reportes"].fillna(0.0)
+            pres["reportes_norm"] = (pres["n_reportes"] / 5.0).clip(upper=1.0)
+            pres.drop(columns=["n_reportes"], inplace=True)
+        else:
+            pres["reportes_norm"] = 0.0
+    except Exception:
+        pres["reportes_norm"] = 0.0
 
     row = db_session.execute(
         text("SELECT anio, mes FROM invima_seguimiento ORDER BY anio DESC, mes DESC LIMIT 1")
