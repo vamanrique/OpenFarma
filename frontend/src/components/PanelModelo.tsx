@@ -320,7 +320,10 @@ export default function PanelModelo() {
                     <td className="px-4 py-2.5">
                       <span className="font-medium text-slate-800">{d.principio_activo}</span>
                       {d.atc && (
-                        <span className="ml-1.5 text-slate-400 font-mono text-xs">{d.atc}</span>
+                        <span className="text-slate-300 mx-1">·</span>
+                      )}
+                      {d.atc && (
+                        <span className="text-slate-400 font-mono text-xs">{d.atc}</span>
                       )}
                     </td>
                     <td className="px-4 py-2.5 hidden sm:table-cell text-slate-500">

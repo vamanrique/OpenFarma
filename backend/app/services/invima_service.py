@@ -12,11 +12,77 @@ Provee:
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Optional
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
+
+# Detecta cuando principio_activo es texto de causa INVIMA, no nombre de fármaco
+_CAUSA_RE = re.compile(
+    r'^(Disminuci[oó]n\b|Sin\s+respuesta\b|Pocos\s+oferentes|'
+    r'Insuficientes?\s+oferentes|Escac[e]z\b|Escasez\b|Sin\s+suministro\b|'
+    r'No\s+comercializaci[oó]n\b|Pocos\s+titulares\b)',
+    re.IGNORECASE,
+)
+
+# Punto de corte: donde empieza la concentración o la forma farmacéutica en el texto
+_CORTE_FORMA_RE = re.compile(
+    r'(?:\s+)(\d|\b(?:TABLETA|C[AÁ]PSULA|SOLUCI[OÓ]N|POLVO|SUSPENSI[OÓ]N|'
+    r'JARABE|AMPOLLA|VIAL|COMPRIMIDO|CREMA|UNGUENTO|GOTAS|SPRAY|PARCHE|'
+    r'LIOFILIZADO|EMULSI[OÓ]N|GRANULOS|RECONSTITUIR|INYECTABLE|ORAL|'
+    r'INFUSI[OÓ]N|INHALACI[OÓ]N)\b)',
+    re.IGNORECASE,
+)
+
+
+_CONC_CONTINUACION_RE = re.compile(
+    r'^(INYECTABLE|INYECCI[OÓ]N|INFUSI[OÓ]N|RECONSTITUIR)',
+    re.IGNORECASE,
+)
+
+
+def _limpiar_entrada(pa: str, forma: str, conc: str) -> tuple[str, str, str]:
+    """
+    Corrige artefactos del parser PDF de INVIMA (columnas del PDF que se
+    deslizan entre campos):
+
+    1. conc empieza con "A " → es continuación de forma
+       (ej. "POLVO PARA RECONSTITUIR" + "A SOLUCION INYECTABLE")
+    2. forma empieza con "A " → es continuación del principio_activo
+       (ej. "ALENDRONATO SODICO, EQUIVALENTE" + "A ACIDO ALENDRONICO")
+    3. forma termina con "PARA" y conc es una forma farmacéutica
+       (ej. "POLVO LIOFILIZADO PARA" + "INYECTABLE")
+    4. principio_activo es texto de causa INVIMA, no nombre de fármaco;
+       el nombre real está al inicio del campo forma.
+    """
+    # Fix 1: conc = continuación de forma (empieza con "A …")
+    if conc and re.match(r'^A\s+', conc.strip()):
+        forma = (forma.strip() + ' ' + conc.strip()).strip()
+        conc = ''
+
+    # Fix 2: forma = continuación del PA (empieza con "A …")
+    if forma and re.match(r'^A\s+', forma.strip()) and not _CAUSA_RE.match(pa or ''):
+        pa   = (pa.strip() + ' ' + forma.strip()).strip()
+        forma = conc.strip()
+        conc  = ''
+
+    # Fix 3: forma termina con "PARA" y conc es continuación de la forma
+    if (forma and forma.upper().rstrip().endswith('PARA')
+            and conc and _CONC_CONTINUACION_RE.match(conc.strip())):
+        forma = (forma.strip() + ' ' + conc.strip()).strip()
+        conc  = ''
+
+    # Fix 4: principio_activo es una causa INVIMA, no un nombre de fármaco
+    if _CAUSA_RE.match(pa or ''):
+        candidato = forma.strip()
+        m = _CORTE_FORMA_RE.search(candidato)
+        if m:
+            candidato = candidato[:m.start()].strip()
+        pa = candidato if candidato else pa
+
+    return pa, forma, conc
 
 logger = logging.getLogger(__name__)
 
@@ -112,14 +178,15 @@ def construir(db: Session) -> int:
     cache = _Cache(mes=mes_max, anio=anio_max)
 
     for pa, forma, conc, atc, estado, causas in rows:
+        pa, forma, conc = _limpiar_entrada(pa or "", forma or "", conc or "")
         ei = EstadoInvima(
             estado=estado,
             estado_label=LABELS_ES.get(estado, estado),
             mes=mes_max,
             anio=anio_max,
-            principio_activo=pa or "",
-            forma=forma or "",
-            concentracion=conc or "",
+            principio_activo=pa,
+            forma=forma,
+            concentracion=conc,
             causas=causas or "",
             atc=atc,
         )
