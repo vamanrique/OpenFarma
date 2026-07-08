@@ -86,7 +86,10 @@ def info_modelo():
     if not MODEL_PATH.exists():
         raise HTTPException(status_code=404, detail="Modelo no entrenado aún. Ejecuta el entrenamiento.")
     from app.ml.modelo import cargar_modelo
-    artefacto = cargar_modelo()
+    try:
+        artefacto = cargar_modelo()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Error cargando el modelo: {exc}")
     metricas = artefacto.get("metricas", {})
 
     importancias = []

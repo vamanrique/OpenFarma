@@ -1151,8 +1151,13 @@ export default function BuscadorMedicamentos() {
     try {
       const res = await medicamentosApi.buscar(query.trim(), true, 50)
       setResultados(res.data)
-    } catch {
-      setErrorBusq('Error de conexión. Verifica que el backend esté activo.')
+    } catch (err: unknown) {
+      const status = (err as { response?: { status: number } })?.response?.status
+      setErrorBusq(
+        status === 503
+          ? 'El portal de datos.gov.co no está disponible en este momento. Intenta en unos segundos.'
+          : 'Error de conexión. Verifica que el backend esté activo.'
+      )
     } finally {
       setBuscando(false)
     }
@@ -1172,8 +1177,13 @@ export default function BuscadorMedicamentos() {
     try {
       const res = await medicamentosApi.buscar(q.trim(), true, 50)
       setResultados(res.data)
-    } catch {
-      setErrorBusq('Error de conexión. Verifica que el backend esté activo.')
+    } catch (err: unknown) {
+      const status = (err as { response?: { status: number } })?.response?.status
+      setErrorBusq(
+        status === 503
+          ? 'El portal de datos.gov.co no está disponible en este momento. Intenta en unos segundos.'
+          : 'Error de conexión. Verifica que el backend esté activo.'
+      )
     } finally {
       setBuscando(false)
     }
