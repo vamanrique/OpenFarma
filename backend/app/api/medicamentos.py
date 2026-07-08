@@ -79,16 +79,17 @@ async def buscar_medicamentos(
     limit: int = Query(20, le=100),
     db: Session = Depends(get_db),
 ):
-    """Busca en tiempo real: CUM activos + registros en tramite de renovacion."""
+    """Busca en tiempo real: CUM activos + registros en tramite de renovacion.
+    Si datos.gov.co no responde, cae en fallback local usando cum_normalizado."""
     try:
         meds_activo, meds_renov = await asyncio.gather(
             cum_live.buscar_medicamentos(q, solo_activos=solo_activos, limit=limit * 10, db=db),
             cum_live.buscar_en_renovacion(q, limit=limit * 5),
         )
+        todos = meds_activo + meds_renov
     except Exception as exc:
-        logger.warning("Error consultando datos.gov.co: %s", exc)
-        raise HTTPException(status_code=503, detail="Servicio de datos temporalmente no disponible. Intenta en unos segundos.")
-    todos = meds_activo + meds_renov
+        logger.warning("Socrata no disponible (%s), usando búsqueda local.", exc)
+        todos = cum_live.buscar_desde_db(q, db=db, solo_activos=solo_activos, limit=limit * 3)
     enriquecer_con_llm(todos, db)
     return _deduplicar(todos, limit)
 

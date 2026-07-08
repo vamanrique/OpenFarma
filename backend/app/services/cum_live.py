@@ -280,6 +280,106 @@ async def buscar_en_renovacion(
     return meds
 
 
+def buscar_desde_db(
+    query: str,
+    db: Session,
+    solo_activos: bool = True,
+    limit: int = 100,
+) -> list[MedicamentoTransformado]:
+    """
+    Búsqueda local en cum_normalizado — fallback cuando Socrata no responde.
+    Devuelve MedicamentoTransformado compatibles con el pipeline normal de enriquecimiento.
+    """
+    from etl.transformacion import MedicamentoTransformado
+    from app.models.cum_normalizado import CumNormalizado
+    from sqlalchemy import or_, cast, Text, func
+
+    q_upper = query.strip().upper()
+    terms = terminos_busqueda(q_upper)
+
+    condiciones = or_(*(
+        or_(
+            func.upper(CumNormalizado.nombre_comercial_norm).contains(t),
+            func.upper(cast(CumNormalizado.principios_dci, Text)).contains(t),
+        )
+        for t in terms
+    ))
+
+    q = db.query(CumNormalizado).filter(condiciones)
+    if solo_activos:
+        q = q.filter(CumNormalizado.estado_cum.ilike("activo"))
+    rows: list[CumNormalizado] = q.order_by(CumNormalizado.nombre_comercial_norm).limit(limit).all()
+
+    resultados: list[MedicamentoTransformado] = []
+    for row in rows:
+        principios = row.principios_dci or []
+        tipo = row.tipo_formula or "monocomponente"
+        via_list = row.via_normalizada or []
+        via = via_list[0] if via_list else ""
+
+        # Concentración display provisional — enriquecer_con_llm lo sobreescribirá desde grupos_index
+        componentes = row.componentes or []
+        if componentes and len(componentes) > 1:
+            partes = []
+            for c in componentes:
+                dci = c.get("dci", "")
+                mg = c.get("dosis_mg") or c.get("concentracion_mg_ml")
+                if mg:
+                    partes.append(f"{dci} {mg:g} mg")
+                elif dci:
+                    partes.append(dci)
+            conc_display = " + ".join(partes) if partes else ""
+            concentraciones = partes
+        elif row.dosis_total_mg:
+            conc_display = f"{row.dosis_total_mg:g} mg"
+            concentraciones = [conc_display]
+        elif row.concentracion_mg_ml:
+            conc_display = f"{row.concentracion_mg_ml:g} mg/mL"
+            concentraciones = [conc_display]
+        else:
+            conc_display = ""
+            concentraciones = []
+
+        cum_id = f"{row.expediente_cum}-{row.consecutivo_cum}"
+        m = MedicamentoTransformado(
+            cum_id=cum_id,
+            expedientecum=row.expediente_cum,
+            consecutivocum=row.consecutivo_cum,
+            nombre_comercial=row.nombre_comercial_norm or cum_id,
+            principios_activos_raw=principios,
+            principios_dci=principios,
+            tipo_formula=tipo,
+            concentraciones=concentraciones,
+            concentracion_display=conc_display,
+            dosis_numerica=row.dosis_total_mg,
+            presentacion="",
+            forma_farmaceutica=row.forma_normalizada or "",
+            via_administracion=via,
+            atc=row.atc_normalizado or "",
+            descripcion_atc="",
+            laboratorio=row.titular_registro or "",
+            registro_sanitario=row.registro_sanitario or "",
+            estado_registro=row.estado_registro or "",
+            estado_cum=row.estado_cum or "",
+            modalidad="",
+            fuente=row.fuente or "CUM_ACTIVO",
+            # Campos LLM ya disponibles localmente
+            principios_dci_llm=principios,
+            dosis_total_mg=row.dosis_total_mg,
+            concentracion_mg_ml=row.concentracion_mg_ml,
+            volumen_ml_por_unidad=row.volumen_ml_por_unidad,
+            forma_normalizada=row.forma_normalizada,
+            via_normalizada=via_list,
+            atc_llm=row.atc_normalizado,
+            tipo_formula_llm=tipo,
+            componentes_llm=componentes if componentes else None,
+            notas_llm=row.notas,
+        )
+        resultados.append(m)
+
+    return resultados
+
+
 async def estadisticas_por_atc() -> list[dict]:
     """Conteo de medicamentos activos por grupo ATC (primer nivel)."""
     params = {
