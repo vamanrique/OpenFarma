@@ -164,6 +164,45 @@ def _crear_invima_seguimiento(db) -> bool:
     return True
 
 
+def _drop_region_fk_from_reportes(db) -> bool:
+    """
+    SQLite no soporta DROP COLUMN en versiones antiguas, pero sí permite NULL en FKs.
+    Hacemos region_id nullable para que los inserts sin ese campo no fallen.
+    La columna queda en el schema pero sin FK activa (SQLite no enforza FKs por defecto).
+    Idempotente: solo actúa si la columna existe y tiene NOT NULL.
+    """
+    cols = db.execute(text("PRAGMA table_info(reportes_no_disponibilidad)")).fetchall()
+    region_col = next((c for c in cols if c[1] == 'region_id'), None)
+    if region_col is None:
+        return False  # columna ya no existe
+    # SQLite PRAGMA notnull es el índice 3; si notnull=0 ya está nullable
+    if region_col[3] == 0:
+        return False  # ya es nullable, nada que hacer
+    # Recrear tabla sin NOT NULL en region_id (SQLite no tiene ALTER COLUMN)
+    db.execute(text("""
+        CREATE TABLE IF NOT EXISTS reportes_no_disponibilidad_new (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            cum_id              TEXT,
+            nombre_medicamento  TEXT,
+            region_id           INTEGER,
+            tipo_reporte        TEXT DEFAULT 'sin_stock',
+            descripcion         TEXT,
+            fecha               DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """))
+    db.execute(text("""
+        INSERT INTO reportes_no_disponibilidad_new
+            SELECT id, cum_id, nombre_medicamento, region_id, tipo_reporte, descripcion, fecha
+            FROM reportes_no_disponibilidad
+    """))
+    db.execute(text("DROP TABLE reportes_no_disponibilidad"))
+    db.execute(text("ALTER TABLE reportes_no_disponibilidad_new RENAME TO reportes_no_disponibilidad"))
+    db.execute(text("CREATE INDEX IF NOT EXISTS ix_reportes_cum_id ON reportes_no_disponibilidad(cum_id)"))
+    db.commit()
+    logger.info("Migración: region_id en reportes_no_disponibilidad → nullable")
+    return True
+
+
 def run_all():
     """Ejecuta todas las migraciones pendientes al iniciar la app."""
     db = SessionLocal()
@@ -175,6 +214,7 @@ def run_all():
         if m:
             logger.info("Migración tipo_formula: %d productos corregidos.", m)
         _crear_invima_seguimiento(db)
+        _drop_region_fk_from_reportes(db)
     except Exception as e:
         logger.error("Error en migraciones de startup: %s", e)
         db.rollback()

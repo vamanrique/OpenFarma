@@ -5,7 +5,6 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 from app.database import get_db
-from app.models.region import ConsultaRegion
 from app.models.reporte import ReporteNoDisponibilidad
 
 router = APIRouter()
@@ -13,7 +12,6 @@ router = APIRouter()
 
 class ReportePayload(BaseModel):
     cum_id: str
-    region_id: int
     tipo_reporte: str = "sin_stock"  # sin_stock, precio_alto, sin_suministro
     descripcion: Optional[str] = None
 
@@ -35,7 +33,6 @@ def reportar_no_disponibilidad(reporte: ReportePayload, db: Session = Depends(ge
     registro = ReporteNoDisponibilidad(
         cum_id=reporte.cum_id,
         nombre_medicamento=nombre,
-        region_id=reporte.region_id,
         tipo_reporte=reporte.tipo_reporte,
         descripcion=reporte.descripcion,
         fecha=datetime.now(),
@@ -59,7 +56,6 @@ def reportes_recientes(limit: int = 10, db: Session = Depends(get_db)):
             "id": r.id,
             "cum_id": r.cum_id,
             "nombre_medicamento": r.nombre_medicamento,
-            "region_nombre": r.region.nombre if r.region else str(r.region_id),
             "tipo_reporte": r.tipo_reporte,
             "descripcion": r.descripcion,
             "fecha": r.fecha.isoformat() if r.fecha else None,

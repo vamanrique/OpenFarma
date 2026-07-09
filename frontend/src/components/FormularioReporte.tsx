@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { medicamentosApi, regionesApi, reportesApi, type MedicamentoLive, type Region, type ReporteReciente } from '../api/client'
+import { medicamentosApi, reportesApi, type MedicamentoLive, type ReporteReciente } from '../api/client'
 
 const TIPOS = [
   { id: 'sin_stock',      label: 'Sin stock',       desc: 'No disponible en farmacias',          badge: 'bg-red-100 text-red-700 border-red-200' },
@@ -23,8 +23,6 @@ export default function FormularioReporte() {
   const [medSeleccionado, setMedSeleccionado] = useState<MedicamentoLive | null>(null)
   const [showDrop, setShowDrop]               = useState(false)
 
-  const [regiones, setRegiones]   = useState<Region[]>([])
-  const [regionId, setRegionId]   = useState<number | ''>('')
   const [tipo, setTipo]           = useState('sin_stock')
   const [descripcion, setDesc]    = useState('')
 
@@ -39,7 +37,6 @@ export default function FormularioReporte() {
   const qDebounced = useDebounce(query, 300)
 
   useEffect(() => {
-    regionesApi.listar().then(r => setRegiones(r.data)).catch(() => {})
     loadRecientes()
   }, [])
 
@@ -78,11 +75,11 @@ export default function FormularioReporte() {
 
   const enviar = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!medSeleccionado || !regionId) return
+    if (!medSeleccionado) return
     setEnviando(true)
     setError('')
     try {
-      await reportesApi.reportar(medSeleccionado.cum_id, regionId as number, tipo, descripcion.trim() || undefined)
+      await reportesApi.reportar(medSeleccionado.cum_id, tipo, descripcion.trim() || undefined)
       setExito(true)
       await loadRecientes()
     } catch {
@@ -93,7 +90,7 @@ export default function FormularioReporte() {
   }
 
   const nuevo = () => {
-    setExito(false); setMedSeleccionado(null); setQuery(''); setRegionId(''); setTipo('sin_stock'); setDesc(''); setError('')
+    setExito(false); setMedSeleccionado(null); setQuery(''); setTipo('sin_stock'); setDesc(''); setError('')
   }
 
   if (exito) {
@@ -133,7 +130,7 @@ export default function FormularioReporte() {
           <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zm-9-3.75h.008v.008H12V8.25z" />
         </svg>
         <p className="text-xs text-blue-700 leading-relaxed">
-          Reporta cuando un medicamento no está disponible en tu región. Cada reporte actualiza
+          Reporta cuando un medicamento no está disponible. Cada reporte actualiza
           directamente el modelo de predicción de desabastecimiento nacional.
         </p>
       </div>
@@ -196,23 +193,6 @@ export default function FormularioReporte() {
             )}
           </div>
 
-          {/* Región */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-2">
-              Departamento <span className="text-red-500 normal-case font-normal">*</span>
-            </label>
-            <select
-              value={regionId}
-              onChange={e => setRegionId(e.target.value ? Number(e.target.value) : '')}
-              className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">Selecciona tu departamento...</option>
-              {regiones.map(r => (
-                <option key={r.id} value={r.id}>{r.nombre}</option>
-              ))}
-            </select>
-          </div>
-
           {/* Tipo */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wide mb-2">
@@ -272,7 +252,7 @@ export default function FormularioReporte() {
         <div className="px-5 pb-5">
           <button
             type="submit"
-            disabled={!medSeleccionado || !regionId || enviando}
+            disabled={!medSeleccionado || enviando}
             className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white py-2.5 rounded-lg font-medium text-sm transition-colors"
           >
             {enviando ? 'Enviando...' : 'Enviar reporte'}
@@ -309,7 +289,7 @@ function ReportesPanel({ recientes, total }: { recientes: ReporteReciente[]; tot
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-slate-800 truncate">{r.nombre_medicamento}</p>
-                  <p className="text-xs text-slate-400">{r.region_nombre} · {new Date(r.fecha).toLocaleDateString('es-CO')}</p>
+                  <p className="text-xs text-slate-400">{new Date(r.fecha).toLocaleDateString('es-CO')}</p>
                 </div>
               </div>
             )

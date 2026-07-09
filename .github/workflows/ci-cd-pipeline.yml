@@ -26,12 +26,18 @@ jobs:
 
       - name: Run unit tests
         run: pytest tests/unit/ -v
+        env:
+          PYTHONPATH: backend
 
       - name: Run integration tests
         run: pytest tests/integration/ -v
+        env:
+          PYTHONPATH: backend
 
       - name: Run bias tests
         run: pytest tests/bias_tests/ -v
+        env:
+          PYTHONPATH: backend
 
   frontend-build:
     name: Frontend Build (React + Vite)

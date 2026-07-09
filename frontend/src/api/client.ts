@@ -122,15 +122,14 @@ export interface ReporteReciente {
   id: number
   cum_id: string
   nombre_medicamento: string
-  region_nombre: string
   tipo_reporte: string
   descripcion?: string
   fecha: string
 }
 
 export const reportesApi = {
-  reportar: (cum_id: string, region_id: number, tipo_reporte: string, descripcion?: string) =>
-    api.post('/reportes/no-disponibilidad', { cum_id, region_id, tipo_reporte, descripcion }),
+  reportar: (cum_id: string, tipo_reporte: string, descripcion?: string) =>
+    api.post('/reportes/no-disponibilidad', { cum_id, tipo_reporte, descripcion }),
   recientes: (limit = 10) =>
     api.get<ReporteReciente[]>('/reportes/recientes', { params: { limit } }),
   total: () =>
