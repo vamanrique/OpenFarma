@@ -116,7 +116,10 @@ async def obtener_alternativas_live(cum_id: str, db: Session = Depends(get_db)):
             cum_live.alternativas_para(med, db=db),
             timeout=28.0,
         )
-    except (asyncio.TimeoutError, Exception) as exc:
+    except asyncio.TimeoutError:
+        logger.error("Timeout en alternativas_para(%s) tras 28s — Socrata no disponible", cum_id)
+        return []
+    except Exception as exc:
         logger.warning("alternativas_para(%s) falló: %s", cum_id, exc)
         return []
 

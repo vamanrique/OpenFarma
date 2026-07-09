@@ -75,16 +75,3 @@ def total_reportes(db: Session = Depends(get_db)):
     return {"total": total, "por_tipo": {t: c for t, c in por_tipo}}
 
 
-@router.get("/estadisticas/{region_id}")
-def estadisticas_region(region_id: int, db: Session = Depends(get_db)):
-    stats = (
-        db.query(
-            ConsultaRegion.cum_id,
-            ConsultaRegion.tipo,
-            func.count(ConsultaRegion.id).label("total"),
-        )
-        .filter(ConsultaRegion.region_id == region_id)
-        .group_by(ConsultaRegion.cum_id, ConsultaRegion.tipo)
-        .all()
-    )
-    return [{"cum_id": s.cum_id, "tipo": s.tipo, "total": s.total} for s in stats]

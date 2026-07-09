@@ -5,6 +5,25 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 
 ---
 
+## [1.5.0] — 2026-07-09
+
+### Corregido
+- **Backend — endpoint muerto eliminado**: `GET /reportes/estadisticas/{region_id}` referenciaba `ConsultaRegion` nunca importada → NameError 500 al llamarse; endpoint eliminado junto con el concepto de región ya descartado
+- **Backend — manejo de timeout diferenciado**: timeout de Socrata en `/medicamentos/{cum_id}/alternativas` ahora logea `ERROR` con causa específica (antes logueaba como `WARNING` genérico indiferenciado)
+- **Backend — registros INVIMA sin ATC**: registros con `atc = NULL` en `invima_seguimiento` ahora se descartan explícitamente con log de advertencia en lugar de omitirse silenciosamente
+- **Tests — import incorrecto en bias tests**: `from app.services.prediccion_service import cargar_modelo` → `from app.ml.modelo import cargar_modelo` (módulo correcto)
+- **Tests — assert incorrecto**: `hasattr(artefacto, "modelo_prod")` → `"modelo_prod" in artefacto` (`cargar_modelo()` retorna dict, no objeto con atributos)
+- **Tests — dependencias faltantes**: `pytest>=7.4.0` y `pytest-asyncio>=0.21.0` agregados a `requirements.txt`; se eliminó la instalación manual duplicada en el pipeline CI/CD
+- **CI/CD — PYTHONPATH relativo**: reemplazado `PYTHONPATH: backend` por `PYTHONPATH: ${{ github.workspace }}/backend` en los tres pasos de test para garantizar resolución correcta desde cualquier directorio de trabajo
+- **Frontend — null crash en laboratorio**: `m.laboratorio.split(...)` → `(m.laboratorio ?? '—').split(...)` en la lista agrupada del buscador; evita crash cuando laboratorio es `null`
+- **Frontend — React keys con índice**: reemplazados `key={i}` por `key={p.cum_id}` en `GrupoSection` y `key={dci}` en DCIs del panel de ficha; evita pérdida de estado al reordenar listas
+- **Frontend — null guard en reportes**: `setRecientes(r.data)` / `setTotal(t.data.total)` ahora protegidos con `r?.data` / `t?.data?.total != null` en `loadRecientes()`
+
+### Mejorado
+- **Accesibilidad**: navegación por pestañas en `App.tsx` con `role="tablist"`, `role="tab"` y `aria-selected`; botón de alternativas terapéuticas con `aria-expanded`
+
+---
+
 ## [1.4.0] — 2026-07-09
 
 ### Añadido

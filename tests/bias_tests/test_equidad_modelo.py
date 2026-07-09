@@ -12,10 +12,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../backend"))
 def test_modelo_cargable():
     """El modelo puede ser cargado desde el archivo pkl."""
     try:
-        from app.services.prediccion_service import cargar_modelo
+        from app.ml.modelo import cargar_modelo
         artefacto = cargar_modelo()
         assert artefacto is not None
-        assert hasattr(artefacto, "modelo_prod")
+        assert "modelo_prod" in artefacto
     except FileNotFoundError:
         pytest.skip("modelo_rf.pkl no disponible en este entorno")
 
@@ -29,10 +29,10 @@ def test_sin_sesgo_por_atc_grupo():
     de historial INVIMA son neutras.
     """
     try:
-        from app.services.prediccion_service import cargar_modelo
+        from app.ml.modelo import cargar_modelo
         import numpy as np
         artefacto = cargar_modelo()
-        modelo = artefacto.modelo_prod
+        modelo = artefacto["modelo_prod"]
     except (FileNotFoundError, ImportError):
         pytest.skip("modelo_rf.pkl no disponible en este entorno")
 

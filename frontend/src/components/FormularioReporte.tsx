@@ -43,8 +43,8 @@ export default function FormularioReporte() {
   const loadRecientes = async () => {
     try {
       const [r, t] = await Promise.all([reportesApi.recientes(5), reportesApi.total()])
-      setRecientes(r.data)
-      setTotal(t.data.total)
+      if (r?.data) setRecientes(r.data)
+      if (t?.data?.total != null) setTotal(t.data.total)
     } catch {}
   }
 

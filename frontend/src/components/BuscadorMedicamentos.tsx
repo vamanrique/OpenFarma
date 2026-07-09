@@ -320,8 +320,8 @@ function GrupoSection({
       </button>
       {open && (
         <div className="border-t border-current border-opacity-10">
-          {grupo.productos.map((p, i) => (
-            <div key={i} className="flex items-center gap-2 px-3 py-2 border-b border-current border-opacity-5 last:border-0 bg-white bg-opacity-50">
+          {grupo.productos.map((p) => (
+            <div key={p.cum_id} className="flex items-center gap-2 px-3 py-2 border-b border-current border-opacity-5 last:border-0 bg-white bg-opacity-50">
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-slate-800 truncate">{normalizeUnits(p.nombre_comercial)}</p>
                 {p.laboratorio && (
@@ -558,7 +558,7 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 flex-wrap">
               {dcis.length > 0
-                ? dcis.map((dci, i) => <span key={i} className="text-base font-bold text-slate-900 leading-tight">{dci}</span>)
+                ? dcis.map((dci) => <span key={dci} className="text-base font-bold text-slate-900 leading-tight">{dci}</span>)
                 : <span className="text-sm font-semibold text-slate-500">{normalizeUnits(medicamento.nombre_comercial)}</span>
               }
               <BadgeFormula tipo={medicamento.tipo_formula} />
@@ -834,6 +834,8 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
             {terapeuticas.length > 0 && (
               <div>
                 <button onClick={() => setTerapExpanded(v => !v)}
+                  aria-expanded={terapExpanded}
+                  aria-label="Alternativas terapéuticas — misma clase ATC"
                   className="w-full flex items-center gap-2.5 py-2.5 border-b border-slate-200 hover:border-slate-300 transition-colors text-left">
                   <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
                     <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1627,7 +1629,7 @@ export default function BuscadorMedicamentos() {
                       const tiposDistinct = [...new Set(row.meds.map(m => m.tipo_formula))]
                       const labs = row.meds
                         .slice(0, 2)
-                        .map(m => m.laboratorio.split(/[\s(]/)[0])
+                        .map(m => (m.laboratorio ?? '—').split(/[\s(]/)[0])
                         .join(', ')
                       const labsMore = row.meds.length > 2 ? ` +${row.meds.length - 2}` : ''
                       return (

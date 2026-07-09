@@ -94,11 +94,14 @@ export default function App() {
       {/* Navegación por pestañas */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <nav className="flex -mb-px overflow-x-auto scrollbar-none">
+          <nav className="flex -mb-px overflow-x-auto scrollbar-none" role="tablist" aria-label="Secciones de FarmaVigia">
             {TABS.map((t) => (
               <Fragment key={t.id}>
                 <button
                   onClick={() => setTab(t.id)}
+                  role="tab"
+                  aria-selected={tab === t.id}
+                  aria-label={t.label}
                   className={`relative flex items-center gap-2 px-4 py-3.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset ${
                     tab === t.id
                       ? 'border-blue-600 text-blue-600'

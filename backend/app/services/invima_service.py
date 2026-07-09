@@ -177,7 +177,11 @@ def construir(db: Session) -> int:
 
     cache = _Cache(mes=mes_max, anio=anio_max)
 
+    sin_atc = 0
     for pa, forma, conc, atc, estado, causas in rows:
+        if not atc:
+            sin_atc += 1
+            continue
         pa, forma, conc = _limpiar_entrada(pa or "", forma or "", conc or "")
         ei = EstadoInvima(
             estado=estado,
@@ -190,10 +194,11 @@ def construir(db: Session) -> int:
             causas=causas or "",
             atc=atc,
         )
-        if atc:
-            cache.por_atc7.setdefault(atc, []).append(ei)
-            atc5 = atc[:5]
-            cache.por_atc5.setdefault(atc5, []).append(ei)
+        cache.por_atc7.setdefault(atc, []).append(ei)
+        atc5 = atc[:5]
+        cache.por_atc5.setdefault(atc5, []).append(ei)
+    if sin_atc:
+        logger.warning("invima_cache: %d registros descartados sin ATC (mes=%d/%d)", sin_atc, mes_max, anio_max)
 
     cache.listo = True
     _cache = cache

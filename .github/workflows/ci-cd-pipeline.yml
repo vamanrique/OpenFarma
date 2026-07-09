@@ -20,24 +20,22 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install pytest pytest-asyncio httpx
+        run: pip install -r requirements.txt
 
       - name: Run unit tests
         run: pytest tests/unit/ -v
         env:
-          PYTHONPATH: backend
+          PYTHONPATH: ${{ github.workspace }}/backend
 
       - name: Run integration tests
         run: pytest tests/integration/ -v
         env:
-          PYTHONPATH: backend
+          PYTHONPATH: ${{ github.workspace }}/backend
 
       - name: Run bias tests
         run: pytest tests/bias_tests/ -v
         env:
-          PYTHONPATH: backend
+          PYTHONPATH: ${{ github.workspace }}/backend
 
   frontend-build:
     name: Frontend Build (React + Vite)
