@@ -23,8 +23,9 @@ if _DATABASE_URL.startswith("sqlite:///") and _DATABASE_URL != "sqlite:///./farm
     _volume_path = Path(_DATABASE_URL.replace("sqlite:///", ""))
     _bundled_db  = Path(__file__).parent.parent / "farmavigia.db"
     if _bundled_db.exists() and _bundled_db.stat().st_size > 0:
-        _volume_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(str(_bundled_db), str(_volume_path))
+        if _bundled_db.resolve() != _volume_path.resolve():
+            _volume_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(str(_bundled_db), str(_volume_path))
         logger.info("DB seed: copied %s → %s (%d MB)",
                     _bundled_db, _volume_path,
                     _bundled_db.stat().st_size // 1_000_000)
