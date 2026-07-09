@@ -128,9 +128,24 @@ function labelGrupo(g: string): string {
   return GRUPO_LABEL[g] ?? g
 }
 
+function normalizeUnits(s: string): string {
+  return s
+    .replace(/\b(mg|MG)\/(mL|ML)\b/g, 'mg/mL')
+    .replace(/\b(mcg|MCG|µg|ug)\/(mL|ML)\b/gi, 'mcg/mL')
+    .replace(/\b(mg|MG)\/dosis\b/gi, 'mg/dosis')
+    .replace(/\b(mcg|MCG|µg|ug)\/dosis\b/gi, 'mcg/dosis')
+    .replace(/\bMCG\b/g, 'mcg')
+    .replace(/\bµg\b/g, 'mcg')
+    .replace(/\bMMOL\b/gi, 'mmol')
+    .replace(/\bMEQ\b/gi, 'mEq')
+    .replace(/\bMG\b/g, 'mg')
+    .replace(/\bML\b/g, 'mL')
+    .replace(/\bIU\b/g, 'UI')
+}
+
 function fmtConc(conc: string | null): string {
   if (!conc || conc === 'SIN_CONCENTRACION') return ''
-  return ` · ${conc}`
+  return ` · ${normalizeUnits(conc)}`
 }
 
 // ─── Margen Terapéutico Estrecho ──────────────────────────────────────────────
@@ -164,6 +179,8 @@ function BadgeNTI() {
   )
 }
 
+const MESES_CORTO = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
+
 const INVIMA_CFG: Record<string, { label: string; color: string }> = {
   DESABASTECIDO:      { label: 'Desabastecido',   color: 'bg-red-100 text-red-700 border-red-300' },
   EN_RIESGO:          { label: 'En riesgo',        color: 'bg-orange-100 text-orange-700 border-orange-300' },
@@ -190,12 +207,13 @@ function peorEstadoInvima(meds: MedicamentoLive[]): EstadoInvima | null {
 function BadgeInvima({ estado }: { estado: EstadoInvima }) {
   const cfg = INVIMA_CFG[estado.estado]
   if (!cfg) return null
+  const mesStr = MESES_CORTO[(estado.mes ?? 1) - 1] ?? ''
   return (
     <span
       className={`text-xs font-semibold px-1.5 py-0.5 rounded border shrink-0 whitespace-nowrap leading-none ${cfg.color}`}
-      title={`INVIMA ${estado.anio}/${String(estado.mes).padStart(2,'0')}: ${estado.estado_label}${estado.causas ? ' — ' + estado.causas : ''}`}
+      title={`Reporte INVIMA ${mesStr} ${estado.anio}: ${estado.estado_label}${estado.causas ? ' — ' + estado.causas : ''}`}
     >
-      ⚠ {cfg.label}
+      ⚠ INVIMA {mesStr} {estado.anio} · {cfg.label}
     </span>
   )
 }
@@ -483,7 +501,7 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
     )
     const totalDest = computeTotal(dest.concentracion_display || '', dest.presentacion || '')
     const concDetail = dest.concentracion_display
-      ? (dest.presentacion ? `${dest.concentracion_display} · ${dest.presentacion}` : dest.concentracion_display)
+      ? (dest.presentacion ? `${normalizeUnits(dest.concentracion_display)} · ${dest.presentacion}` : normalizeUnits(dest.concentracion_display))
       : ''
     const mostrarCompartidos = alt.componentes_compartidos.length > 0
       && !['SUSTITUTO_DIRECTO', 'MISMA_CONC_DIFERENTE_CANTIDAD', 'DIFERENTE_CONCENTRACION'].includes(tipo)
@@ -552,12 +570,12 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
               {totalSeleccionado
                 ? <span className="text-sm font-bold font-mono text-slate-800">{totalSeleccionado.label}</span>
                 : medicamento.concentracion_display
-                  ? <span className="text-sm font-bold font-mono text-slate-800">{medicamento.concentracion_display}</span>
+                  ? <span className="text-sm font-bold font-mono text-slate-800">{normalizeUnits(medicamento.concentracion_display)}</span>
                   : null
               }
               {totalSeleccionado && medicamento.concentracion_display && (
                 <span className="text-xs text-slate-400 font-mono">
-                  {medicamento.concentracion_display}{medicamento.presentacion && ` · ${medicamento.presentacion}`}
+                  {normalizeUnits(medicamento.concentracion_display)}{medicamento.presentacion && ` · ${medicamento.presentacion}`}
                 </span>
               )}
             </div>
@@ -627,7 +645,7 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
                               </div>
                               {dest?.concentracion_display && (
                                 <p className="text-xs font-mono text-slate-500 truncate">
-                                  {dest.concentracion_display}
+                                  {normalizeUnits(dest.concentracion_display)}
                                   {dest.presentacion && <span className="text-slate-400"> · {dest.presentacion}</span>}
                                 </p>
                               )}
@@ -661,7 +679,7 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
                             <div className="shrink-0 text-right min-w-[56px]">
                               {totalDest
                                 ? <p className="text-sm font-bold font-mono text-lime-700 leading-tight">{totalDest.label}</p>
-                                : <p className="text-xs font-mono text-slate-600">{dest.concentracion_display}</p>
+                                : <p className="text-xs font-mono text-slate-600">{normalizeUnits(dest.concentracion_display || '')}</p>
                               }
                               {dest.presentacion && (
                                 <p className="text-xs text-slate-400 font-mono mt-0.5">{dest.presentacion}</p>
@@ -727,10 +745,10 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
                         <div className="shrink-0 text-right min-w-[72px]">
                           {totalDest
                             ? <p className="text-sm font-bold font-mono text-teal-700 leading-tight">{totalDest.label}</p>
-                            : <p className="text-xs font-mono text-slate-600">{dest.concentracion_display}</p>
+                            : <p className="text-xs font-mono text-slate-600">{normalizeUnits(dest.concentracion_display || '')}</p>
                           }
                           {dest.concentracion_display && (
-                            <p className="text-xs text-slate-400 font-mono mt-0.5">{dest.concentracion_display}</p>
+                            <p className="text-xs text-slate-400 font-mono mt-0.5">{normalizeUnits(dest.concentracion_display)}</p>
                           )}
                         </div>
                         <div className="w-px self-stretch bg-teal-100 shrink-0" />
@@ -897,14 +915,14 @@ function computeTotal(conc: string, pres: string): { label: string; valor: numbe
     const v = parseFloat(mVol[1].replace(',', '.'))
     const total = Math.round(c * v * 1000) / 1000
     const u = /^(UI|IU)$/i.test(mConc[2]) ? 'UI' : mConc[2]
-    return { label: `${fmt(total)} ${u}`, valor: total }
+    return { label: normalizeUnits(`${fmt(total)} ${u}`), valor: total }
   }
 
   // Inhalador /dosis → mostrar dosis por inhalación (no total del envase)
   const mDosis = conc.match(/^(\d+(?:[.,]\d+)?)\s*(mcg|mg|µg)\s*\/dosis$/i)
   if (mDosis) {
     const c = parseFloat(mDosis[1].replace(',', '.'))
-    return { label: `${fmt(c)} ${mDosis[2]}`, valor: c }
+    return { label: normalizeUnits(`${fmt(c)} ${mDosis[2]}`), valor: c }
   }
 
   // Ya es total por unidad: "500 mg", "15 mg", "600000 UI", "10 %"
@@ -912,7 +930,7 @@ function computeTotal(conc: string, pres: string): { label: string; valor: numbe
   if (mTotal) {
     const v = parseFloat(mTotal[1].replace(',', '.'))
     const u = /^(UI|IU)$/i.test(mTotal[2]) ? 'UI' : mTotal[2]
-    return { label: `${fmt(v)} ${u}`, valor: v }
+    return { label: normalizeUnits(`${fmt(v)} ${u}`), valor: v }
   }
 
   return null
@@ -1084,14 +1102,14 @@ export default function BuscadorMedicamentos() {
       let detalles: string
       if (isComboDCI) {
         const nums = conc.match(/\d[\d.,]*\s*(?:mg|mcg|µg|g|UI|IU|mL|meq|%|mmol)/gi) ?? []
-        totalLabel = nums.length > 0 ? nums.join(' · ') : '—'
+        totalLabel = nums.length > 0 ? normalizeUnits(nums.join(' · ')) : '—'
         totalValor = nums.length > 0 ? parseFloat(nums[0]!) : 0
         detalles   = ''
       } else {
         const presDistinct = (pres && pres !== conc) ? pres : ''
-        totalLabel = t?.label ?? ([conc, presDistinct].filter(Boolean).join(' · ') || '—')
+        totalLabel = t?.label ?? (normalizeUnits([conc, presDistinct].filter(Boolean).join(' · ')) || '—')
         totalValor = t?.valor ?? parseFloat(conc) ?? 0
-        detalles   = (conc && presDistinct) ? `${conc} · ${presDistinct}` : ''
+        detalles   = (conc && presDistinct) ? normalizeUnits(`${conc} · ${presDistinct}`) : ''
       }
       // Agrupar por concentración normalizada (no por total clínico calculado).
       // Así, "50 mg/mL" sin presentación y "50 mg/mL · 100 mL" caen en la misma fila.
@@ -1377,7 +1395,7 @@ export default function BuscadorMedicamentos() {
                   >
                     <option value="">Todas las concentraciones</option>
                     {concentraciones.map(([c, n]) => (
-                      <option key={c} value={c}>{c}{n > 1 ? ` (${n})` : ''}</option>
+                      <option key={c} value={c}>{normalizeUnits(c)}{n > 1 ? ` (${n})` : ''}</option>
                     ))}
                   </select>
 
