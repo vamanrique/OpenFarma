@@ -55,6 +55,23 @@ const ESTADO_CONFIG: Record<string, { bg: string; text: string; label: string }>
 
 const MESES = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
+// Quita el código ATC pegado al nombre: "CICLOFOSFAMIDA·L01AA01" → "CICLOFOSFAMIDA"
+function cleanPrincipio(s: string): string {
+  return s.replace(/[·•]\s*[A-Z]\d{2}[A-Z]{2}\d{2,3}\s*$/i, '').trim()
+}
+
+function normalizeUnits(s: string): string {
+  return s
+    .replace(/(?<![a-zA-Z])mg\/ml(?![a-zA-Z])/gi, 'mg/mL')
+    .replace(/(?<![a-zA-Z])(?:mcg|µg|ug)\/ml(?![a-zA-Z])/gi, 'mcg/mL')
+    .replace(/(?<![a-zA-Z])(?:mcg|µg|ug)(?![a-zA-Z])/gi, 'mcg')
+    .replace(/(?<![a-zA-Z])mmol(?![a-zA-Z])/gi, 'mmol')
+    .replace(/(?<![a-zA-Z])meq(?![a-zA-Z])/gi, 'mEq')
+    .replace(/(?<![a-zA-Z])mg(?![a-zA-Z])/gi, 'mg')
+    .replace(/(?<![a-zA-Z])ml(?![a-zA-Z])/gi, 'mL')
+    .replace(/(?<![a-zA-Z])IU(?![a-zA-Z])/g, 'UI')
+}
+
 function EstadoBadge({ estado }: { estado: string }) {
   const cfg = ESTADO_CONFIG[estado] ?? { bg: 'bg-slate-100', text: 'text-slate-600', label: estado }
   return (
@@ -318,16 +335,16 @@ export default function PanelModelo() {
                       <EstadoBadge estado={d.estado} />
                     </td>
                     <td className="px-4 py-2.5">
-                      <span className="font-medium text-slate-800">{d.principio_activo}</span>
+                      <span className="font-medium text-slate-800">{cleanPrincipio(d.principio_activo)}</span>
                       {d.atc && (
-                        <span className="text-slate-300 mx-1">·</span>
-                      )}
-                      {d.atc && (
-                        <span className="text-slate-400 font-mono text-xs">{d.atc}</span>
+                        <>
+                          <span className="text-slate-300 mx-1">·</span>
+                          <span className="text-slate-400 font-mono text-xs">{d.atc}</span>
+                        </>
                       )}
                     </td>
                     <td className="px-4 py-2.5 hidden sm:table-cell text-slate-500">
-                      {d.forma}{d.concentracion ? ` · ${d.concentracion}` : ''}
+                      {d.forma}{d.concentracion ? ` · ${normalizeUnits(d.concentracion)}` : ''}
                     </td>
                   </tr>
                 ))}
