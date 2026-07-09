@@ -5,6 +5,16 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 
 ---
 
+## [1.7.0] — 2026-07-09
+
+### Corregido
+- **Ronda 105 de auditoría INN**: 700 productos en `cum_normalizado` con `principios_dci` desincronizado respecto al `dci_key` de su grupo corregidos — 35 patrones de sustitución cubriendo: sinónimos HIOSCINA (HIOSCINA / HIOSCINA BUTILBROMURO / HIOSCINA N-BUTILBROMURO / ESCOPOLAMINA / IBUPROFENO‖SCOPOLAMINA → BUTILBROMURO DE HIOSCINA), typo OOLANZAPINAA→OLANZAPINA, ortografía CLORFENAMINA→CLORFENIRAMINA, género ENTACAPONE→ENTACAPONA, tildes (CAFEÍNA→CAFEINA, ÁCIDO CLAVULÁNICO→ACIDO CLAVULANICO, ARTÍCAINA→ARTICAINA, ÁCAROS→ACAROS), duplicados (BETAMETASONA‖BETAMETASONA, DEXAMETASONA‖DEXAMETASONA, CALCIO‖POTASIO‖SODIO‖SODIO), INN (CADENA MEDIANA→CADENA MEDIA, SUCCILINADA→SUCCINILADA, TRETINOINA→ACIDO RETINOICO), nombres comerciales→INN (LAMICOL→TERBINAFINA, OVALE CHAMPU→KETOCONAZOL, DCI→KETOCONAZOL), y Neosaldina con DCI de lote ETL contaminado (BUTILBROMURO DE HIOSCINA‖CAFEÍNA‖METAMIZOL→CAFEINA‖ISOMETEPTENO‖METAMIZOL)
+- **Corrección de grupo para Baxul F**: 2 productos (expediente 20007872) con DCI correcto BROMHEXINA‖FENILEFRINA‖PARACETAMOL estaban asignados al grupo BACLOFENO — removidos y reagrupados en nuevo grupo BROMHEXINA‖FENILEFRINA‖PARACETAMOL (id=3927)
+- **Tenaflox (19938260-1)**: `principios_dci` corregido de METRONIDAZOL a LEVOFLOXACINO (nombre comercial con sufijo -flox, misma asignación de grupo LEVOFLOXACINO confirmada)
+- **FEIBA (226747-4)**: `principios_dci` corregido de FACTOR VIII a FACTOR VIII INHIBIDOR BYPASS ACTIVITY (FEIBA = Factor Eight Inhibitor Bypassing Activity)
+
+---
+
 ## [1.6.0] — 2026-07-09
 
 ### Añadido

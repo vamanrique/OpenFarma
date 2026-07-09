@@ -105,7 +105,7 @@ Escala de severidad: 0=sin alerta, 1=descontinuado, 2=no comercializado, 3=en mo
 
 ## Base de datos: grupos_equivalencia
 
-Tabla central del sistema. Estado actual (2026-06-30, tras ronda 104):
+Tabla central del sistema. Estado actual (2026-07-09, tras ronda 105):
 
 | Métrica | Valor |
 |---------|-------|
@@ -120,7 +120,7 @@ Tabla central del sistema. Estado actual (2026-06-30, tras ronda 104):
 - `grupos_equivalencia.dci_key` siempre fue correcto — se usó como fuente de verdad
 - **fix_dci_mismatch.py Fase 1**: 48,580 productos corregidos desde grupos
 - **fix_dci_mismatch.py Fase 2**: 669 huérfanos INN-nombrados corregidos + 592 asignados a grupo
-- Pendiente: ~1,525 huérfanos marca-nombrados (DeepSeek en curso)
+- **Ronda 105 completada (2026-07-09)**: 700 productos con principios_dci desincronizado corregidos, 35 patrones — 0 huérfanos pendientes
 
 ### Distribución por grupo_via
 
@@ -238,6 +238,7 @@ Tabla central del sistema. Estado actual (2026-06-30, tras ronda 104):
 | 102 | fix_auditoria_conc102.py | RADIO RA-223→DICLORURO DE RADIO (223RA) (INN #9982); YODO iny 480mg/mL→ACEITE DE ADORMIDERA YODADO (Lipiodol); DEXTRAN 70→DEXTRANO 70 (INN-Sp); HIERRO SACAROSA 100mg→20mg/mL→merge id=1500 |
 | 103 | fix_auditoria_conc103.py | Completar V09 con prefijo Tc: EXAMETAZIMA→TECNECIO (99MTC) EXAMETAZIMA; ACIDO MEDRONICO→MEDRONATO; MEBROFENINA (3 grupos); TETRAFOSMINA→TETROFOSMINA (typo+prefijo); PIROFOSFATO DE SODIO→TECNECIO (99MTC) PIROFOSFATO |
 | 104 | fix_auditoria_conc104.py | IOPRAMIDA (typo Ultravist 300)→IOPROMIDA; ALBUMINA SERICA HUMANA NANOCOLOIDE (V09DB01+V09GA04)→TECNECIO (99MTC) ALBUMINA SERICA HUMANA NANOCOLOIDE |
+| 105 | fix_auditoria_conc105.py | Sincronización completa principios_dci↔dci_key: 700 productos / 35 patrones (HIOSCINA sinónimos, CLORFENAMINA→CLORFENIRAMINA, OOLANZAPINAA→OLANZAPINA, ENTACAPONE→ENTACAPONA, tildes, duplicados, TRETINOINA→ACIDO RETINOICO, nombres comerciales→INN); Baxul F movido de BACLOFENO a nuevo grupo BROMHEXINA‖FENILEFRINA‖PARACETAMOL |
 
 ### Convenciones adicionales (rondas 78-104)
 
@@ -351,3 +352,34 @@ git push
 4. **OFTALMICO en mg/mL**, TOPICO en %
 5. Los productos **rectal/IM/IV** del mismo fármaco son "complementarios" y válido que estén en grupos separados
 6. Antes de cualquier cambio grande → `--dry-run` para verificar
+
+## Decisiones pendientes — Formulario de reportes (2026-07-03)
+
+### Contexto
+- El proyecto es para el concurso datos.gov.co, no un negocio comercial
+- Objetivo: prevenir desabastecimiento nacional con señal ciudadana → alerta a INVIMA
+- La geografía (departamento) se descartó como señal relevante: si un med no está en ciudades principales, es escasez nacional, no local
+
+### Opción discutida: simplificar el formulario a 1 paso
+Formulario actual tiene 4 campos: medicamento + departamento + tipo + descripción.
+Propuesta: dejar solo búsqueda de medicamento + botón "Reportar no disponible".
+- Eliminar campo departamento (no aporta señal diferenciada)
+- Eliminar tipo de problema (siempre es "no disponible"; precio alto es otra cosa)
+- Descripción queda oculta detrás de "¿Agregar detalle?" (opcional colapsado)
+- La fecha se guarda automática; región se elimina del flujo
+
+### Opción discutida: dashboard privado de alertas
+Ruta `/admin/alertas` sin enlace en nav, con contraseña básica:
+- Top 20 medicamentos con más reportes (últimos 7 / 30 días)
+- Spike detector: reportes hoy vs. promedio semanal
+- Comparado contra INVIMA: drug con spike de reportes pero sin alerta INVIMA → alerta temprana
+- Este dashboard sería la evidencia clave para el concurso
+
+### Opción descartada: subida de documentos soporte
+Razones para no implementar:
+1. Cartas de laboratorio/hospital pueden tener cláusulas de confidencialidad
+2. Publicar señales de escasez en tiempo real puede incentivar acaparamiento
+3. El valor marginal en el modelo es bajo con pocos reportes
+Retomar solo si hay acuerdo formal con INVIMA o IPS, en canal autenticado privado (no página pública).
+
+### Estado: pendiente de decisión del usuario
