@@ -212,9 +212,9 @@ function BadgeInvima({ estado }: { estado: EstadoInvima }) {
   return (
     <span
       className={`text-xs font-semibold px-1.5 py-0.5 rounded border shrink-0 whitespace-nowrap leading-none ${cfg.color}`}
-      title={`Reporte INVIMA ${mesStr} ${estado.anio}: ${estado.estado_label}${estado.causas ? ' — ' + estado.causas : ''}`}
+      title={`INVIMA ${mesStr} ${estado.anio}: ${estado.estado_label}${estado.causas ? ' — ' + estado.causas : ''}`}
     >
-      ⚠ INVIMA {mesStr} {estado.anio} · {cfg.label}
+      ⚠ INVIMA · {cfg.label}
     </span>
   )
 }
