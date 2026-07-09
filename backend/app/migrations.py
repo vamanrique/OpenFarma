@@ -203,6 +203,22 @@ def _drop_region_fk_from_reportes(db) -> bool:
     return True
 
 
+def _crear_busquedas_log(db) -> bool:
+    """Crea la tabla busquedas_log si no existe. Idempotente."""
+    db.execute(text("""
+        CREATE TABLE IF NOT EXISTS busquedas_log (
+            id     INTEGER PRIMARY KEY AUTOINCREMENT,
+            cum_id TEXT NOT NULL,
+            fecha  DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """))
+    db.execute(text(
+        "CREATE INDEX IF NOT EXISTS idx_busq_cum_fecha ON busquedas_log(cum_id, fecha)"
+    ))
+    db.commit()
+    return True
+
+
 def run_all():
     """Ejecuta todas las migraciones pendientes al iniciar la app."""
     db = SessionLocal()
@@ -215,6 +231,7 @@ def run_all():
             logger.info("Migración tipo_formula: %d productos corregidos.", m)
         _crear_invima_seguimiento(db)
         _drop_region_fk_from_reportes(db)
+        _crear_busquedas_log(db)
     except Exception as e:
         logger.error("Error en migraciones de startup: %s", e)
         db.rollback()

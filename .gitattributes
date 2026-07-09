@@ -1,0 +1,10 @@
+# Force binary treatment for SQLite database files
+*.db binary
+*.db-shm binary
+*.db-wal binary
+
+# Force binary for pickle/model files
+*.pkl binary
+
+# Force binary for Jupyter notebooks outputs (prevent merge conflicts)
+*.ipynb merge=union

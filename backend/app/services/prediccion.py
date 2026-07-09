@@ -102,6 +102,15 @@ def _features_base_para_cum(cum: CumNormalizado, db: Session) -> np.ndarray:
     ).scalar() or 0
     reportes_norm = min(float(n_reportes) / 20.0, 1.0)
 
+    try:
+        n_busquedas = db.execute(text(
+            "SELECT COUNT(*) FROM busquedas_log "
+            "WHERE cum_id=:cid AND fecha > datetime('now', '-30 days')"
+        ), {"cid": cum_key}).scalar() or 0
+    except Exception:
+        n_busquedas = 0
+    busquedas_norm = min(float(n_busquedas) / 100.0, 1.0)
+
     base = np.array([
         tasa_inactivacion,
         n_competidores,
@@ -111,7 +120,7 @@ def _features_base_para_cum(cum: CumNormalizado, db: Session) -> np.ndarray:
         int(n_competidores == 1),
         grupo_atc_enc,
         n_presentaciones,
-        0.0,          # busquedas_norm (pendiente: tracking de búsquedas)
+        busquedas_norm,
         reportes_norm,
     ])
 

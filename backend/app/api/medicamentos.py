@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -13,6 +13,24 @@ from etl.enriquecedor import enriquecer_con_llm
 from etl.transformacion import MedicamentoTransformado
 
 router = APIRouter()
+
+
+def _registrar_busquedas(cum_ids: list[str]) -> None:
+    """Registra en busquedas_log los CUMs devueltos en una búsqueda (background)."""
+    from app.database import SessionLocal
+    from sqlalchemy import text
+    from datetime import datetime
+    db = SessionLocal()
+    try:
+        fecha = datetime.now().isoformat()
+        for cum_id in cum_ids[:20]:
+            db.execute(text("INSERT INTO busquedas_log(cum_id, fecha) VALUES(:c, :f)"),
+                       {"c": cum_id, "f": fecha})
+        db.commit()
+    except Exception:
+        pass
+    finally:
+        db.close()
 
 
 def _invima_read(atc: str | None) -> EstadoInvimaRead | None:
@@ -74,6 +92,7 @@ def _deduplicar(meds: list[MedicamentoTransformado], limit: int) -> list[Medicam
 
 @router.get("/buscar", response_model=List[MedicamentoLiveRead])
 async def buscar_medicamentos(
+    background_tasks: BackgroundTasks,
     q: str = Query(..., min_length=2),
     solo_activos: bool = Query(True),
     limit: int = Query(20, le=100),
@@ -91,7 +110,10 @@ async def buscar_medicamentos(
         logger.warning("Socrata no disponible (%s), usando búsqueda local.", exc)
         todos = cum_live.buscar_desde_db(q, db=db, solo_activos=solo_activos, limit=limit * 3)
     enriquecer_con_llm(todos, db)
-    return _deduplicar(todos, limit)
+    resultado = _deduplicar(todos, limit)
+    if resultado:
+        background_tasks.add_task(_registrar_busquedas, [m.cum_id for m in resultado])
+    return resultado
 
 
 @router.get("/{cum_id}/alternativas", response_model=List[AlternativaLiveRead])

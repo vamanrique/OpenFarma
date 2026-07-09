@@ -2,8 +2,9 @@ import { useState, Fragment } from 'react'
 import BuscadorMedicamentos from './components/BuscadorMedicamentos'
 import PanelModelo from './components/PanelModelo'
 import FormularioReporte from './components/FormularioReporte'
+import MapaRiesgo from './components/MapaRiesgo'
 
-type Tab = 'busqueda' | 'modelo' | 'reportes'
+type Tab = 'busqueda' | 'modelo' | 'reportes' | 'mapa'
 
 const TABS: {
   id: Tab
@@ -48,6 +49,18 @@ const TABS: {
       </svg>
     ),
     meta: 'Datos colaborativos · alimenta el modelo',
+  },
+  {
+    id: 'mapa',
+    label: 'Mapa de riesgo',
+    short: 'Mapa',
+    secondary: true,
+    icon: (
+      <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498 4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 0 0-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" />
+      </svg>
+    ),
+    meta: 'Riesgo por departamento · modelo ML',
   },
 ]
 
@@ -128,6 +141,7 @@ export default function App() {
         {tab === 'busqueda' && <BuscadorMedicamentos />}
         {tab === 'modelo'   && <PanelModelo />}
         {tab === 'reportes' && <FormularioReporte />}
+        {tab === 'mapa'     && <MapaRiesgo />}
       </main>
 
       {/* Footer */}

@@ -5,6 +5,22 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 
 ---
 
+## [1.8.0] — 2026-07-09
+
+### Añadido
+- **Tab "Mapa de riesgo"**: `MapaRiesgo.tsx` (existía) ahora integrado en navegación principal — mapa interactivo de Colombia con riesgo por departamento y filtro por nivel (Bajo/Medio/Alto/Crítico)
+- **`busquedas_norm` conectado a datos reales**: cada búsqueda registra los CUMs retornados en `busquedas_log` (background task asíncrona); el modelo normaliza búsquedas de los últimos 30 días (0–100 búsquedas = 0–1.0)
+- **Tabla `busquedas_log`**: nueva tabla creada via migración idempotente en startup (`_crear_busquedas_log`)
+- **Tests de integración API**: `tests/integration/test_api_endpoints.py` — 10 tests con TestClient (búsqueda fallback, predicción, dashboard vigilancia, reportes, grupos)
+- **`tests/conftest.py`**: configura `DATABASE_URL` antes de cualquier import de app, resuelve path al DB real en `backend/farmavigia.db`
+
+### Corregido
+- **`.gitattributes`**: añadido `*.db binary` para prevenir que `core.autocrlf=true` en Windows corrompa el archivo binario SQLite al hacer checkout (causa raíz de corrupción del DB local detectada y eliminada)
+- **`test_transformacion_combinado`**: `tipo_formula == "combinado"` actualizado a `in ("combinado", "biconjugado")` para reflejar nomenclatura canónica actual
+- **CI/CD integration tests**: `DATABASE_URL` ahora pasado como env var para que TestClient encuentre el DB correcto en workflows de GitHub Actions
+
+---
+
 ## [1.7.0] — 2026-07-09
 
 ### Corregido

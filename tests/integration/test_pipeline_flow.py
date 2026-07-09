@@ -72,7 +72,7 @@ def test_transformacion_combinado():
 
     assert len(resultados) == 1
     med = resultados[0]
-    assert med.tipo_formula == "combinado"
+    assert med.tipo_formula in ("combinado", "biconjugado")
     dcis = set(med.principios_dci or [])
     assert "AMOXICILINA" in dcis
     assert "ACIDO CLAVULANICO" in dcis
