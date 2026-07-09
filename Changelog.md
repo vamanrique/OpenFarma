@@ -5,6 +5,22 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 
 ---
 
+## [1.6.0] — 2026-07-09
+
+### Añadido
+- **Endpoint `GET /predicciones/{cum_id}`**: predicción nacional de riesgo de desabastecimiento para el próximo mes (probabilidad + nivel Bajo/Medio/Alto/Crítico + top features), conforme a la especificación OpenAPI documentada
+- **Badge de riesgo ML en ficha de medicamento**: al seleccionar un medicamento en el buscador aparece `ML XX%` con color semántico (verde/ámbar/naranja/rojo), obtenido del modelo RandomForest en tiempo real
+- **Endpoint `GET /reportes/dashboard`**: vigilancia ciudadana con top 20 medicamentos más reportados, spike detector (ratio hoy vs. promedio semanal), y señales anticipadas (spike ≥ 3 reportes/7d sin alerta INVIMA)
+- **Panel "Vigilancia ciudadana"** en PanelModelo: KPIs de reportes, sección de señales anticipadas destacadas, tabla top reportados cruzada con estado INVIMA
+- **`reportes_norm` conectado a datos reales**: el modelo ahora usa el conteo real de reportes ciudadanos por CUM (normalizado 0–20 reportes = 0–1.0) en lugar de siempre 0
+- **`docs/model_card.md`**: ficha técnica completa del modelo (datos de entrenamiento, features, métricas, evaluación de equidad, limitaciones, uso previsto, proceso de actualización)
+
+### Corregido
+- Test de sesgo `test_sin_sesgo_por_atc_grupo`: import y acceso al modelo corregidos (`artefacto["modelo"]` — clave correcta del pkl)
+- `GET /predicciones/mapa`: N+1 queries eliminado con `joinedload(region)` en la consulta SQLAlchemy
+
+---
+
 ## [1.5.0] — 2026-07-09
 
 ### Corregido

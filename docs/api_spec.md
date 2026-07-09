@@ -181,6 +181,40 @@ Registra un reporte ciudadano de medicamento no disponible.
 
 ---
 
+### GET /reportes/dashboard
+
+Panel de vigilancia ciudadana: medicamentos con más reportes recientes, spike detector y señales anticipadas.
+
+**Respuesta 200:**
+```json
+{
+  "resumen": {
+    "total_reportes_historico": 142,
+    "total_reportes_30d": 38,
+    "medicamentos_con_spike": 3,
+    "senales_anticipadas": 1
+  },
+  "top_reportados": [
+    {
+      "cum_id": "20176695-1",
+      "nombre_medicamento": "IBUPROFENO KERN PHARMA",
+      "total_30d": 12,
+      "total_7d": 5,
+      "total_1d": 2,
+      "spike_ratio": 2.8,
+      "tiene_alerta_invima": false,
+      "severidad_invima": null,
+      "senal_anticipada": true
+    }
+  ],
+  "senales_anticipadas": [{ "...": "mismo objeto" }]
+}
+```
+
+> **`senal_anticipada`**: `true` cuando el medicamento acumula ≥ 3 reportes en 7 días pero **no** aparece en el reporte INVIMA vigente — indica escasez emergente no detectada aún por el sistema oficial.
+
+---
+
 ## Códigos de Error
 
 | Código | Situación |

@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react'
-import { medicamentosApi, type MedicamentoLive, type AlternativaLive, type EstadoInvima, type GruposEquivalencia, type GrupoDetalle } from '../api/client'
+import { useState, useMemo, useEffect } from 'react'
+import { medicamentosApi, prediccionesApi, type MedicamentoLive, type AlternativaLive, type EstadoInvima, type GruposEquivalencia, type GrupoDetalle, type PrediccionIndividual } from '../api/client'
 
 // ─── Configuración de fórmulas ───────────────────────────────────────────────
 const FORMULA_CFG: Record<string, { label: string; color: string }> = {
@@ -176,6 +176,27 @@ function BadgeNTI() {
   return (
     <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-200 uppercase tracking-wide shrink-0 leading-none">
       MTE
+    </span>
+  )
+}
+
+const RIESGO_CFG: Record<string, { color: string; dot: string }> = {
+  'Bajo':    { color: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
+  'Medio':   { color: 'bg-amber-50 text-amber-700 border-amber-200',       dot: 'bg-amber-400' },
+  'Alto':    { color: 'bg-orange-50 text-orange-700 border-orange-200',    dot: 'bg-orange-500' },
+  'Crítico': { color: 'bg-red-50 text-red-700 border-red-200',             dot: 'bg-red-500' },
+}
+
+function BadgeRiesgoML({ prediccion }: { prediccion: PrediccionIndividual }) {
+  const cfg = RIESGO_CFG[prediccion.nivel_riesgo] ?? RIESGO_CFG['Bajo']
+  const pct = Math.round(prediccion.probabilidad * 100)
+  return (
+    <span
+      className={`flex items-center gap-1 text-xs font-semibold px-1.5 py-0.5 rounded border shrink-0 whitespace-nowrap leading-none ${cfg.color}`}
+      title={`Riesgo de desabastecimiento próximo mes: ${pct}%\nModelo: Random Forest v${prediccion.modelo_version} · ${prediccion.fecha_prediccion}`}
+    >
+      <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+      ML {pct}%
     </span>
   )
 }
@@ -476,6 +497,15 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
 }) {
   const esMedNTI    = grupoMeds.some(m => esNTI(m.principios_dci)) || esNTI(medicamento.principios_dci)
   const [terapExpanded, setTerapExpanded] = useState(false)
+  const [prediccion, setPrediccion] = useState<PrediccionIndividual | null>(null)
+
+  useEffect(() => {
+    setPrediccion(null)
+    prediccionesApi.individual(medicamento.cum_id)
+      .then(r => setPrediccion(r.data))
+      .catch(() => {})
+  }, [medicamento.cum_id])
+
   const dcis = medicamento.principios_dci.length > 0
     ? medicamento.principios_dci
     : [...new Set(grupoMeds.flatMap(m => m.principios_dci))]
@@ -581,9 +611,12 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
               )}
             </div>
           </div>
-          {!cargando && alternativas.length > 0 && (
-            <span className="text-xs text-slate-400 shrink-0 tabular-nums">{alternativas.length} alt.</span>
-          )}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {!cargando && alternativas.length > 0 && (
+              <span className="text-xs text-slate-400 tabular-nums">{alternativas.length} alt.</span>
+            )}
+            {prediccion && <BadgeRiesgoML prediccion={prediccion} />}
+          </div>
         </div>
       </div>
 

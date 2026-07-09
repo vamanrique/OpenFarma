@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Query, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import Optional
 from app.database import get_db
 from app.models.prediccion import PrediccionDesabastecimiento
@@ -14,7 +14,9 @@ def mapa_riesgo(
     nivel_riesgo: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
-    query = db.query(PrediccionDesabastecimiento)
+    query = db.query(PrediccionDesabastecimiento).options(
+        joinedload(PrediccionDesabastecimiento.region)
+    )
     if nivel_riesgo:
         query = query.filter(PrediccionDesabastecimiento.nivel_riesgo == nivel_riesgo)
 
@@ -110,3 +112,13 @@ def info_modelo():
         "tasa_positivos": metricas.get("pos_rate_train"),
         "importancia_features": importancias,
     }
+
+
+@router.get("/{cum_id:path}")
+def prediccion_medicamento(cum_id: str, db: Session = Depends(get_db)):
+    """Predicción nacional de riesgo de desabastecimiento para un medicamento (mes siguiente)."""
+    from app.services.prediccion import predecir_nacional
+    result = predecir_nacional(cum_id, db)
+    if not result:
+        raise HTTPException(status_code=404, detail="Medicamento no encontrado en el CUM")
+    return result

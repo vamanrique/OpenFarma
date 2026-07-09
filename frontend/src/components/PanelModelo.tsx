@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+import { reportesApi, type DashboardReportes, type DashboardAlerta } from '../api/client'
 
 interface ModeloInfo {
   roc_auc: number
@@ -101,16 +102,21 @@ export default function PanelModelo() {
   const [desabastecidos, setDesabastecidos] = useState<EstadoInvima[]>([])
   const [filtroEstado, setFiltroEstado] = useState<'todos' | 'DESABASTECIDO' | 'EN_RIESGO'>('todos')
   const [busquedaMed, setBusquedaMed] = useState('')
+  const [dashboard, setDashboard] = useState<DashboardReportes | null>(null)
 
   useEffect(() => {
     fetch('/api/v1/predicciones/modelo/info')
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
       .then(setInfo)
       .catch(() => setError('Modelo no disponible'))
 
     fetch('/api/v1/desabastecimiento/actual')
       .then(r => r.json())
       .then(setDesabastecidos)
+      .catch(() => {})
+
+    reportesApi.dashboard()
+      .then(r => setDashboard(r.data))
       .catch(() => {})
   }, [])
 
@@ -357,6 +363,152 @@ export default function PanelModelo() {
         )}
       </div>
 
+      {/* Dashboard de vigilancia ciudadana */}
+      <DashboardAlertasCiudadanas dashboard={dashboard} />
+
+    </div>
+  )
+}
+
+function SpikeBar({ ratio }: { ratio: number }) {
+  const w = Math.min(ratio / 5, 1) * 100
+  const color = ratio >= 3 ? 'bg-red-500' : ratio >= 2 ? 'bg-orange-400' : 'bg-emerald-400'
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+        <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${w}%` }} />
+      </div>
+      <span className="text-xs font-mono text-slate-500 w-8 text-right tabular-nums">{ratio}×</span>
+    </div>
+  )
+}
+
+function FilaAlerta({ row }: { row: DashboardAlerta }) {
+  return (
+    <tr className="hover:bg-slate-50 transition-colors">
+      <td className="px-4 py-2.5 max-w-[200px]">
+        <p className="text-xs font-medium text-slate-800 truncate">{row.nombre_medicamento}</p>
+        <p className="text-xs text-slate-400 font-mono">{row.cum_id}</p>
+      </td>
+      <td className="px-4 py-2.5 text-center">
+        <span className="text-xs font-bold tabular-nums text-slate-700">{row.total_30d}</span>
+      </td>
+      <td className="px-4 py-2.5 text-center">
+        <span className="text-xs font-bold tabular-nums text-slate-700">{row.total_7d}</span>
+      </td>
+      <td className="px-4 py-2.5 w-32">
+        <SpikeBar ratio={row.spike_ratio} />
+      </td>
+      <td className="px-4 py-2.5">
+        {row.senal_anticipada ? (
+          <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200 whitespace-nowrap">
+            ⚡ Señal anticipada
+          </span>
+        ) : row.tiene_alerta_invima ? (
+          <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200 whitespace-nowrap">
+            ⚠ En INVIMA
+          </span>
+        ) : (
+          <span className="text-xs text-slate-400">—</span>
+        )}
+      </td>
+    </tr>
+  )
+}
+
+function DashboardAlertasCiudadanas({ dashboard }: { dashboard: DashboardReportes | null }) {
+  if (!dashboard) {
+    return (
+      <div className="bg-white border border-slate-200 rounded-xl p-5 text-center text-sm text-slate-400 animate-pulse">
+        Cargando vigilancia ciudadana...
+      </div>
+    )
+  }
+
+  const { resumen, top_reportados, senales_anticipadas } = dashboard
+
+  if (resumen.total_reportes_historico === 0) {
+    return (
+      <div className="bg-white border border-slate-200 rounded-xl p-5">
+        <h3 className="text-sm font-semibold text-slate-800 mb-1">Vigilancia ciudadana</h3>
+        <p className="text-xs text-slate-400">
+          Aún no hay reportes ciudadanos. Los reportes en la pestaña "Reportar" alimentarán este panel.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* KPIs vigilancia */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: 'Reportes histórico', value: resumen.total_reportes_historico.toLocaleString('es-CO'), sub: 'Total acumulado', color: 'text-slate-700' },
+          { label: 'Reportes 30 días', value: resumen.total_reportes_30d.toLocaleString('es-CO'), sub: 'Último mes', color: 'text-blue-600' },
+          { label: 'Spikes detectados', value: String(resumen.medicamentos_con_spike), sub: 'Actividad ≥ 2× promedio', color: 'text-orange-600' },
+          { label: 'Señales anticipadas', value: String(resumen.senales_anticipadas), sub: 'Sin alerta INVIMA aún', color: 'text-violet-600' },
+        ].map(k => (
+          <div key={k.label} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{k.label}</p>
+            <p className={`text-3xl font-bold mt-1 tabular-nums ${k.color}`}>{k.value}</p>
+            <p className="text-xs text-slate-400 mt-1">{k.sub}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Señales anticipadas destacadas */}
+      {senales_anticipadas.length > 0 && (
+        <div className="bg-violet-50 border border-violet-200 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-sm font-semibold text-violet-800">⚡ Señales anticipadas — sin alerta INVIMA</span>
+            <span className="text-xs bg-violet-100 text-violet-600 px-2 py-0.5 rounded-full font-bold">{senales_anticipadas.length}</span>
+          </div>
+          <p className="text-xs text-violet-700 mb-3">
+            Medicamentos con ≥ 3 reportes ciudadanos en los últimos 7 días pero aún sin figura en el reporte INVIMA mensual.
+            Estas son las alertas tempranas más valiosas del sistema.
+          </p>
+          <div className="space-y-2">
+            {senales_anticipadas.map(r => (
+              <div key={r.cum_id} className="bg-white border border-violet-100 rounded-lg px-3 py-2 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-slate-800 truncate">{r.nombre_medicamento}</p>
+                  <p className="text-xs text-slate-400 font-mono">{r.cum_id}</p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-xs font-bold text-violet-700 tabular-nums">{r.total_7d} rep. / 7d</p>
+                  <p className="text-xs text-slate-400">spike {r.spike_ratio}×</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tabla top reportados */}
+      {top_reportados.length > 0 && (
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100">
+            <h3 className="text-sm font-semibold text-slate-800">Top medicamentos reportados (30 días)</h3>
+            <p className="text-xs text-slate-500 mt-0.5">Cruzado contra alertas INVIMA activas</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-slate-100 text-left">
+                  <th className="px-4 py-2.5 font-medium text-slate-500">Medicamento</th>
+                  <th className="px-4 py-2.5 font-medium text-slate-500 text-center">30d</th>
+                  <th className="px-4 py-2.5 font-medium text-slate-500 text-center">7d</th>
+                  <th className="px-4 py-2.5 font-medium text-slate-500">Spike hoy</th>
+                  <th className="px-4 py-2.5 font-medium text-slate-500">Estado</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {top_reportados.map(r => <FilaAlerta key={r.cum_id} row={r} />)}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

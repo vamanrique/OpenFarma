@@ -111,11 +111,46 @@ export const regionesApi = {
   listar: () => api.get<Region[]>('/regiones/'),
 }
 
+export interface PrediccionIndividual {
+  cum_id: string
+  probabilidad: number
+  nivel_riesgo: string
+  nivel_num: number
+  features_principales: Record<string, number>
+  modelo_version: string
+  fecha_prediccion: string
+}
+
+export interface DashboardAlerta {
+  cum_id: string
+  nombre_medicamento: string
+  total_30d: number
+  total_7d: number
+  total_1d: number
+  spike_ratio: number
+  tiene_alerta_invima: boolean
+  severidad_invima: EstadoInvima | null
+  senal_anticipada: boolean
+}
+
+export interface DashboardReportes {
+  resumen: {
+    total_reportes_historico: number
+    total_reportes_30d: number
+    medicamentos_con_spike: number
+    senales_anticipadas: number
+  }
+  top_reportados: DashboardAlerta[]
+  senales_anticipadas: DashboardAlerta[]
+}
+
 export const prediccionesApi = {
   mapa: (nivelRiesgo?: string) =>
     api.get<PrediccionMapa[]>('/predicciones/mapa', {
       params: nivelRiesgo ? { nivel_riesgo: nivelRiesgo } : {},
     }),
+  individual: (cumId: string) =>
+    api.get<PrediccionIndividual>(`/predicciones/${encodeURIComponent(cumId)}`),
 }
 
 export interface ReporteReciente {
@@ -134,6 +169,8 @@ export const reportesApi = {
     api.get<ReporteReciente[]>('/reportes/recientes', { params: { limit } }),
   total: () =>
     api.get<{ total: number; por_tipo: Record<string, number> }>('/reportes/total'),
+  dashboard: () =>
+    api.get<DashboardReportes>('/reportes/dashboard'),
 }
 
 export default api

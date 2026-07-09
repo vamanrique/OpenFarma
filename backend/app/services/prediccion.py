@@ -3,12 +3,14 @@ Servicio de predicción de desabastecimiento.
 Usa cum_normalizado como fuente de verdad en lugar del viejo modelo Medicamento.
 """
 import numpy as np
+from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import func, distinct, text
 
 from app.models.region import ConsultaRegion, Region
 from app.models.prediccion import PrediccionDesabastecimiento
 from app.models.cum_normalizado import CumNormalizado
+from app.models.reporte import ReporteNoDisponibilidad
 from app.ml.modelo import clasificar_nivel, MODEL_PATH
 from app.ml.features import FEATURE_COLS, INVIMA_SEV_SCORE
 
@@ -94,6 +96,12 @@ def _features_base_para_cum(cum: CumNormalizado, db: Session) -> np.ndarray:
     atc_char = (cum.atc_normalizado or "?")[0].upper()
     grupo_atc_enc = _ATC_ENC.get(atc_char, len(ATC_GRUPOS))
 
+    cum_key = f"{cum.expediente_cum}-{cum.consecutivo_cum}"
+    n_reportes = db.query(func.count(ReporteNoDisponibilidad.id)).filter(
+        ReporteNoDisponibilidad.cum_id == cum_key
+    ).scalar() or 0
+    reportes_norm = min(float(n_reportes) / 20.0, 1.0)
+
     base = np.array([
         tasa_inactivacion,
         n_competidores,
@@ -103,8 +111,8 @@ def _features_base_para_cum(cum: CumNormalizado, db: Session) -> np.ndarray:
         int(n_competidores == 1),
         grupo_atc_enc,
         n_presentaciones,
-        0.0,   # busquedas_norm
-        0.0,   # reportes_norm
+        0.0,          # busquedas_norm (pendiente: tracking de búsquedas)
+        reportes_norm,
     ])
 
     inv = _invima_features_para_atc(cum.atc_normalizado or "", db)
@@ -200,3 +208,49 @@ class ServicioPrediccion:
 
         self.db.commit()
         return resultados
+
+
+_NIVEL_NUM = {"bajo": 1, "medio": 2, "alto": 3, "critico": 4}
+_NIVEL_LABEL = {"bajo": "Bajo", "medio": "Medio", "alto": "Alto", "critico": "Crítico"}
+
+
+def predecir_nacional(cum_id: str, db: Session) -> dict | None:
+    """Predicción a nivel nacional (sin dimensión regional) para un CUM dado."""
+    partes = cum_id.split("-", 1)
+    if len(partes) != 2:
+        return None
+    cum = db.query(CumNormalizado).filter(
+        CumNormalizado.expediente_cum == partes[0],
+        CumNormalizado.consecutivo_cum == partes[1],
+    ).first()
+    if not cum:
+        return None
+
+    features = _features_base_para_cum(cum, db)
+
+    prob: float
+    if MODEL_PATH.exists():
+        from app.ml.modelo import cargar_modelo
+        artefacto = cargar_modelo()
+        modelo = artefacto.get("modelo")
+        if modelo:
+            prob = float(modelo.predict_proba([features])[0][1])
+        else:
+            prob = min(float(features[0]) * 0.5 + float(features[9]) * 0.05, 1.0)
+    else:
+        prob = min(float(features[0]) * 0.5 + float(features[9]) * 0.05, 1.0)
+
+    nivel_raw = clasificar_nivel(prob)
+    features_dict = {col: round(float(features[i]), 4) for i, col in enumerate(FEATURE_COLS)}
+
+    return {
+        "cum_id": cum_id,
+        "probabilidad": round(prob, 4),
+        "nivel_riesgo": _NIVEL_LABEL.get(nivel_raw, nivel_raw.capitalize()),
+        "nivel_num": _NIVEL_NUM.get(nivel_raw, 0),
+        "features_principales": {
+            k: v for k, v in sorted(features_dict.items(), key=lambda x: -abs(x[1]))[:5]
+        },
+        "modelo_version": "1.0.0",
+        "fecha_prediccion": datetime.now().strftime("%Y-%m-%d"),
+    }

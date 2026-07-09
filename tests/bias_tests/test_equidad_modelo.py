@@ -15,7 +15,9 @@ def test_modelo_cargable():
         from app.ml.modelo import cargar_modelo
         artefacto = cargar_modelo()
         assert artefacto is not None
-        assert "modelo_prod" in artefacto
+        assert "modelo" in artefacto
+        assert "metricas" in artefacto
+        assert "features" in artefacto
     except FileNotFoundError:
         pytest.skip("modelo_rf.pkl no disponible en este entorno")
 
@@ -32,22 +34,22 @@ def test_sin_sesgo_por_atc_grupo():
         from app.ml.modelo import cargar_modelo
         import numpy as np
         artefacto = cargar_modelo()
-        modelo = artefacto["modelo_prod"]
+        modelo = artefacto["modelo"]
     except (FileNotFoundError, ImportError):
         pytest.skip("modelo_rf.pkl no disponible en este entorno")
 
     # Construir dos filas idénticas salvo en grupo_atc_enc
-    # Features: [tasa_inac, num_comp, monopolio, tiene_alt, num_pres,
-    #            es_combinado, tipo_formula_num, grupo_atc_enc,
+    # Features: [tasa_inac, num_comp, tiene_alt, tipo_formula_num, es_combinado,
+    #            monopolio, grupo_atc_enc, num_pres,
     #            busquedas_norm, reportes_norm,
-    #            invima_sev_actual, invima_peor_sev_hist, invima_meses_mon,
-    #            invima_sev_t3_avg, invima_tendencia]
-    base = [0.05, 5, 0, 1, 3, 0, 1, 0, 0.0, 0.0, 0.0, 0.0, 0, 0.0, 0.0]
+    #            invima_sev_actual, invima_sev_t3_avg, invima_meses_mon,
+    #            invima_peor_sev_hist, invima_tendencia]
+    base = [0.05, 5, 1, 1, 0, 0, 0, 3, 0.0, 0.0, 0.0, 0.0, 0, 0.0, 0.0]
 
     scores = []
     for atc_group in range(0, 26, 5):  # A, F, K, P, U
         fila = base.copy()
-        fila[7] = atc_group
+        fila[6] = atc_group
         prob = modelo.predict_proba([fila])[0][1]
         scores.append(prob)
 
