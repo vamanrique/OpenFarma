@@ -90,6 +90,23 @@ Versión local normalizada del CUM activo. 52,830 productos.
 
 ---
 
+## Tabla: `reportes_no_disponibilidad`
+
+Reportes ciudadanos de medicamentos no encontrados en farmacias.
+
+| Columna | Tipo | Descripción |
+|---------|------|-------------|
+| `id` | INTEGER | Identificador interno |
+| `cum_id` | TEXT | `expediente-consecutivo` del medicamento reportado |
+| `nombre_medicamento` | TEXT | Nombre comercial del medicamento |
+| `tipo_reporte` | TEXT | `sin_stock` (default) / `precio_alto` / `calidad_deficiente` |
+| `descripcion` | TEXT | Texto libre opcional del ciudadano |
+| `fecha` | DATETIME | Fecha y hora del reporte (UTC) |
+
+> **Nota:** El campo `region_id` fue eliminado en v1.4.0. La escasez farmacéutica en Colombia tiene alcance nacional; la geolocalización por departamento no aporta señal diferenciada y añadía fricción al formulario ciudadano.
+
+---
+
 ## Features del Modelo ML
 
 Las 15 features que alimentan el `RandomForestClassifier`:

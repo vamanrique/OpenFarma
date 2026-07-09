@@ -5,6 +5,22 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 
 ---
 
+## [1.4.0] — 2026-07-09
+
+### Añadido
+- Notebooks Jupyter (01–05): EDA, limpieza/transformación, análisis descriptivo, modelo predictivo y reportes automáticos — estructura requerida categoría Avanzado del concurso
+- Estructura completa del concurso Avanzado: `docs/` (8 documentos), `tests/` (unit, integration, bias), `reports/`, `RECURSOS/`, `.github/workflows/ci-cd-pipeline.yml`
+- Normalización de unidades farmacéuticas en el frontend: `mg`, `mL`, `mg/mL`, `mcg`, `mEq`, `mmol`; `IU` → `UI`
+
+### Mejorado
+- Badge INVIMA ahora muestra el período del reporte oficial: `⚠ INVIMA may 2026 · Monitorización` en lugar del estado solo
+
+### Corregido
+- Campo `region_id` eliminado del formulario de reportes ciudadanos y de la tabla `reportes_no_disponibilidad` (no aportaba señal diferenciada; la escasez farmacéutica en Colombia es de alcance nacional)
+- `PYTHONPATH` configurado en el pipeline CI/CD para importaciones correctas del backend en los tres conjuntos de tests
+
+---
+
 ## [1.3.0] — 2026-07-08
 
 ### Añadido

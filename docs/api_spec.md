@@ -46,10 +46,12 @@ Búsqueda de medicamentos en tiempo real. Consulta la API Socrata del CUM activo
     "estado_cum": "Activo",
     "fuente": "CUM_ACTIVO",
     "estado_invima": {
-      "estado": "MONITORIZACION",
+      "estado": "EN_MONITORIZACION",
+      "estado_label": "Monitorización",
       "mes": 5,
       "anio": 2026,
-      "severidad": 3
+      "severidad": 3,
+      "causas": null
     },
     "dosis_total_mg": 400.0
   }
@@ -149,7 +151,7 @@ Estado actual de alerta INVIMA para un código ATC.
 
 ---
 
-### POST /reportes
+### POST /reportes/no-disponibilidad
 
 Registra un reporte ciudadano de medicamento no disponible.
 
@@ -157,16 +159,22 @@ Registra un reporte ciudadano de medicamento no disponible.
 ```json
 {
   "cum_id": "20176695-1",
+  "tipo_reporte": "sin_stock",
   "descripcion": "No encontré este medicamento en ninguna farmacia del barrio"
 }
 ```
+
+> `tipo_reporte`: `"sin_stock"` (default) | `"precio_alto"` | `"calidad_deficiente"`  
+> `descripcion` es opcional.
 
 **Respuesta 201:**
 ```json
 {
   "id": 42,
   "cum_id": "20176695-1",
-  "fecha_reporte": "2026-07-08T15:30:00",
+  "nombre_medicamento": "IBUPROFENO KERN PHARMA",
+  "tipo_reporte": "sin_stock",
+  "fecha": "2026-07-09T15:30:00",
   "mensaje": "Reporte registrado. Gracias por contribuir a FarmaVigia."
 }
 ```
