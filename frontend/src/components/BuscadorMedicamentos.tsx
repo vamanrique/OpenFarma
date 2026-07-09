@@ -129,18 +129,19 @@ function labelGrupo(g: string): string {
 }
 
 function normalizeUnits(s: string): string {
+  // Use lookahead/lookbehind instead of \b so units attached to digits (50mg/10ml) also match.
+  // Compound units first to avoid double-replacement.
   return s
-    .replace(/\b(mg|MG)\/(mL|ML)\b/g, 'mg/mL')
-    .replace(/\b(mcg|MCG|µg|ug)\/(mL|ML)\b/gi, 'mcg/mL')
-    .replace(/\b(mg|MG)\/dosis\b/gi, 'mg/dosis')
-    .replace(/\b(mcg|MCG|µg|ug)\/dosis\b/gi, 'mcg/dosis')
-    .replace(/\bMCG\b/g, 'mcg')
-    .replace(/\bµg\b/g, 'mcg')
-    .replace(/\bMMOL\b/gi, 'mmol')
-    .replace(/\bMEQ\b/gi, 'mEq')
-    .replace(/\bMG\b/g, 'mg')
-    .replace(/\bML\b/g, 'mL')
-    .replace(/\bIU\b/g, 'UI')
+    .replace(/(?<![a-zA-Z])mg\/ml(?![a-zA-Z])/gi, 'mg/mL')
+    .replace(/(?<![a-zA-Z])(?:mcg|µg|ug)\/ml(?![a-zA-Z])/gi, 'mcg/mL')
+    .replace(/(?<![a-zA-Z])mg\/dosis(?![a-zA-Z])/gi, 'mg/dosis')
+    .replace(/(?<![a-zA-Z])(?:mcg|µg|ug)\/dosis(?![a-zA-Z])/gi, 'mcg/dosis')
+    .replace(/(?<![a-zA-Z])(?:mcg|µg|ug)(?![a-zA-Z])/gi, 'mcg')
+    .replace(/(?<![a-zA-Z])mmol(?![a-zA-Z])/gi, 'mmol')
+    .replace(/(?<![a-zA-Z])meq(?![a-zA-Z])/gi, 'mEq')
+    .replace(/(?<![a-zA-Z])mg(?![a-zA-Z])/gi, 'mg')
+    .replace(/(?<![a-zA-Z])ml(?![a-zA-Z])/gi, 'mL')
+    .replace(/(?<![a-zA-Z])IU(?![a-zA-Z])/g, 'UI')
 }
 
 function fmtConc(conc: string | null): string {
@@ -322,7 +323,7 @@ function GrupoSection({
           {grupo.productos.map((p, i) => (
             <div key={i} className="flex items-center gap-2 px-3 py-2 border-b border-current border-opacity-5 last:border-0 bg-white bg-opacity-50">
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-slate-800 truncate">{p.nombre_comercial}</p>
+                <p className="text-xs font-medium text-slate-800 truncate">{normalizeUnits(p.nombre_comercial)}</p>
                 {p.laboratorio && (
                   <p className="text-xs text-slate-400 truncate mt-0.5">{p.laboratorio}</p>
                 )}
@@ -514,7 +515,7 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
               ? dest.principios_dci.map((dci, j) => (
                   <TagDCI key={j} dci={dci} highlight={alt.componentes_compartidos.includes(dci)} />
                 ))
-              : <span className="text-xs text-slate-600 font-medium">{dest.nombre_comercial}</span>
+              : <span className="text-xs text-slate-600 font-medium">{normalizeUnits(dest.nombre_comercial)}</span>
             }
             <BadgeFormula tipo={dest.tipo_formula} />
             {esNTI(dest.principios_dci) && <BadgeNTI />}
@@ -525,7 +526,7 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
         </div>
         {/* Fila 2: marca · lab · estado */}
         <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-          <span className="text-xs text-slate-600 font-medium truncate max-w-[160px]">{dest.nombre_comercial}</span>
+          <span className="text-xs text-slate-600 font-medium truncate max-w-[160px]">{normalizeUnits(dest.nombre_comercial)}</span>
           <span className="text-slate-300 text-xs">·</span>
           <span className="text-xs text-slate-400 truncate max-w-[130px]">{dest.laboratorio}</span>
           <BadgeEstadoReg estado_cum={dest.estado_cum} estado_registro={dest.estado_registro} fuente={dest.fuente} />
@@ -558,7 +559,7 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
             <div className="flex items-center gap-1.5 flex-wrap">
               {dcis.length > 0
                 ? dcis.map((dci, i) => <span key={i} className="text-base font-bold text-slate-900 leading-tight">{dci}</span>)
-                : <span className="text-sm font-semibold text-slate-500">{medicamento.nombre_comercial}</span>
+                : <span className="text-sm font-semibold text-slate-500">{normalizeUnits(medicamento.nombre_comercial)}</span>
               }
               <BadgeFormula tipo={medicamento.tipo_formula} />
               {esMedNTI && <BadgeNTI />}
@@ -640,7 +641,7 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
                           <div key={i} className="flex items-center gap-3 px-3 py-2.5 border-b border-emerald-50 last:border-0 hover:bg-emerald-50 transition-colors">
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5">
-                                <p className="text-sm font-medium text-slate-800 truncate">{dest?.nombre_comercial ?? alt.cum_destino}</p>
+                                <p className="text-sm font-medium text-slate-800 truncate">{normalizeUnits(dest?.nombre_comercial ?? alt.cum_destino)}</p>
                                 {dest && esNTI(dest.principios_dci) && <BadgeNTI />}
                               </div>
                               {dest?.concentracion_display && (
@@ -688,7 +689,7 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
                             <div className="w-px self-stretch bg-lime-100 shrink-0" />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5">
-                                <p className="text-xs font-medium text-slate-700 truncate">{dest.nombre_comercial}</p>
+                                <p className="text-xs font-medium text-slate-700 truncate">{normalizeUnits(dest.nombre_comercial)}</p>
                                 {esNTI(dest.principios_dci) && <BadgeNTI />}
                               </div>
                               <p className="text-xs text-slate-400 truncate mt-0.5">{dest.laboratorio}</p>
@@ -754,7 +755,7 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
                         <div className="w-px self-stretch bg-teal-100 shrink-0" />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <p className="text-xs font-medium text-slate-700 truncate">{dest.nombre_comercial}</p>
+                            <p className="text-xs font-medium text-slate-700 truncate">{normalizeUnits(dest.nombre_comercial)}</p>
                             {esNTI(dest.principios_dci) && <BadgeNTI />}
                           </div>
                           <div className="flex items-center gap-1 mt-0.5">
@@ -1657,7 +1658,7 @@ export default function BuscadorMedicamentos() {
                               <span className={`text-xs font-semibold truncate ${sel ? 'text-blue-800' : 'text-slate-700'}`}>
                                 {dcisGrupo.length > 0
                                   ? dcisGrupo.join(' · ')
-                                  : (row.meds[0]?.nombre_comercial ?? '—')}
+                                  : normalizeUnits(row.meds[0]?.nombre_comercial ?? '—')}
                               </span>
                               {dcisExtra > 0 && (
                                 <span className="text-xs text-slate-400 shrink-0">+{dcisExtra}</span>
