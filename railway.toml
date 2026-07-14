@@ -1,3 +1,4 @@
 # OpenFarma — configuración Railway
 [build]
-builder = "NIXPACKS"
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
