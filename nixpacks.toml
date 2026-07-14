@@ -1,3 +1,4 @@
+# OpenFarma — Build config for Railway (nixpacks)
 [phases.setup]
 nixPkgs = ["python311", "nodejs_20", "nodePackages.npm"]
 

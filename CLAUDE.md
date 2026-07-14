@@ -320,6 +320,12 @@ Mayoría son productos genuinamente únicos. Los que están "cerca" de otros gru
 
 La ETL no genera esta categoría porque los granulados/polvos se clasifican bajo SOLIDO_ORAL. El label está disponible en el sistema pero sin grupos.
 
+## Documentación externa
+
+- Guía de despliegue Railway y troubleshooting: `docs/deployment.md`
+- Guía de contribución: `CONTRIBUTING.md`
+- Changelog completo: `Changelog.md`
+
 ## Flujo de trabajo Git
 
 ```bash
