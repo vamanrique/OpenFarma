@@ -5,6 +5,15 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 
 ---
 
+## [1.10.0] — 2026-07-13
+
+### Cambiado
+- **Renombrado: FarmaVigia → OpenFarma** en todo el proyecto — 151 archivos actualizados
+- **`backend/farmavigia.db` → `backend/openfarma.db`**: DB renombrada vía `git mv`
+- **GitHub**: descripción del repo y topics actualizados (colombia, medicamentos, desabastecimiento, machine-learning, fastapi, react, invima, datos-abiertos, salud-publica)
+
+---
+
 ## [1.9.0] — 2026-07-13
 
 ### Añadido
