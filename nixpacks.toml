@@ -4,8 +4,8 @@ nixPkgs = ["python311", "nodejs_20", "nodePackages.npm"]
 
 [phases.install]
 cmds = [
-  "python -m ensurepip --upgrade",
-  "python -m pip install -r backend/requirements.txt",
+  "python -m venv /opt/venv",
+  "/opt/venv/bin/pip install -r backend/requirements.txt",
   "cd frontend && npm ci && npm run build"
 ]
 
