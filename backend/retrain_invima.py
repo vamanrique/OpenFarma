@@ -119,7 +119,7 @@ def _construir_base(db) -> pd.DataFrame:
     pres["monopolio"]                  = (pres["num_competidores"] == 1).astype(int)
     pres["tiene_alternativas"]         = (pres["num_competidores"] > 1).astype(int)
     pres["grupo_atc_enc"]              = pres["atc_grupo"].map(_ATC_ENC).fillna(len(ATC_GRUPOS)).astype(int)
-    pres["busquedas_norm"]             = 0.0
+    pres["busquedas_norm"]             = 0.0  # historial: no había log; se enriquece para modelo producción
     pres["reportes_norm"]              = 0.0
 
     print(f"  {len(pres):,} productos CUM cargados")
@@ -205,6 +205,21 @@ def _construir_invima_temporal(db) -> pd.DataFrame:
     n_pos = df_inv["desabastecido"].sum()
     print(f"  Filas generadas: {len(df_inv):,} | positivos (y=1): {n_pos} ({n_pos/len(df_inv):.2%})")
     return df_inv
+
+
+# ── Búsquedas recientes (busquedas_log) para enriquecer modelo producción ──────
+def _cargar_busquedas_norm(db) -> dict:
+    """Retorna {cum_id: busquedas_norm} desde busquedas_log últimos 30 días."""
+    try:
+        rows = db.execute(text("""
+            SELECT cum_id, COUNT(*) as n
+            FROM busquedas_log
+            WHERE fecha > datetime('now', '-30 days')
+            GROUP BY cum_id
+        """)).fetchall()
+        return {r[0]: min(float(r[1]) / 100.0, 1.0) for r in rows}
+    except Exception:
+        return {}
 
 
 # ── Features para inferencia en producción (snapshot del mes más reciente) ────
@@ -302,6 +317,10 @@ def main():
 
         print("3. Construyendo features de producción (mes más reciente)...")
         df_inv_prod = _construir_invima_produccion(db)
+
+        print("3b. Cargando busquedas_norm reales (últimos 30 días)...")
+        busquedas_map = _cargar_busquedas_norm(db)
+        print(f"   {len(busquedas_map)} productos con búsquedas recientes")
     finally:
         db.close()
 
@@ -398,6 +417,12 @@ def main():
     for col in FEATURE_COLS_INVIMA:
         df_all[col] = df_all[col].fillna(0.0)
     df_all["desabastecido"] = df_all["desabastecido"].fillna(0).astype(int)
+
+    # Enriquecer con búsquedas reales para el modelo de producción
+    if busquedas_map:
+        df_all["busquedas_norm"] = df_all["cum_id"].map(busquedas_map).fillna(0.0)
+        n_enriq = (df_all["busquedas_norm"] > 0).sum()
+        print(f"   busquedas_norm: {n_enriq} productos con valor > 0 (máx {df_all['busquedas_norm'].max():.3f})")
 
     X_all = df_all[FEATURE_COLS].values
     y_all = df_all["desabastecido"].values

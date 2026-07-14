@@ -5,6 +5,20 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 
 ---
 
+## [1.9.0] — 2026-07-13
+
+### Añadido
+- **`busquedas_norm` real en entrenamiento**: `retrain_invima.py` ahora carga `busquedas_log` y enriquece `busquedas_norm` para el modelo de producción (eval/train sigue en 0.0 — sin historial); listo para crecer con datos reales
+
+### Corregido
+- **`main.py` — copia DB sobre sí misma**: guard `_bundled_db.resolve() != _volume_path.resolve()` antes de `shutil.copy2`; evitaba `PermissionError [WinError 32]` en tests locales cuando `DATABASE_URL` apuntaba al mismo archivo bundleado
+
+### Mejorado
+- **Modelo ML reentrenado** (2026-07-13): ROC-AUC **0.8374** | Avg Precision **0.1707** (split temporal honesto, test mar–may 2026)
+- **`docs/model_card.md`**: métricas actualizadas al retrain 2026-07-13
+
+---
+
 ## [1.8.0] — 2026-07-09
 
 ### Añadido

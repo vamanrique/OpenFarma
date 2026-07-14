@@ -43,7 +43,7 @@ Deploy: Railway (auto-deploy desde main)
 
 **Archivo**: `backend/data/modelo_rf.pkl`
 **Tipo**: `CalibratedClassifierCV` (Platt scaling) sobre `RandomForestClassifier` (scikit-learn 1.9.0)
-**Métricas actuales** (2026-07-02, split temporal honesto): ROC-AUC **0.8732** | Avg Precision **0.1720**
+**Métricas actuales** (2026-07-13, split temporal honesto): ROC-AUC **0.8374** | Avg Precision **0.1707**
 
 ### ¿Qué predice?
 

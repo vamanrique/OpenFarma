@@ -128,9 +128,9 @@ Evaluación sobre el conjunto de test temporal (Marzo – Mayo 2026, datos nunca
 
 | Métrica | Valor | Contexto |
 |---------|-------|---------|
-| **ROC-AUC** | **0.8732** | Excelente discriminación. El modelo asigna mayor probabilidad al medicamento correcto en el 87.3% de los pares (desabastecido vs. disponible). |
-| **Average Precision** | **0.1720** | Alto en el contexto de 1.6% de positivos. La AP esperada de un clasificador aleatorio en este dataset es 0.016; el modelo la multiplica por ~10.7×. |
-| **Tasa de positivos (test)** | 1.6% | Desbalance real del mercado: la gran mayoría de medicamentos no está en desabastecimiento. |
+| **ROC-AUC** | **0.8374** | Buena discriminación. El modelo asigna mayor probabilidad al medicamento correcto en el 83.7% de los pares (desabastecido vs. disponible). |
+| **Average Precision** | **0.1707** | Alto en el contexto de 1.63% de positivos. La AP esperada de un clasificador aleatorio en este dataset es 0.016; el modelo la multiplica por ~10.7×. |
+| **Tasa de positivos (test)** | 1.63% | Desbalance real del mercado: la gran mayoría de medicamentos no está en desabastecimiento. |
 
 **Interpretación de la Average Precision:** un valor de 0.17 con 1.6% de positivos es técnicamente sólido. El modelo genera falsos positivos inevitables a alta sensibilidad. Esto es aceptable en un sistema de alerta temprana: mejor priorizar un falso positivo que ignorar un desabastecimiento real.
 
