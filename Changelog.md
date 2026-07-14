@@ -5,6 +5,25 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 
 ---
 
+## [1.11.0] — 2026-07-13
+
+### Añadido
+- **`RECURSOS/Presentacion.pptx`**: presentación de 9 slides generada con python-pptx — portada con métricas reales, problema, datos, arquitectura, pipeline ETL, modelo ML (ROC-AUC 0.8374, top features), aplicación, impacto y equipo (BORRADOR)
+- **`backend/crear_presentacion.py`**: script reproducible para regenerar la presentación desde cero
+- **`CONTRIBUTING.md`**: guía de contribución — setup local, tests, convención de ramas, proceso de auditoría INN, checkpoint WAL obligatorio
+- **`reports/figures/feature_importance.png`** y **`roc_auc_badge.png`**: figuras regeneradas desde el modelo pkl actual (vía `backend/regenerar_figuras.py`)
+
+### Cambiado
+- **`frontend/src/App.tsx`**: ROC-AUC display `0.87` → `0.8374`
+- **`frontend/package.json`**: versión `0.0.0` → `1.10.0`
+- **`docs/model_card.md`**: `busquedas_norm` documentado como conectado a `busquedas_log` (30 días, normalizado 0–100→0–1.0); limitaciones actualizadas; métricas: 0.8374 / 0.1707
+- **`requirements.txt`**: eliminados `alembic==1.14.0` y `openpyxl==3.1.5` (no usados); añadidos `pytest>=7.4.0` y `pytest-asyncio>=0.21.0`
+- **`notebooks/04_modelo_predictivo.ipynb`**: métricas 0.8732 → 0.8374, 0.1720 → 0.1707; comentario sobre busquedas_norm/reportes_norm
+- **`notebooks/05_reportes_automaticos.ipynb`**: KPI ROC-AUC 0.8732 → 0.8374
+- **Métricas unificadas** en README.md, docs/conclusiones.md, docs/validacion_guide.md, docs/marco_metodologico.md: 0.8732 → 0.8374
+
+---
+
 ## [1.10.0] — 2026-07-13
 
 ### Cambiado

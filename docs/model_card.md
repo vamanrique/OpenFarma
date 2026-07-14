@@ -79,7 +79,7 @@ El modelo usa exactamente 15 variables en el orden de `FEATURE_COLS`.
 | 6 | `monopolio` | Binaria (0/1) | 1 si existe un único titular comercial. Los monopolios son más vulnerables a desabastecimiento. |
 | 7 | `grupo_atc_enc` | Categórica codificada | Categoría anatómica ATC de primer nivel, codificada numéricamente (A=0, B=1, C=2, ... V=15). |
 | 8 | `num_presentaciones_activas` | Entera ≥ 0 | Número de presentaciones activas bajo el mismo expediente CUM. |
-| 9 | `busquedas_norm` | Numérica [0,1] | Volumen de búsquedas recientes normalizado. Actualmente 0 para todos los productos (pendiente integración). |
+| 9 | `busquedas_norm` | Numérica [0,1] | Volumen de búsquedas en OpenFarma en los últimos 30 días, normalizado linealmente a escala 0–100 búsquedas → 0.0–1.0. Conectado a la tabla `busquedas_log`. Importancia efectiva ~0 en la fase actual debido a la acumulación limitada de datos (tabla creada recientemente). |
 | 10 | `reportes_norm` | Numérica [0,1] | Reportes ciudadanos de no disponibilidad recientes, normalizados. Cobertura baja en la fase actual. |
 
 ### 3.2 Historial INVIMA (5 variables)
@@ -163,7 +163,7 @@ Se verifica que el modelo no clasifique sistemáticamente como "de alto riesgo" 
 | Limitación | Impacto | Mitigación |
 |------------|---------|-----------|
 | **Baja tasa de positivos (1.6%)** | Alta sensibilidad genera falsos positivos. El nivel "Crítico" debe interpretarse como señal de alerta, no como diagnóstico definitivo. | Calibración Platt; uso de niveles de riesgo con semántica clara. |
-| **`busquedas_norm` y `reportes_norm` = 0** | Dos variables del modelo no aportan señal en la fase actual. El modelo opera efectivamente con 13 variables. | Pendiente integración de búsquedas y masa crítica de reportes ciudadanos. |
+| **`busquedas_norm` e importancia efectiva ~0** | `busquedas_norm` está conectada a `busquedas_log` pero aporta señal mínima por acumulación limitada de datos. `reportes_norm` también es casi cero por bajo volumen de reportes ciudadanos. El modelo opera efectivamente con ~13 variables de señal real. | La importancia crecerá conforme se acumule historial de búsquedas y reportes. |
 | **Historial limitado a 17 meses** | El modelo no captura estacionalidades anuales completas ni ciclos de desabastecimiento multianual. | Se ampliará conforme INVIMA publique nuevos comunicados. |
 | **Features CUM estáticas** | La estructura de mercado (competidores, presentaciones) se actualiza en cada reentrenamiento, no en tiempo real. | Reentrenamiento mensual sincronizado con publicaciones INVIMA. |
 | **Medicamentos sin historial INVIMA** | El 85–90% de los productos CUM tienen `invima_sev_actual = 0` por ausencia de alertas previas. Para estos, el modelo depende casi exclusivamente de variables de estructura de mercado. | El modelo retorna niveles "Bajo" o "Medio" con alta confianza para productos sin historial — interpretación correcta dado el prior. |

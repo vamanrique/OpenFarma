@@ -1,5 +1,5 @@
-"""
-Script standalone para poblar la tabla invima_seguimiento en farmavigia.db
+﻿"""
+Script standalone para poblar la tabla invima_seguimiento en openfarma.db
 a partir de los PDFs de seguimiento INVIMA en:
   C:\\Users\\aewal\\Downloads\\Desabastecidos INVIMA\\2025\\
   C:\\Users\\aewal\\Downloads\\Desabastecidos INVIMA\\2026\\
@@ -22,7 +22,7 @@ from etl.invima_parser import parsear_pdf
 # ---------------------------------------------------------------------------
 
 PDF_BASE = Path(r"C:\Users\aewal\Downloads\Desabastecidos INVIMA")
-DB_PATH = Path(r"C:\Users\aewal\farmavigia-concurso\backend\farmavigia.db")
+DB_PATH = Path(r"C:\Users\aewal\farmavigia-concurso\backend\openfarma.db")
 
 # Meses en español → número
 MESES_MAP = {

@@ -37,7 +37,7 @@ Que el estado INVIMA mostrado en OpenFarma coincide con el último comunicado of
 ## Validación 3 — Modelo Predictivo
 
 ### Qué verificar
-Que el ROC-AUC reportado (0.8732) es reproducible.
+Que el ROC-AUC reportado (0.8374) es reproducible.
 
 ### Pasos
 
@@ -56,8 +56,8 @@ python retrain_invima.py --db openfarma.db --eval-only
 
 **Salida esperada:**
 ```
-[EVAL] ROC-AUC (temporal split): 0.8732
-[EVAL] Avg Precision: 0.1720
+[EVAL] ROC-AUC (temporal split): 0.8374
+[EVAL] Avg Precision: 0.1707
 [EVAL] Test set: mar-may 2026 (3 meses), 1.6% positivos
 ```
 

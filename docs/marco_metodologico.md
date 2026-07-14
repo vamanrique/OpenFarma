@@ -78,8 +78,8 @@ Esta estrategia evita data leakage: el modelo nunca ve información futura duran
 
 | Métrica | Valor | Interpretación |
 |---------|-------|----------------|
-| ROC-AUC | 0.8732 | Excelente discriminación |
-| Avg Precision | 0.1720 | Alto en contexto de clase muy desbalanceada (1.6% positivos) |
+| ROC-AUC | 0.8374 | Excelente discriminación |
+| Avg Precision | 0.1707 | Alto en contexto de clase muy desbalanceada (1.6% positivos) |
 | Feature más importante | `invima_sev_actual` (28.3%) | La severidad del mes anterior es la señal más fuerte |
 
 **Pruebas de equidad (bias):** Verificación de que el modelo no clasifica sistemáticamente como anomalía a ningún grupo ATC específico por estructura de datos, sino por señal real de riesgo.

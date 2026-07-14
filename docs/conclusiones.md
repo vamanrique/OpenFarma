@@ -4,7 +4,7 @@
 
 ### 1. Es posible predecir el desabastecimiento con anticipación
 
-El modelo alcanzó **ROC-AUC 0.8732** con un split temporal honesto — sin ver el futuro durante el entrenamiento. Esto confirma que las señales en el CUM y en el historial INVIMA contienen información predictiva real, no artefactos de data leakage.
+El modelo alcanzó **ROC-AUC 0.8374** con un split temporal honesto — sin ver el futuro durante el entrenamiento. Esto confirma que las señales en el CUM y en el historial INVIMA contienen información predictiva real, no artefactos de data leakage.
 
 ### 2. El historial INVIMA es la señal más poderosa
 

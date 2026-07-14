@@ -12,7 +12,7 @@ El desabastecimiento de medicamentos afecta a millones de pacientes colombianos 
 
 **OpenFarma** resuelve esto con tres componentes:
 1. **Búsqueda inteligente** del Catálogo Único de Medicamentos (CUM) en tiempo real
-2. **Modelo predictivo** de desabastecimiento con ROC-AUC 0.87
+2. **Modelo predictivo** de desabastecimiento con ROC-AUC 0.8374
 3. **Canal ciudadano** de reporte de no disponibilidad → alimenta el modelo
 
 ---
