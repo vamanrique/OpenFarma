@@ -6,8 +6,6 @@ Esta carpeta contiene los materiales visuales del proyecto para el concurso Dato
 
 | Archivo | Descripción |
 |---------|-------------|
-| `Presentacion.pptx` | Presentación original en PowerPoint (6–8 diapositivas) |
-| `presentacion.pdf` | Presentación exportada a PDF |
-| `portada.png` | Imagen de portada del proyecto |
-
-> Los archivos de presentación se agregarán antes de la fecha de entrega del concurso.
+| `Presentacion.pptx` | Presentación en PowerPoint — 9 diapositivas |
+| `Presentacion.pdf` | Presentación exportada a PDF |
+| `portada.png` | Imagen de portada (2880×1620 px, generada desde la primera diapositiva) |
