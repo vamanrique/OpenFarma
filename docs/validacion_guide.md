@@ -89,4 +89,4 @@ GROUP BY dci_key, grupo_via, concentracion_norm;
 
 ## Contacto
 
-Para preguntas sobre la validación: farmavigia.app@gmail.com
+Para preguntas sobre la validación: vamanrique@gmail.com

@@ -157,7 +157,7 @@ openfarma/
 
 Concurso Datos al Ecosistema 2026 — Categoría Avanzado
 
-Contacto: farmavigia.app@gmail.com
+Contacto: vamanrique@gmail.com
 
 ---
 
