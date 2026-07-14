@@ -7,7 +7,6 @@ class PrediccionRead(BaseModel):
     id: int
     cum_id: str
     medicamento_nombre: Optional[str] = None
-    region_id: int
     fecha_prediccion: datetime
     probabilidad: float
     nivel_riesgo: str
