@@ -1,4 +1,4 @@
-"""
+﻿"""
 Correcciones sistemáticas de normalización en grupos_equivalencia:
   Phase 1:  HIOSCINA variants → BUTILBROMURO DE HIOSCINA
   Phase 2:  AMOXICILINA LIQUIDO_ORAL case/space deduplication
@@ -15,7 +15,7 @@ Correcciones sistemáticas de normalización en grupos_equivalencia:
 import json
 import sqlite3
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def merge_groups(cur, source_id: int, target_id: int, reason: str = "") -> int:

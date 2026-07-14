@@ -1,4 +1,4 @@
-"""
+﻿"""
 Fix accented characters in grupos_equivalencia.dci_key and cum_normalizado.principios_dci.
 ETL should strip accents from DCI names but some escaped normalization.
 """
@@ -7,7 +7,7 @@ import json
 import unicodedata
 import re
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def strip_accents(s: str) -> str:

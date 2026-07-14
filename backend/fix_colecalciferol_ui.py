@@ -1,4 +1,4 @@
-"""
+﻿"""
 Fix COLECALCIFEROL unit inconsistency in combination groups.
 CUM stores COLECALCIFEROL dosis_mg as UI value (e.g. 200, 800) for some products,
 while others store actual mg (e.g. 0.02 mg = 800 UI).
@@ -13,7 +13,7 @@ import sqlite3
 import json
 import re
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def fmt_ui(ui: float) -> str:

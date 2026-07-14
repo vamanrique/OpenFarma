@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc73.py — Septuagesimatercera ronda de auditoría.
 
 Correcciones — prefijos de género bacteriano en vacunas acelulares DTPa:
@@ -32,7 +32,7 @@ Correcciones — prefijos de género bacteriano en vacunas acelulares DTPa:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 NEW_DCI_3305 = (
     "FIMBRIAE 2/3||HEMAGLUTININA FILAMENTOSA||PERTACTINA||"

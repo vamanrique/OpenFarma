@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc37.py — Trigesimoseptima ronda de auditoría.
 
 Correcciones — sal de litio y sinonimia hierro sacarato:
@@ -13,7 +13,7 @@ Correcciones — sal de litio y sinonimia hierro sacarato:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

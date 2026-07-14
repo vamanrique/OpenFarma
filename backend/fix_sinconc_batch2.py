@@ -1,4 +1,4 @@
-"""
+﻿"""
 Second batch of SIN_CONCENTRACION and format fixes:
 
 1.  id=3793 METRONIDAZOL||NIFUROXAZIDA SIN_CONC -> id=22 '600 mg + 200 mg'
@@ -15,7 +15,7 @@ Second batch of SIN_CONCENTRACION and format fixes:
 import sqlite3
 import json
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def fix_cum_dci(cur, cum_ids: list, new_key: str):

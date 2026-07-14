@@ -1,4 +1,4 @@
-"""
+﻿"""
 Migración: normaliza dci_key en grupos_equivalencia y principios_dci en cum_normalizado.
 Corrige variantes -ina/-ino de fluoroquinolonas, eritropoyetinas, y otros sinónimos.
 """
@@ -7,7 +7,7 @@ import json
 import sys
 from datetime import datetime
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 # Mapa de renombrado: old_dci -> new_dci (para componentes individuales)
 DCI_RENAMES: dict[str, str] = {

@@ -31,8 +31,8 @@ def main():
     parser = argparse.ArgumentParser(description="Actualización manual de datos INVIMA")
     parser.add_argument(
         "--db", type=Path,
-        default=Path(__file__).parent / "farmavigia.db",
-        help="Ruta a farmavigia.db (default: backend/farmavigia.db)",
+        default=Path(__file__).parent / "openfarma.db",
+        help="Ruta a openfarma.db (default: backend/openfarma.db)",
     )
     parser.add_argument("--anio", type=int, default=None, help="Filtrar por año (ej: 2026)")
     parser.add_argument("--retrain", action="store_true",

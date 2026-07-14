@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc33.py — Trigesimotercera ronda de auditoría.
 
 Correcciones — sinonimia de INN y merges:
@@ -16,7 +16,7 @@ Correcciones — sinonimia de INN y merges:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

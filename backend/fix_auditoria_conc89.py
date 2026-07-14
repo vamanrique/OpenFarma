@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc89.py — Octogesimanovena ronda de auditoría.
 
   A) id=3623 (Technescan MAG3, kit renal):
@@ -27,7 +27,7 @@ fix_auditoria_conc89.py — Octogesimanovena ronda de auditoría.
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

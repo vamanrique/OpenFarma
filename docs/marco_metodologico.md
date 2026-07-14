@@ -1,6 +1,6 @@
 # Marco Metodológico — CRISP-ML(Q)
 
-FarmaVigia sigue el ciclo **CRISP-ML(Q)** (Cross-Industry Standard Process for Machine Learning with Quality Assurance), adaptado al contexto de datos abiertos y salud pública colombiana.
+OpenFarma sigue el ciclo **CRISP-ML(Q)** (Cross-Industry Standard Process for Machine Learning with Quality Assurance), adaptado al contexto de datos abiertos y salud pública colombiana.
 
 ---
 

@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc42.py — Cuadragesimosegunda ronda de auditoría.
 
 Correcciones — GLICERINA -> GLICEROL (INN oficial WHO = glycerol):
@@ -18,7 +18,7 @@ Correcciones — GLICERINA -> GLICEROL (INN oficial WHO = glycerol):
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

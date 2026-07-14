@@ -1,4 +1,4 @@
-"""
+﻿"""
 Correcciones post-DeepSeek: arregla concentraciones incorrectas o mal formateadas.
 
 Cambios:
@@ -9,7 +9,7 @@ Cambios:
 import sqlite3, sys
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 # ── A. Revertir a SIN_CONCENTRACION ─────────────────────────────────────────
 REVERT = {

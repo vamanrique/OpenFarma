@@ -1,17 +1,17 @@
-# FarmaVigia Concurso — CLAUDE.md
+# OpenFarma Concurso — CLAUDE.md
 
 ## Proyecto
 
-FarmaVigia es una aplicación para el concurso de datos.gov.co Colombia.
+OpenFarma es una aplicación para el concurso de datos.gov.co Colombia.
 Ruta local: `C:\Users\aewal\farmavigia-concurso`
 Repositorio: https://github.com/vamanrique/OpenFarma
 Deploy: Railway (auto-deploy desde main)
 
 ## Stack
 
-- **Backend**: FastAPI + SQLAlchemy + SQLite (`backend/farmavigia.db`)
+- **Backend**: FastAPI + SQLAlchemy + SQLite (`backend/openfarma.db`)
 - **Frontend**: React + Vite + Tailwind (directorio `frontend/`)
-- **DB en Railway**: `/data/farmavigia.db` (volumen persistente, se sobrescribe desde bundle en cada deploy)
+- **DB en Railway**: `/data/openfarma.db` (volumen persistente, se sobrescribe desde bundle en cada deploy)
 - **Python env**: `.venv/Scripts/python.exe` o `source .venv/Scripts/activate`
 - **AI**: DeepSeek API para clasificación farmacológica (clave en `backend/.env`)
 
@@ -19,9 +19,9 @@ Deploy: Railway (auto-deploy desde main)
 
 - Auto-deploy desde `main` via GitHub webhook
 - **nixpacks.toml** (raíz): instala Python + Node 20, ejecuta `pip install` + `npm ci && npm run build`
-- **start.sh**: copia siempre `backend/farmavigia.db` → `/data/farmavigia.db` (fuente de verdad = git)
+- **start.sh**: copia siempre `backend/openfarma.db` → `/data/openfarma.db` (fuente de verdad = git)
 - Cambios a `frontend/src/**` → hacer `npm run build` localmente + commitear `frontend/dist/` (Railway también lo recompila, pero es más rápido commitear el dist)
-- **WAL checkpoint**: antes de commitear `farmavigia.db`, abrir conexión SQLite y ejecutar `PRAGMA wal_checkpoint(TRUNCATE)` para que los cambios pasen del WAL al archivo principal
+- **WAL checkpoint**: antes de commitear `openfarma.db`, abrir conexión SQLite y ejecutar `PRAGMA wal_checkpoint(TRUNCATE)` para que los cambios pasen del WAL al archivo principal
 
 ## Pipeline INVIMA
 
@@ -99,7 +99,7 @@ Escala de severidad: 0=sin alerta, 1=descontinuado, 2=no comercializado, 3=en mo
 
 ```bash
 # Desde la raíz del repo (no desde backend/)
-.venv/Scripts/python.exe retrain_invima.py --db farmavigia.db
+.venv/Scripts/python.exe retrain_invima.py --db openfarma.db
 # Luego commitear backend/data/modelo_rf.pkl
 ```
 
@@ -328,15 +328,15 @@ cd backend
 .venv/Scripts/python.exe fix_xxx.py --dry-run   # verificar
 .venv/Scripts/python.exe fix_xxx.py              # aplicar
 
-# Antes de commitear farmavigia.db — checkpoint WAL obligatorio:
-.venv/Scripts/python.exe -c "import sqlite3; c=sqlite3.connect('farmavigia.db'); c.execute('PRAGMA wal_checkpoint(TRUNCATE)'); c.close()"
+# Antes de commitear openfarma.db — checkpoint WAL obligatorio:
+.venv/Scripts/python.exe -c "import sqlite3; c=sqlite3.connect('openfarma.db'); c.execute('PRAGMA wal_checkpoint(TRUNCATE)'); c.close()"
 
 # Frontend (si se cambia código React)
 cd frontend && npm run build   # genera frontend/dist/
 cd ..
 
 # Commit y push
-git add backend/farmavigia.db frontend/dist/ ...
+git add backend/openfarma.db frontend/dist/ ...
 git commit -m "tipo: descripcion"
 git push
 # Railway hace redeploy automático desde main

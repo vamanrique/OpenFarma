@@ -1,4 +1,4 @@
-"""
+﻿"""
 Ronda 105 — Normalización de principios_dci en cum_normalizado.
 
 Sincroniza principios_dci con el dci_key del grupo asignado para 700 productos
@@ -33,7 +33,7 @@ import sys
 from datetime import datetime
 
 DRY_RUN = '--dry-run' in sys.argv
-DB = 'farmavigia.db'
+DB = 'openfarma.db'
 
 conn = sqlite3.connect(DB)
 c = conn.cursor()

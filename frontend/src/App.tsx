@@ -107,7 +107,7 @@ export default function App() {
       {/* Navegación por pestañas */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <nav className="flex -mb-px overflow-x-auto scrollbar-none" role="tablist" aria-label="Secciones de FarmaVigia">
+          <nav className="flex -mb-px overflow-x-auto scrollbar-none" role="tablist" aria-label="Secciones de OpenFarma">
             {TABS.map((t) => (
               <Fragment key={t.id}>
                 <button

@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc65.py — Sexagesimoquinta ronda de auditoría.
 
 Correcciones — nomenclatura vacunas (3 grupos):
@@ -19,7 +19,7 @@ Correcciones — nomenclatura vacunas (3 grupos):
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

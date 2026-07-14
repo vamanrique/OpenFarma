@@ -1,4 +1,4 @@
-"""
+﻿"""
 Fix two vitamin unit/classification bugs:
 
 1. ACIDO ASCORBICO id=975 (50000 UI) — 4 products "Vitamina A Capsulas"
@@ -12,7 +12,7 @@ Fix two vitamin unit/classification bugs:
 import sqlite3
 import json
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def merge_into(cur, drop_id: int, keep_id: int):

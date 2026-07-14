@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc62.py — Sexagesimosegunda ronda de auditoría.
 
 Correcciones — nombres inconsistentes para vacuna Hepatitis A (todas INYECTABLE SIN_CONC):
@@ -18,7 +18,7 @@ Correcciones — nombres inconsistentes para vacuna Hepatitis A (todas INYECTABL
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc39.py — Trigesimanovena ronda de auditoría.
 
 Correcciones — oftálmicos: sinonimia y forma INN:
@@ -23,7 +23,7 @@ Correcciones — oftálmicos: sinonimia y forma INN:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

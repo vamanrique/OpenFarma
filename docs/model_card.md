@@ -1,4 +1,4 @@
-# Model Card — FarmaVigia: Modelo de Predicción de Desabastecimiento Farmacéutico
+# Model Card — OpenFarma: Modelo de Predicción de Desabastecimiento Farmacéutico
 
 **Versión del modelo:** 1.0.0  
 **Fecha de entrenamiento:** Julio 2026  
@@ -214,7 +214,7 @@ El modelo debe reentrenarse mensualmente, después de que INVIMA publique el nue
 
 ```bash
 # Desde la raíz del repositorio
-.venv/Scripts/python.exe retrain_invima.py --db farmavigia.db
+.venv/Scripts/python.exe retrain_invima.py --db openfarma.db
 ```
 
 ### Criterios de aceptación antes de subir a producción
@@ -246,7 +246,7 @@ El background task `_loop_viernes_invima()` en `backend/app/main.py` verifica ca
 
 ### Reproducibilidad
 
-El modelo es reproducible dado el mismo snapshot de `farmavigia.db` y el mismo código de `retrain_invima.py`. El split temporal es determinístico (basado en fechas, no en semillas aleatorias). La aleatoriedad interna de `RandomForestClassifier` se fija con `random_state`.
+El modelo es reproducible dado el mismo snapshot de `openfarma.db` y el mismo código de `retrain_invima.py`. El split temporal es determinístico (basado en fechas, no en semillas aleatorias). La aleatoriedad interna de `RandomForestClassifier` se fija con `random_state`.
 
 ### Marco metodológico
 

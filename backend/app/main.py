@@ -15,13 +15,13 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 # ── Seed DB from bundled file if Railway volume path differs ─────────────────
-# The bundled farmavigia.db (committed to git) is always the canonical source.
-# On Railway, DATABASE_URL points to /data/farmavigia.db (persistent volume).
+# The bundled openfarma.db (committed to git) is always the canonical source.
+# On Railway, DATABASE_URL points to /data/openfarma.db (persistent volume).
 # Without this step, the volume keeps an old DB and git DB fixes are never used.
 _DATABASE_URL = os.getenv("DATABASE_URL", "")
-if _DATABASE_URL.startswith("sqlite:///") and _DATABASE_URL != "sqlite:///./farmavigia.db":
+if _DATABASE_URL.startswith("sqlite:///") and _DATABASE_URL != "sqlite:///./openfarma.db":
     _volume_path = Path(_DATABASE_URL.replace("sqlite:///", ""))
-    _bundled_db  = Path(__file__).parent.parent / "farmavigia.db"
+    _bundled_db  = Path(__file__).parent.parent / "openfarma.db"
     if _bundled_db.exists() and _bundled_db.stat().st_size > 0:
         if _bundled_db.resolve() != _volume_path.resolve():
             _volume_path.parent.mkdir(parents=True, exist_ok=True)
@@ -82,9 +82,9 @@ async def _loop_viernes_invima():
         _ultima_ejecucion = hoy
         logger.info("Viernes — verificando nuevos PDFs INVIMA...")
 
-        db_path = Path(__file__).parent.parent / "farmavigia.db"
+        db_path = Path(__file__).parent.parent / "openfarma.db"
         _db_env = os.getenv("DATABASE_URL", "")
-        if _db_env.startswith("sqlite:///") and _db_env != "sqlite:///./farmavigia.db":
+        if _db_env.startswith("sqlite:///") and _db_env != "sqlite:///./openfarma.db":
             db_path = Path(_db_env.replace("sqlite:///", ""))
 
         try:

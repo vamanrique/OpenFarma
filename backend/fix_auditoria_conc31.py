@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc31.py — Trigesimoprima ronda de auditoría.
 
 Correcciones — normalización TOCOFEROL (INN) y FLUORURO:
@@ -20,7 +20,7 @@ Correcciones — normalización TOCOFEROL (INN) y FLUORURO:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

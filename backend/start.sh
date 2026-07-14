@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-DATA_DB="/data/farmavigia.db"
-BUNDLE_DB="/app/backend/farmavigia.db"
+DATA_DB="/data/openfarma.db"
+BUNDLE_DB="/app/backend/openfarma.db"
 
 if [ ! -f "$BUNDLE_DB" ]; then
   echo "WARN: bundle DB no encontrado en $BUNDLE_DB"
@@ -12,8 +12,8 @@ else
   python3 - <<'PYEOF'
 import sqlite3, shutil, os
 
-DATA_DB   = "/data/farmavigia.db"
-BUNDLE_DB = "/app/backend/farmavigia.db"
+DATA_DB   = "/data/openfarma.db"
+BUNDLE_DB = "/app/backend/openfarma.db"
 
 # Tablas con datos generados por usuarios — deben sobrevivir cada deploy
 PRESERVE = ["reportes_no_disponibilidad", "consultas_region"]

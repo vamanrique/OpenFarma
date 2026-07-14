@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc94.py — Nonagésimocuarta ronda de auditoría.
 
   A) Split id=2755 (HIERRO | LIQUIDO_ORAL | 25 mg/mL, 12 productos):
@@ -30,7 +30,7 @@ fix_auditoria_conc94.py — Nonagésimocuarta ronda de auditoría.
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 SULFATO_EXPS = {"19963969", "19963970", "19995854", "19998072", "20071876"}
 GLUCONATO_EXPS = {"20092846"}

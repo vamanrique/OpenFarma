@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc60.py — Sexagesima ronda de auditoría.
 
 Correcciones — typos de letras en combos y orden incorrecto:
@@ -15,7 +15,7 @@ Correcciones — typos de letras en combos y orden incorrecto:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

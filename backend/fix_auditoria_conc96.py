@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc96.py — Nonagésimosexta ronda de auditoría.
 
   A) HEPARINA | INYECTABLE | '25 UI' (id=2670) → SIN_CONCENTRACION:
@@ -30,7 +30,7 @@ fix_auditoria_conc96.py — Nonagésimosexta ronda de auditoría.
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc3.py — Tercera ronda de auditoría.
 
 Correcciones:
@@ -10,7 +10,7 @@ Correcciones:
 import sqlite3, sys, re, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 # ── A. DCI key replacements ──────────────────────────────────────────────────
 # Formato: (substring_a_buscar, reemplazar_por)

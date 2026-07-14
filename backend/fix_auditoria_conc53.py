@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc53.py — Quincuagesimotercera ronda de auditoría.
 
 Correcciones — sufijo -o faltante en combos:
@@ -13,7 +13,7 @@ Correcciones — sufijo -o faltante en combos:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

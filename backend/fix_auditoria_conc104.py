@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc104.py — Centésimonovena ronda de auditoría.
 
   A) IOPRAMIDA → IOPROMIDA (WHO INN: iopromide, V08AB05):
@@ -18,7 +18,7 @@ fix_auditoria_conc104.py — Centésimonovena ronda de auditoría.
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

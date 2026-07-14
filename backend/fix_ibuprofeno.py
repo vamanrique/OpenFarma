@@ -1,4 +1,4 @@
-"""
+﻿"""
 Fix ibuprofeno grupos_equivalencia fragmentation:
   Phase 1: Merge HIOSCINA/HIOSCINA BUTILBROMURO groups → BUTILBROMURO DE HIOSCINA (canonical)
   Phase 2: Merge LIQUIDO_ORAL ibuprofeno 100mg/5mL → 20mg/mL (same concentration)
@@ -10,7 +10,7 @@ import sqlite3
 import requests
 import re
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def _load_deepseek_key():

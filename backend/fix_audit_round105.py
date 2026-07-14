@@ -1,17 +1,17 @@
-"""
+﻿"""
 Comprehensive audit fix script - Round 105
 Fixes normalization issues found in grupos_equivalencia table.
 """
 import sqlite3
 import json
 
-DB_PATH = 'farmavigia.db'
+DB_PATH = 'openfarma.db'
 
 def run_fixes():
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
 
-    print("=== FARMAVIGIA AUDIT FIX ROUND 105 ===")
+    print("=== OpenFarma AUDIT FIX ROUND 105 ===")
     print()
 
     fixes_applied = 0

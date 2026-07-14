@@ -1,4 +1,4 @@
-"""
+﻿"""
 Fix INHALADO grupos_equivalencia concentracion_norm:
   - Convert sub-2mg dose values from 'X mg' format to 'X mcg/dosis' format
   - Handle combinations: 'A mcg + B mcg/dosis' in dci_key alphabetical order
@@ -9,7 +9,7 @@ Fix INHALADO grupos_equivalencia concentracion_norm:
 import sqlite3
 import json
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 MCG_THRESHOLD_MG = 2.0  # doses < 2 mg → convert to mcg
 
 

@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc43.py — Cuadragesimotercera ronda de auditoría.
 
 Correcciones — ACIDO HIALURONICO -> HIALURONATO DE SODIO (conv. DB: sal sódica estándar):
@@ -15,7 +15,7 @@ Correcciones — ACIDO HIALURONICO -> HIALURONATO DE SODIO (conv. DB: sal sódic
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

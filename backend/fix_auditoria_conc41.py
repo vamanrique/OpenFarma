@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc41.py — Cuadragesimoprimera ronda de auditoría.
 
 Correcciones — POVIDONA IODADA -> POVIDONA YODADA (conv. DB: español estándar):
@@ -15,7 +15,7 @@ Correcciones — POVIDONA IODADA -> POVIDONA YODADA (conv. DB: español estánda
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

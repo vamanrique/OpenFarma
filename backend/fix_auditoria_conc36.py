@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc36.py — Trigesimosexta ronda de auditoría.
 
 Correcciones — INN ORS/laxantes e hidratación estándar:
@@ -19,7 +19,7 @@ Correcciones — INN ORS/laxantes e hidratación estándar:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

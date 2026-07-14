@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc92.py — Nonagésimosegunda ronda de auditoría.
 
 Correcciones de formulaciones especiales y preparaciones de hierro:
@@ -35,7 +35,7 @@ Correcciones de formulaciones especiales y preparaciones de hierro:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

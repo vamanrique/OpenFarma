@@ -1,4 +1,4 @@
-"""
+﻿"""
 Fix incorrect salt/compound word order in dci_key:
 - CALCIO GLUCONATO -> GLUCONATO DE CALCIO
 - CALCIO LEVULINATO -> LEVULINATO DE CALCIO
@@ -13,7 +13,7 @@ Note: CONDROITINA SULFATO, GLUCOSAMINA SULFATO are correct INN forms (no change)
 import sqlite3
 import json
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 # Substitution map: old_fragment -> new_fragment
 RENAMES = {

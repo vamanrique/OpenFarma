@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc83.py — Octogesimotercera ronda de auditoría.
 
 Correcciones en radiofármacos:
@@ -25,7 +25,7 @@ Correcciones en radiofármacos:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 MO_TC = "MOLIBDATO DE SODIO (99MO)||PERTECNETATO DE SODIO (99MTC)"
 

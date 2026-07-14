@@ -52,12 +52,12 @@
 
 ---
 
-## 4. Reportes Ciudadanos — FarmaVigia
+## 4. Reportes Ciudadanos — OpenFarma
 
 | Campo | Valor |
 |-------|-------|
 | **Nombre** | Reportes de No Disponibilidad |
-| **Origen** | Formulario propio en FarmaVigia |
+| **Origen** | Formulario propio en OpenFarma |
 | **Tabla** | `reportes_no_disponibilidad` (SQLite) |
 | **Campos capturados** | `cum_id`, `fecha_reporte`, `descripcion` |
 | **Uso en modelo** | Feature `reportes_norm`: conteo de reportes recientes normalizado |

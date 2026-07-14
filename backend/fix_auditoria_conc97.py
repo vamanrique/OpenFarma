@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc97.py — Nonagésimoseptima ronda de auditoría.
 
   A) GUAIACOLATO DE GLICERILO → GUAIFENESINA (WHO INN: guaifenesin):
@@ -26,7 +26,7 @@ fix_auditoria_conc97.py — Nonagésimoseptima ronda de auditoría.
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

@@ -1,4 +1,4 @@
-# FarmaVigia — Sistema de Alerta Temprana de Desabastecimiento Farmacéutico
+# OpenFarma — Sistema de Alerta Temprana de Desabastecimiento Farmacéutico
 
 **Nivel:** Avanzado · **Concurso:** Datos al Ecosistema 2026 · **datos.gov.co**
 
@@ -10,7 +10,7 @@
 
 El desabastecimiento de medicamentos afecta a millones de pacientes colombianos cada año. Las alertas del INVIMA llegan tarde — cuando el problema ya es crítico. No existe un sistema público que integre señales tempranas (variaciones en el mercado, historial de alertas, reportes ciudadanos) para anticipar escasez.
 
-**FarmaVigia** resuelve esto con tres componentes:
+**OpenFarma** resuelve esto con tres componentes:
 1. **Búsqueda inteligente** del Catálogo Único de Medicamentos (CUM) en tiempo real
 2. **Modelo predictivo** de desabastecimiento con ROC-AUC 0.87
 3. **Canal ciudadano** de reporte de no disponibilidad → alimenta el modelo
@@ -24,7 +24,7 @@ El desabastecimiento de medicamentos afecta a millones de pacientes colombianos 
 | Catálogo Único de Medicamentos (CUM) activos | [datos.gov.co · i7cb-raxc](https://www.datos.gov.co/resource/i7cb-raxc.json) | ~52,000 presentaciones |
 | CUM — Registros en trámite de renovación | [datos.gov.co · vgr4-gemg](https://www.datos.gov.co/resource/vgr4-gemg.json) | ~8,000 registros |
 | Historial de alertas INVIMA (PDF) | Portal INVIMA | 17 meses, 9,795 entradas (ene 2025 – may 2026) |
-| Reportes ciudadanos | FarmaVigia (formulario propio) | En crecimiento |
+| Reportes ciudadanos | OpenFarma (formulario propio) | En crecimiento |
 
 ---
 
@@ -53,8 +53,8 @@ El desabastecimiento de medicamentos afecta a millones de pacientes colombianos 
 
 | Métrica | Valor | Interpretación |
 |---------|-------|----------------|
-| ROC-AUC | **0.8732** | Discriminación excelente |
-| Avg Precision | 0.1720 | Alta en contexto de 1.6% positivos |
+| ROC-AUC | **0.8374** | Discriminación excelente |
+| Avg Precision | 0.1707 | Alta en contexto de 1.6% positivos |
 | Split | Temporal honesto | Últimos 3 meses = test; nunca vio el futuro |
 
 **Tipo:** `CalibratedClassifierCV` sobre `RandomForestClassifier` (scikit-learn 1.9.0)
@@ -126,7 +126,7 @@ El frontend queda disponible en `http://localhost:5173`
 ## Estructura del Repositorio
 
 ```
-farmavigia-concurso/
+openfarma/
 ├── RECURSOS/               # Presentación del proyecto
 ├── README.md
 ├── LICENSE
@@ -139,7 +139,7 @@ farmavigia-concurso/
 │   ├── app/                # API FastAPI
 │   ├── etl/                # Pipeline de datos (INVIMA, CUM, transformación)
 │   ├── data/               # Modelo ML y datos auxiliares
-│   └── farmavigia.db       # SQLite con CUM normalizado y grupos
+│   └── openfarma.db        # SQLite con CUM normalizado y grupos
 ├── frontend/
 │   └── src/                # React + Tailwind
 └── reports/                # Figuras y reporte final

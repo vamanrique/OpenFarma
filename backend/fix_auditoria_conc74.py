@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc74.py — Septuagesimaocuarta ronda de auditoría.
 
 Correcciones — nombres de virus en vacunas virales:
@@ -25,7 +25,7 @@ Correcciones — nombres de virus en vacunas virales:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 NEW_DCI_3002 = (
     "VIRUS DE LA PAROTIDITIS VIVO ATENUADO||"

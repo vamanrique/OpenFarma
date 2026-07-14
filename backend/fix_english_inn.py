@@ -1,4 +1,4 @@
-"""
+﻿"""
 Rename English INN drug names to Spanish INN and merge into existing Spanish groups.
 Also fix AVANTIUM brand-name misclassification -> DEFLAZACORT.
 
@@ -18,7 +18,7 @@ Merges:
 import sqlite3
 import json
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 MERGES = [
     # (drop_id, keep_id, new_key_for_drop_products)

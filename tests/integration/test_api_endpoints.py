@@ -1,7 +1,7 @@
 """
-Pruebas de integración: endpoints clave de la API FarmaVigia.
+Pruebas de integración: endpoints clave de la API OpenFarma.
 
-Usa TestClient contra la app real con la DB de backend/farmavigia.db.
+Usa TestClient contra la app real con la DB de backend/openfarma.db.
 Todos los tests son de sólo lectura — no modifican datos.
 """
 import sys

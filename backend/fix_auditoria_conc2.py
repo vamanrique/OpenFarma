@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc2.py — Segunda ronda de auditoría de concentraciones.
 
 Correcciones:
@@ -13,7 +13,7 @@ Correcciones:
 import sqlite3, sys, re, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def fmt(val: float) -> str:

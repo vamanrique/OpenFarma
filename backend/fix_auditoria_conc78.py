@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc78.py — Septuagesimaoctava ronda de auditoría.
 
 Correcciones:
@@ -16,7 +16,7 @@ Correcciones:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 NEW_DCI_3507 = (
     "VIRUS DE LA PAROTIDITIS (CEPA JERYL LYNN)||"

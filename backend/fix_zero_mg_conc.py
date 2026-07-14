@@ -1,4 +1,4 @@
-"""
+﻿"""
 Fix concentration display bugs for sub-mg dose drugs:
 
 1. LEVOTIROXINA id=849 '125 mg' -> '0.125 mg' (CUM stored 125 mcg as 125 in dosis_mg)
@@ -16,7 +16,7 @@ Fix concentration display bugs for sub-mg dose drugs:
 import sqlite3
 import json
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def get_product_dose(cur, cid: str, dci_key: str) -> float | None:

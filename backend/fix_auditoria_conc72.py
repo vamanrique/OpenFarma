@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc72.py — Septuagesimasegunda ronda de auditoría.
 
 Correcciones — nombres de componentes vacunales inconsistentes:
@@ -27,7 +27,7 @@ Correcciones — nombres de componentes vacunales inconsistentes:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 NEW_DCI_2969 = "ANTIGENO DE SUPERFICIE DEL VIRUS DE LA HEPATITIS B||VIRUS DE LA HEPATITIS A (INACTIVADO)"
 

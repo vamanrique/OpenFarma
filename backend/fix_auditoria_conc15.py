@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc15.py — Decimoquinta ronda de auditoría.
 
 Correcciones — LIQUIDO_ORAL multi-componente con concentración incompleta o sumada:
@@ -28,7 +28,7 @@ Correcciones — LIQUIDO_ORAL multi-componente con concentración incompleta o s
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def merge_into(con, keep_id: int, del_id: int) -> int:

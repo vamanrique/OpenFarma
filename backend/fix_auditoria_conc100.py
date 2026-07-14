@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc100.py — Centésima ronda de auditoría.
 
   A) HIDROXICOBALAMINA → HIDROXOCOBALAMINA (WHO INN-Sp):
@@ -37,7 +37,7 @@ fix_auditoria_conc100.py — Centésima ronda de auditoría.
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc87.py — Octogesimoseptima ronda de auditoría.
 
 Correcciones INN de terapias génicas y biológicos:
@@ -25,7 +25,7 @@ Correcciones INN de terapias génicas y biológicos:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

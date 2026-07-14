@@ -1,4 +1,4 @@
-"""
+﻿"""
 Fix remaining problematic grupos_equivalencia:
 
 1. id=3789 PARACETAMOL||TRAMADOL SIN_CONC -> merge into id=147 "325 mg + 37.5 mg"
@@ -20,7 +20,7 @@ Fix remaining problematic grupos_equivalencia:
 import sqlite3
 import json
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def fix_cum_dci(cur, cum_ids: list, new_key: str):

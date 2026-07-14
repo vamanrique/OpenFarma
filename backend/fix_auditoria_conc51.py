@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc51.py — Quincuagesimoprimera ronda de auditoría.
 
 Correcciones — nombres inglés sin sufijo -o/-a (español INN requiere terminación):
@@ -34,7 +34,7 @@ Correcciones — nombres inglés sin sufijo -o/-a (español INN requiere termina
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

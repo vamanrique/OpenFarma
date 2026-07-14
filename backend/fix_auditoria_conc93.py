@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc93.py — Nonagésimotercera ronda de auditoría.
 
   A) id=683 (Sulfato Ferroso Tabletas Recubiertas, 35 productos):
@@ -33,7 +33,7 @@ fix_auditoria_conc93.py — Nonagésimotercera ronda de auditoría.
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 LIPOSOMAL_DOXO_EXPEDIENTES = {"19969115", "20037727"}
 LIPOSOMAL_DOXO_CIDS = {"20213556-2"}

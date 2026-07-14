@@ -275,7 +275,7 @@ def verificar_y_actualizar(
     El mes/año se infiere del contenido del PDF descargado, no del URL ni del filename.
 
     Args:
-        db_path:   ruta a farmavigia.db
+        db_path:   ruta a openfarma.db
         temp_dir:  directorio donde guardar PDFs descargados (None = tempfile)
         solo_anio: si se especifica, solo procesar PDFs de ese año
 
@@ -388,8 +388,8 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Scraper INVIMA desabastecimiento")
     parser.add_argument("--db", type=Path,
-                        default=Path(__file__).parent.parent / "farmavigia.db",
-                        help="Ruta a farmavigia.db")
+                        default=Path(__file__).parent.parent / "openfarma.db",
+                        help="Ruta a openfarma.db")
     parser.add_argument("--anio", type=int, default=None,
                         help="Filtrar solo PDFs de este año (ej: 2026)")
     parser.add_argument("--check-only", action="store_true",

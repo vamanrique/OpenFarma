@@ -1,4 +1,4 @@
-"""
+﻿"""
 Fix metronidazol issues in cum_normalizado:
   Phase 1: Fix wrong ATC codes for oral/tablet metronidazol
            (A01AB17 = dental, G01AF20 = combo vaginal → P01AB01 for systemic oral/tablet)
@@ -11,7 +11,7 @@ import json
 import sqlite3
 import requests
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def _load_deepseek_key():

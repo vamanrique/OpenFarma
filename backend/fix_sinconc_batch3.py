@@ -1,4 +1,4 @@
-"""
+﻿"""
 Batch 3 fixes:
 
 1.  id=3787 IBUPROFENO||PARACETAMOL SIN_CONC -> '400 mg + 500 mg' (Algimide F confirmed)
@@ -21,7 +21,7 @@ Batch 3 fixes:
 import sqlite3
 import json
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def fix_cum_dci(cur, cum_ids: list, new_key: str):

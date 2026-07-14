@@ -1,6 +1,6 @@
 # Changelog
 
-Todos los cambios relevantes del proyecto FarmaVigia se documentan aquí.
+Todos los cambios relevantes del proyecto OpenFarma se documentan aquí.
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 
 ---
@@ -26,7 +26,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 - **`busquedas_norm` conectado a datos reales**: cada búsqueda registra los CUMs retornados en `busquedas_log` (background task asíncrona); el modelo normaliza búsquedas de los últimos 30 días (0–100 búsquedas = 0–1.0)
 - **Tabla `busquedas_log`**: nueva tabla creada via migración idempotente en startup (`_crear_busquedas_log`)
 - **Tests de integración API**: `tests/integration/test_api_endpoints.py` — 10 tests con TestClient (búsqueda fallback, predicción, dashboard vigilancia, reportes, grupos)
-- **`tests/conftest.py`**: configura `DATABASE_URL` antes de cualquier import de app, resuelve path al DB real en `backend/farmavigia.db`
+- **`tests/conftest.py`**: configura `DATABASE_URL` antes de cualquier import de app, resuelve path al DB real en `backend/openfarma.db`
 
 ### Corregido
 - **`.gitattributes`**: añadido `*.db binary` para prevenir que `core.autocrlf=true` en Windows corrompa el archivo binario SQLite al hacer checkout (causa raíz de corrupción del DB local detectada y eliminada)
@@ -161,4 +161,4 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 
 ---
 
-*FarmaVigia — Concurso Datos al Ecosistema 2026*
+*OpenFarma — Concurso Datos al Ecosistema 2026*

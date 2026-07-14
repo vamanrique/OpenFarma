@@ -58,16 +58,16 @@
 
 ## Uso Responsable
 
-### Lo que FarmaVigia ES:
+### Lo que OpenFarma ES:
 - Un sistema de alerta temprana basado en datos públicos
 - Una herramienta de consulta para ciudadanos y profesionales
 - Un canal de reporte ciudadano para complementar la vigilancia oficial
 
-### Lo que FarmaVigia NO ES:
+### Lo que OpenFarma NO ES:
 - Un sustituto de la consulta médica para cambio de medicamento
 - Un predictor definitivo (falsos positivos y negativos son esperables)
 - Un sistema de regulación — no reemplaza las competencias del INVIMA
 
 ### Limitación de responsabilidad
 
-FarmaVigia integra datos abiertos del INVIMA y del CUM. La información se presenta con fines informativos. Las decisiones clínicas siempre deben tomarse con un profesional de salud. Los titulares del proyecto no son responsables de decisiones tomadas únicamente con base en las predicciones del sistema.
+OpenFarma integra datos abiertos del INVIMA y del CUM. La información se presenta con fines informativos. Las decisiones clínicas siempre deben tomarse con un profesional de salud. Los titulares del proyecto no son responsables de decisiones tomadas únicamente con base en las predicciones del sistema.

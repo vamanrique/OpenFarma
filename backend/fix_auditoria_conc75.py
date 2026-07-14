@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc75.py — Septuagesimacinquinta ronda de auditoría.
 
 Correcciones:
@@ -26,7 +26,7 @@ Correcciones:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 FLU_CANONICAL = (
     "INFLUENZA A H1N1||INFLUENZA A H3N2||"

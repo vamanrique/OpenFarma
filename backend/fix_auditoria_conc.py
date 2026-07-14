@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc.py — Auditoría y corrección de concentracion_norm en grupos_equivalencia.
 
 Correcciones aplicadas:
@@ -15,7 +15,7 @@ Correcciones aplicadas:
 import sqlite3, sys, re, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 # ── A. OFTALMICO % → mg/mL ───────────────────────────────────────────────────
 # Regla: 1% = 10 mg/mL. Grupos mixtos (UI+%) → SIN_CONCENTRACION

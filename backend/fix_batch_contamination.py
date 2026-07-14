@@ -1,4 +1,4 @@
-"""
+﻿"""
 Fix batch DCI contamination in groups with ids ~3789-3912.
 These groups have wrong dci_key (brand names or wrong INNs).
 Strategy:
@@ -10,7 +10,7 @@ import sqlite3
 import json
 from collections import Counter
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 # Groups confirmed to have correct dci_key (legitimate new LP/specialty groups)
 SKIP_IDS = {

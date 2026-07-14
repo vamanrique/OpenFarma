@@ -1,4 +1,4 @@
-"""
+﻿"""
 Fix component-order bug in grupos_equivalencia.concentracion_norm.
 The ETL built concentracion_norm using CUM data component order (PARACETAMOL first)
 instead of dci_key alphabetical order.
@@ -16,7 +16,7 @@ import sqlite3
 import json
 import re
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 _MG_ONLY_RE = re.compile(r'^[\d\.]+ mg(?:\s*\+\s*[\d\.]+ mg)*$')
 

@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc12.py — Duodécima ronda de auditoría.
 
 Correcciones:
@@ -23,7 +23,7 @@ Correcciones:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def merge_into(con, keep_id: int, del_id: int) -> int:

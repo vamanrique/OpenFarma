@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc85.py — Octogesimoquinta ronda de auditoría.
 
 Correcciones INN de biológicos:
@@ -19,7 +19,7 @@ Correcciones INN de biológicos:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

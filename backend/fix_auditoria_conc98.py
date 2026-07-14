@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc98.py — Nonagésimoctava ronda de auditoría.
 
   A) ISOSORBIDA DINITRATO → DINITRATO DE ISOSORBIDA (WHO INN-Sp #4749):
@@ -19,7 +19,7 @@ fix_auditoria_conc98.py — Nonagésimoctava ronda de auditoría.
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

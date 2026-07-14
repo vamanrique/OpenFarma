@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc103.py — Centésimotercera ronda de auditoría.
 
 Completa la normalización de radiofármacos diagnósticos V09 con prefijo TECNECIO (99MTC).
@@ -39,7 +39,7 @@ compuesto final marcado, no el del ligando/sal precursor.
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

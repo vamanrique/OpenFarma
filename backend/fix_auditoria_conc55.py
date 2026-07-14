@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc55.py — Quincuagesimoquinta ronda de auditoría.
 
 Correcciones — orden de palabras y normalización de nombre:
@@ -17,7 +17,7 @@ Correcciones — orden de palabras y normalización de nombre:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

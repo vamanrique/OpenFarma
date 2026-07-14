@@ -1,4 +1,4 @@
-"""
+﻿"""
 Fix final: SIN_CONCENTRACION restantes usando DeepSeek.
 
 Estrategia:
@@ -28,7 +28,7 @@ except ImportError:
 import httpx
 from openai import OpenAI
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 SOCRATA_URL = "https://www.datos.gov.co/resource/i7cb-raxc.json"
 DEEPSEEK_BASE = "https://api.deepseek.com"
 DEEPSEEK_MODEL = "deepseek-chat"

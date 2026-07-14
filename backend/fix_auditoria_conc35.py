@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc35.py — Trigesimoquinta ronda de auditoría.
 
 Correcciones — DE form y normalización de sal:
@@ -20,7 +20,7 @@ Correcciones — DE form y normalización de sal:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

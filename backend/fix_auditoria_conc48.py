@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc48.py — Cuadragesimoctava ronda de auditoría.
 
 Correcciones — nombres en inglés y typos (DeepSeek + análisis manual):
@@ -25,7 +25,7 @@ Correcciones — nombres en inglés y typos (DeepSeek + análisis manual):
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

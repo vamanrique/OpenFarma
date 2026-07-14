@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc69.py — Sexagesimanovena ronda de auditoría.
 
 Correcciones — antígeno de superficie del virus Hepatitis B (4 nombres → 1 canónico):
@@ -25,7 +25,7 @@ Correcciones — antígeno de superficie del virus Hepatitis B (4 nombres → 1 
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 TARGET = "ANTIGENO DE SUPERFICIE DEL VIRUS DE LA HEPATITIS B"
 
 

@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc71.py — Septuagesimoprima ronda de auditoría.
 
 Correcciones:
@@ -18,7 +18,7 @@ Correcciones:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 PNEUMO_SEROTYPES = [
     "1", "3", "4", "5", "6A", "6B", "7F", "9V", "14", "18C", "19A", "19F", "23F"

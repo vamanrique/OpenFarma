@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc99.py — Nonagésimonovena ronda de auditoría.
 
   A) SESTAMIBI → TECNECIO (99MTC) SESTAMIBI (WHO INN-Sp):
@@ -34,7 +34,7 @@ fix_auditoria_conc99.py — Nonagésimonovena ronda de auditoría.
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

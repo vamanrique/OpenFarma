@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc47.py — Cuadragesimoseptima ronda de auditoría.
 
 Correcciones — BACILLUS->BACILO (Spanish), nombres inconsistentes:
@@ -28,7 +28,7 @@ Correcciones — BACILLUS->BACILO (Spanish), nombres inconsistentes:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

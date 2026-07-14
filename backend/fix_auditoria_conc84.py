@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc84.py — Octogesimocuarta ronda de auditoría.
 
 Correcciones INN para factores de coagulación recombinantes:
@@ -30,7 +30,7 @@ Correcciones INN para factores de coagulación recombinantes:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

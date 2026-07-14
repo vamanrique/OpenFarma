@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc58.py — Quincuagesimoctava ronda de auditoría.
 
 Correcciones — typos y componentes inglés en combos de vacunas:
@@ -23,7 +23,7 @@ Correcciones — typos y componentes inglés en combos de vacunas:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

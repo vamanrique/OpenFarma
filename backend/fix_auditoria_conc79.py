@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc79.py — Septuagesimanona ronda de auditoría.
 
 Correcciones:
@@ -28,7 +28,7 @@ Correcciones:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 _HPV9_TYPES = [6, 11, 16, 18, 31, 33, 45, 52, 58]
 

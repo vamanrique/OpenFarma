@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc86.py — Octogesimosexta ronda de auditoría.
 
 Correcciones de concentracion_norm por errores de parseo en el ETL:
@@ -19,7 +19,7 @@ Correcciones de concentracion_norm por errores de parseo en el ETL:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

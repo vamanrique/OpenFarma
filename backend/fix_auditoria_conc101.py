@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc101.py — Centésimoprima ronda de auditoría.
 
   A) Concentraciones GBq parseadas como 'g' — generadores radiofarmacéuticos:
@@ -28,7 +28,7 @@ fix_auditoria_conc101.py — Centésimoprima ronda de auditoría.
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

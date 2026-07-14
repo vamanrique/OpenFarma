@@ -1,6 +1,6 @@
-# API Specification — FarmaVigia
+# API Specification — OpenFarma
 
-La API de FarmaVigia sigue el estándar OpenAPI 3.0. Documentación interactiva (Swagger UI) disponible en producción: `https://openfarma-production.up.railway.app/docs`
+La API de OpenFarma sigue el estándar OpenAPI 3.0. Documentación interactiva (Swagger UI) disponible en producción: `https://openfarma-production.up.railway.app/docs`
 
 ---
 
@@ -175,7 +175,7 @@ Registra un reporte ciudadano de medicamento no disponible.
   "nombre_medicamento": "IBUPROFENO KERN PHARMA",
   "tipo_reporte": "sin_stock",
   "fecha": "2026-07-09T15:30:00",
-  "mensaje": "Reporte registrado. Gracias por contribuir a FarmaVigia."
+  "mensaje": "Reporte registrado. Gracias por contribuir a OpenFarma."
 }
 ```
 

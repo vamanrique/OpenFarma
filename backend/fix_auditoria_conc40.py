@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc40.py — Cuadragésima ronda de auditoría.
 
 Correcciones — senósidos y elementos traza:
@@ -18,7 +18,7 @@ Correcciones — senósidos y elementos traza:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

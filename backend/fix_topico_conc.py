@@ -1,4 +1,4 @@
-"""
+﻿"""
 Fix concentracion_norm for TOPICO groups:
   Phase 1: Mathematical conversions (g/100g -> %, mg/g -> %, comma multi -> plus format)
   Phase 2: DeepSeek for ambiguous cases
@@ -10,7 +10,7 @@ import json
 import sqlite3
 import requests
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 def _load_deepseek_key():
     with open(".env") as f:

@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc102.py — Centésimasegunda ronda de auditoría.
 
   A) RADIO RA-223 → DICLORURO DE RADIO (223RA) (WHO INN #9982):
@@ -30,7 +30,7 @@ fix_auditoria_conc102.py — Centésimasegunda ronda de auditoría.
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

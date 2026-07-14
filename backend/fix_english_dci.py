@@ -1,4 +1,4 @@
-"""
+﻿"""
 Fix English DCI names that should be Spanish INN:
 - ZINC OXIDE -> OXIDO DE ZINC (merge with existing groups)
 - SODIUM IODIDE I-131 -> YODURO DE SODIO (131I)
@@ -7,7 +7,7 @@ Fix English DCI names that should be Spanish INN:
 import sqlite3
 import json
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def update_cum_dci(cur, cum_ids: list, new_key: str):

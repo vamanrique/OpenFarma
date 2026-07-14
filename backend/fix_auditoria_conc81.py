@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc81.py — Octagesimoprima ronda de auditoría.
 
 Correcciones:
@@ -15,7 +15,7 @@ Correcciones:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 OLD_RSV = "GLUCOPROTEINA F DE PREFUSION RECOMBINANTE DEL VIRUS SINCITIAL RESPIRATORIO"
 NEW_RSV = "GLUCOPROTEINA F DE PREFUSION DEL VIRUS SINCITIAL RESPIRATORIO"

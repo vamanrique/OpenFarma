@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc95.py — Nonagésimoquinta ronda de auditoría.
 
   A) CASPOFUNGINA concentraciones parseadas mal (factor 100x error):
@@ -23,7 +23,7 @@ fix_auditoria_conc95.py — Nonagésimoquinta ronda de auditoría.
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc50.py — Quincuagesima ronda de auditoría.
 
 Correcciones — nombres inglés→español y typos:
@@ -15,7 +15,7 @@ Correcciones — nombres inglés→español y typos:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

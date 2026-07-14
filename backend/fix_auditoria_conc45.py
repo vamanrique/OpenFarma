@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc45.py — Cuadragesimoquinta ronda de auditoría.
 
 Correcciones — FLUTICASONA sin ester -> FLUTICASONA PROPIONATO / FLUTICASONA FUROATO:
@@ -31,7 +31,7 @@ Correcciones — FLUTICASONA sin ester -> FLUTICASONA PROPIONATO / FLUTICASONA F
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

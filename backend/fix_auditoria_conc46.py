@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc46.py — Cuadragesimosexta ronda de auditoría.
 
 Correcciones — nombres en inglés y errores tipográficos en DCI:
@@ -26,7 +26,7 @@ Correcciones — nombres en inglés y errores tipográficos en DCI:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

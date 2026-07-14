@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc88.py — Octogesimoctava ronda de auditoría.
 
 Correcciones INN de radiofármacos y antiretrovirales:
@@ -22,7 +22,7 @@ Correcciones INN de radiofármacos y antiretrovirales:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

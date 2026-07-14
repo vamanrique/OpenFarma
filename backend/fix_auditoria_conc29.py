@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc29.py — Vigesimonovena ronda de auditoría.
 
 Correcciones:
@@ -24,7 +24,7 @@ Correcciones:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

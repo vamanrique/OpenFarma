@@ -1,4 +1,4 @@
-name: CI — FarmaVigia
+name: CI — OpenFarma
 
 on:
   push:
@@ -31,7 +31,7 @@ jobs:
         run: pytest tests/integration/ -v
         env:
           PYTHONPATH: ${{ github.workspace }}/backend
-          DATABASE_URL: sqlite:///${{ github.workspace }}/backend/farmavigia.db
+          DATABASE_URL: sqlite:///${{ github.workspace }}/backend/openfarma.db
 
       - name: Run bias tests
         run: pytest tests/bias_tests/ -v

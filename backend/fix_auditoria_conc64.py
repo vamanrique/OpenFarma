@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc64.py — Sexagesimocuarta ronda de auditoría.
 
 Correcciones — posición del isótopo en nombres de radiofármacos:
@@ -14,7 +14,7 @@ Correcciones — posición del isótopo en nombres de radiofármacos:
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

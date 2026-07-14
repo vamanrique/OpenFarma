@@ -1,4 +1,4 @@
-"""
+﻿"""
 fix_auditoria_conc68.py — Sexagesimoctava ronda de auditoría.
 
 Correcciones — notación de isótopos en radiofármacos (TC-99M → (99MTC)):
@@ -31,7 +31,7 @@ Correcciones — notación de isótopos en radiofármacos (TC-99M → (99MTC)):
 import sqlite3, sys, json
 sys.stdout.reconfigure(encoding='utf-8')
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def safe_json(s):

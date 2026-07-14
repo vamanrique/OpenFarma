@@ -1,11 +1,11 @@
-"""
+﻿"""
 Fix TRIMETOPRIMA → TRIMETOPRIM synonym in grupos_equivalencia and cum_normalizado.
 TRIMETOPRIMA is a Spanish variant suffix; TRIMETOPRIM is the INN canonical form.
 """
 import sqlite3
 import json
 
-DB_PATH = "farmavigia.db"
+DB_PATH = "openfarma.db"
 
 
 def rebuild_dci_key(old_key: str) -> str:
