@@ -345,9 +345,14 @@ function GrupoSection({
             <div key={p.cum_id} className="flex items-center gap-2 px-3 py-2 border-b border-current border-opacity-5 last:border-0 bg-white bg-opacity-50">
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-slate-800 truncate">{normalizeUnits(p.nombre_comercial)}</p>
-                {p.laboratorio && (
-                  <p className="text-xs text-slate-400 truncate mt-0.5">{p.laboratorio}</p>
-                )}
+                <div className="flex items-center gap-2 mt-0.5">
+                  {p.laboratorio && (
+                    <p className="text-xs text-slate-400 truncate">{p.laboratorio}</p>
+                  )}
+                  {p.registro_sanitario && (
+                    <p className="text-xs text-slate-400 font-mono shrink-0">RS: {p.registro_sanitario}</p>
+                  )}
+                </div>
               </div>
               <BadgeEstadoSimple estado_cum={p.estado_cum} fuente={p.fuente} />
             </div>
@@ -554,11 +559,14 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
             <span className="shrink-0 text-sm font-bold font-mono text-slate-800 leading-tight">{totalDest.label}</span>
           )}
         </div>
-        {/* Fila 2: marca · lab · estado */}
+        {/* Fila 2: marca · lab · RS · estado */}
         <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
           <span className="text-xs text-slate-600 font-medium truncate max-w-[160px]">{normalizeUnits(dest.nombre_comercial)}</span>
           <span className="text-slate-300 text-xs">·</span>
           <span className="text-xs text-slate-400 truncate max-w-[130px]">{dest.laboratorio}</span>
+          {dest.registro_sanitario && (
+            <span className="text-xs text-slate-400 font-mono shrink-0">RS: {dest.registro_sanitario}</span>
+          )}
           <BadgeEstadoReg estado_cum={dest.estado_cum} estado_registro={dest.estado_registro} fuente={dest.fuente} />
           {dest.estado_invima && <BadgeInvima estado={dest.estado_invima} />}
         </div>
@@ -644,9 +652,21 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
         )}
         {error && <p className="text-red-500 text-sm">{error}</p>}
         {!cargando && !error && alternativas.length === 0 && (
-          <p className="text-slate-400 text-sm text-center py-6">
-            No se encontraron alternativas para este medicamento.
-          </p>
+          <div className="py-6 px-2 text-center space-y-1.5">
+            <p className="text-slate-500 text-sm font-medium">
+              Sin alternativas en el CUM para{' '}
+              <span className="font-bold text-slate-700">
+                {dcis.length > 0 ? dcis.join(' + ') : normalizeUnits(medicamento.nombre_comercial)}
+              </span>
+              {medicamento.concentracion_display && (
+                <span className="font-mono"> {normalizeUnits(medicamento.concentracion_display)}</span>
+              )}
+            </p>
+            <p className="text-slate-400 text-xs leading-relaxed">
+              No hay sustitutos directos, otras concentraciones, otras formas farmacéuticas
+              ni equivalentes terapéuticos ATC activos registrados en Colombia para este producto.
+            </p>
+          </div>
         )}
 
         {!cargando && (

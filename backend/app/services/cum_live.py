@@ -138,24 +138,32 @@ async def buscar_medicamentos(
     return resultados
 
 
-async def obtener_por_cum(expedientecum: str, consecutivocum: str) -> Optional[MedicamentoTransformado]:
-    """Obtiene un medicamento específico desde la API (activos + renovación)."""
+async def obtener_por_cum(
+    expedientecum: str,
+    consecutivocum: str,
+    db: Optional[Session] = None,
+) -> Optional[MedicamentoTransformado]:
+    """Obtiene un medicamento específico desde la API (activos + renovación). Fallback a DB local."""
     params = {
         "$where": f"expedientecum='{expedientecum}' AND consecutivocum='{consecutivocum}'",
         "$limit": 50,
     }
-    filas = await _get(params)
-    if not filas:
-        # Producto puede estar solo en el dataset de renovación
-        filas = await _get(params, url=RENOVACION_URL)
-    if not filas:
-        return None
+    try:
+        filas = await _get(params)
+        if not filas:
+            filas = await _get(params, url=RENOVACION_URL)
+        if filas:
+            df = pd.DataFrame(filas)
+            meds = agrupar_y_transformar(df)
+            if meds and not filas[0].get('estadocum'):
+                meds[0].fuente = 'CUM_RENOVACION'
+            return meds[0] if meds else None
+    except Exception:
+        pass
 
-    df = pd.DataFrame(filas)
-    meds = agrupar_y_transformar(df)
-    if meds and not filas[0].get('estadocum'):
-        meds[0].fuente = 'CUM_RENOVACION'
-    return meds[0] if meds else None
+    if db is not None:
+        return obtener_desde_db(expedientecum, consecutivocum, db)
+    return None
 
 
 async def _fetch_grupo_expedientes(cum_ids: list[str]) -> list[dict]:
@@ -212,15 +220,24 @@ async def alternativas_para(
         return []
 
     # Fetch ATC class (A4-A7) and group expedientes (A0-A3) in parallel
-    filas_atc, grupo_filas = await asyncio.gather(
-        _get({
-            "$where": f"atc like '{atc5}%' AND estadocum='Activo'",
-            "$limit": limit_clase,
-            "$order": "producto ASC",
-        }),
-        _fetch_grupo_expedientes(cum_ids_grupo) if cum_ids_grupo else _empty(),
-    )
+    try:
+        filas_atc, grupo_filas = await asyncio.gather(
+            _get({
+                "$where": f"atc like '{atc5}%' AND estadocum='Activo'",
+                "$limit": limit_clase,
+                "$order": "producto ASC",
+            }),
+            _fetch_grupo_expedientes(cum_ids_grupo) if cum_ids_grupo else _empty(),
+        )
+    except Exception:
+        # Socrata unavailable — fall back to local DB
+        if db is not None:
+            return _alternativas_desde_db(medicamento, cum_ids_grupo, db, limit_clase)
+        return [], {}
+
     if not filas_atc and not grupo_filas:
+        if db is not None:
+            return _alternativas_desde_db(medicamento, cum_ids_grupo, db, limit_clase)
         return [], {}
 
     # Merge: group products take precedence (already active-filtered), ATC adds A4-A7 context
@@ -233,7 +250,10 @@ async def alternativas_para(
             merged.append(f)
 
     # Complete combination products whose components have different ATCs
-    merged = await _completar_grupos(merged)
+    try:
+        merged = await _completar_grupos(merged)
+    except Exception:
+        pass  # proceed with what we have
 
     df = pd.DataFrame(merged)
     todos_raw = agrupar_y_transformar(df)
@@ -280,6 +300,132 @@ async def buscar_en_renovacion(
     return meds
 
 
+def _row_to_med(row) -> MedicamentoTransformado:
+    """Converts a CumNormalizado ORM row to MedicamentoTransformado."""
+    principios = row.principios_dci or []
+    tipo = row.tipo_formula or "monocomponente"
+    via_list = row.via_normalizada or []
+    via = via_list[0] if via_list else ""
+
+    componentes = row.componentes or []
+    if componentes and len(componentes) > 1:
+        partes = []
+        for c in componentes:
+            dci = c.get("dci", "")
+            mg = c.get("dosis_mg") or c.get("concentracion_mg_ml")
+            if mg:
+                partes.append(f"{dci} {mg:g} mg")
+            elif dci:
+                partes.append(dci)
+        conc_display = " + ".join(partes) if partes else ""
+        concentraciones = partes
+    elif row.dosis_total_mg:
+        conc_display = f"{row.dosis_total_mg:g} mg"
+        concentraciones = [conc_display]
+    elif row.concentracion_mg_ml:
+        conc_display = f"{row.concentracion_mg_ml:g} mg/mL"
+        concentraciones = [conc_display]
+    else:
+        conc_display = ""
+        concentraciones = []
+
+    cum_id = f"{row.expediente_cum}-{row.consecutivo_cum}"
+    return MedicamentoTransformado(
+        cum_id=cum_id,
+        expedientecum=row.expediente_cum,
+        consecutivocum=row.consecutivo_cum,
+        nombre_comercial=row.nombre_comercial_norm or cum_id,
+        principios_activos_raw=principios,
+        principios_dci=principios,
+        tipo_formula=tipo,
+        concentraciones=concentraciones,
+        concentracion_display=conc_display,
+        dosis_numerica=row.dosis_total_mg,
+        presentacion="",
+        forma_farmaceutica=row.forma_normalizada or "",
+        via_administracion=via,
+        atc=row.atc_normalizado or "",
+        descripcion_atc="",
+        laboratorio=row.titular_registro or "",
+        registro_sanitario=row.registro_sanitario or "",
+        estado_registro=row.estado_registro or "",
+        estado_cum=row.estado_cum or "",
+        modalidad="",
+        fuente=row.fuente or "CUM_ACTIVO",
+        principios_dci_llm=principios,
+        dosis_total_mg=row.dosis_total_mg,
+        concentracion_mg_ml=row.concentracion_mg_ml,
+        volumen_ml_por_unidad=row.volumen_ml_por_unidad,
+        forma_normalizada=row.forma_normalizada,
+        via_normalizada=via_list,
+        atc_llm=row.atc_normalizado,
+        tipo_formula_llm=tipo,
+        componentes_llm=componentes if componentes else None,
+        notas_llm=row.notas,
+    )
+
+
+def obtener_desde_db(expediente: str, consecutivo: str, db: Session) -> Optional[MedicamentoTransformado]:
+    """Fetch a specific product from local cum_normalizado by PK."""
+    from app.models.cum_normalizado import CumNormalizado
+    row = db.query(CumNormalizado).filter(
+        CumNormalizado.expediente_cum == expediente,
+        CumNormalizado.consecutivo_cum == consecutivo,
+    ).first()
+    return _row_to_med(row) if row else None
+
+
+def _alternativas_desde_db(
+    medicamento: MedicamentoTransformado,
+    cum_ids_grupo: list[str],
+    db: Session,
+    limit_clase: int = 1000,
+) -> tuple[list[ParAlternativa], dict[str, MedicamentoTransformado]]:
+    """
+    Generates alternatives using only local cum_normalizado data.
+    Used as fallback when Socrata is unavailable.
+    """
+    from app.models.cum_normalizado import CumNormalizado
+
+    atc_efectivo = medicamento.atc_llm or medicamento.atc
+    atc5 = atc_efectivo[:5] if atc_efectivo and len(atc_efectivo) >= 5 else None
+
+    # Load group products (A0-A3) from local DB
+    grupo_meds: list[MedicamentoTransformado] = []
+    if cum_ids_grupo:
+        expedientes = list({cid.split("-")[0] for cid in cum_ids_grupo if "-" in cid})
+        rows = db.query(CumNormalizado).filter(
+            CumNormalizado.expediente_cum.in_(expedientes),
+            CumNormalizado.estado_cum.ilike("activo"),
+        ).all()
+        exp_cons = {(cid.split("-")[0], cid.split("-")[1]) for cid in cum_ids_grupo if "-" in cid}
+        grupo_meds = [_row_to_med(r) for r in rows if (r.expediente_cum, r.consecutivo_cum) in exp_cons]
+
+    # Load ATC class products (A4-A7) from local DB
+    atc_meds: list[MedicamentoTransformado] = []
+    if atc5:
+        rows_atc = db.query(CumNormalizado).filter(
+            CumNormalizado.atc_normalizado.like(f"{atc5}%"),
+            CumNormalizado.estado_cum.ilike("activo"),
+        ).limit(limit_clase).all()
+        atc_meds = [_row_to_med(r) for r in rows_atc]
+
+    seen: set[str] = set()
+    todos: list[MedicamentoTransformado] = []
+    for m in grupo_meds + atc_meds:
+        if m.cum_id not in seen:
+            seen.add(m.cum_id)
+            todos.append(m)
+
+    if not todos:
+        return [], {}
+
+    lookup: dict[str, MedicamentoTransformado] = {m.cum_id: m for m in todos}
+    pares = generar_alternativas(todos)
+    filtrados = [p for p in pares if p.cum_origen == medicamento.cum_id or p.cum_destino == medicamento.cum_id]
+    return filtrados, lookup
+
+
 def buscar_desde_db(
     query: str,
     db: Session,
@@ -290,7 +436,6 @@ def buscar_desde_db(
     Búsqueda local en cum_normalizado — fallback cuando Socrata no responde.
     Devuelve MedicamentoTransformado compatibles con el pipeline normal de enriquecimiento.
     """
-    from etl.transformacion import MedicamentoTransformado
     from app.models.cum_normalizado import CumNormalizado
     from sqlalchemy import or_, cast, Text, func
 
@@ -310,74 +455,7 @@ def buscar_desde_db(
         q = q.filter(CumNormalizado.estado_cum.ilike("activo"))
     rows: list[CumNormalizado] = q.order_by(CumNormalizado.nombre_comercial_norm).limit(limit).all()
 
-    resultados: list[MedicamentoTransformado] = []
-    for row in rows:
-        principios = row.principios_dci or []
-        tipo = row.tipo_formula or "monocomponente"
-        via_list = row.via_normalizada or []
-        via = via_list[0] if via_list else ""
-
-        # Concentración display provisional — enriquecer_con_llm lo sobreescribirá desde grupos_index
-        componentes = row.componentes or []
-        if componentes and len(componentes) > 1:
-            partes = []
-            for c in componentes:
-                dci = c.get("dci", "")
-                mg = c.get("dosis_mg") or c.get("concentracion_mg_ml")
-                if mg:
-                    partes.append(f"{dci} {mg:g} mg")
-                elif dci:
-                    partes.append(dci)
-            conc_display = " + ".join(partes) if partes else ""
-            concentraciones = partes
-        elif row.dosis_total_mg:
-            conc_display = f"{row.dosis_total_mg:g} mg"
-            concentraciones = [conc_display]
-        elif row.concentracion_mg_ml:
-            conc_display = f"{row.concentracion_mg_ml:g} mg/mL"
-            concentraciones = [conc_display]
-        else:
-            conc_display = ""
-            concentraciones = []
-
-        cum_id = f"{row.expediente_cum}-{row.consecutivo_cum}"
-        m = MedicamentoTransformado(
-            cum_id=cum_id,
-            expedientecum=row.expediente_cum,
-            consecutivocum=row.consecutivo_cum,
-            nombre_comercial=row.nombre_comercial_norm or cum_id,
-            principios_activos_raw=principios,
-            principios_dci=principios,
-            tipo_formula=tipo,
-            concentraciones=concentraciones,
-            concentracion_display=conc_display,
-            dosis_numerica=row.dosis_total_mg,
-            presentacion="",
-            forma_farmaceutica=row.forma_normalizada or "",
-            via_administracion=via,
-            atc=row.atc_normalizado or "",
-            descripcion_atc="",
-            laboratorio=row.titular_registro or "",
-            registro_sanitario=row.registro_sanitario or "",
-            estado_registro=row.estado_registro or "",
-            estado_cum=row.estado_cum or "",
-            modalidad="",
-            fuente=row.fuente or "CUM_ACTIVO",
-            # Campos LLM ya disponibles localmente
-            principios_dci_llm=principios,
-            dosis_total_mg=row.dosis_total_mg,
-            concentracion_mg_ml=row.concentracion_mg_ml,
-            volumen_ml_por_unidad=row.volumen_ml_por_unidad,
-            forma_normalizada=row.forma_normalizada,
-            via_normalizada=via_list,
-            atc_llm=row.atc_normalizado,
-            tipo_formula_llm=tipo,
-            componentes_llm=componentes if componentes else None,
-            notas_llm=row.notas,
-        )
-        resultados.append(m)
-
-    return resultados
+    return [_row_to_med(row) for row in rows]
 
 
 async def estadisticas_por_atc() -> list[dict]:

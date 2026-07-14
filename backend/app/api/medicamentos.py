@@ -123,7 +123,7 @@ async def obtener_alternativas_live(cum_id: str, db: Session = Depends(get_db)):
     if len(partes) != 2:
         raise HTTPException(status_code=400, detail="Formato de CUM inválido. Use expedientecum-consecutivocum")
 
-    med = await cum_live.obtener_por_cum(partes[0], partes[1])
+    med = await cum_live.obtener_por_cum(partes[0], partes[1], db=db)
     if not med:
         raise HTTPException(status_code=404, detail="Medicamento no encontrado en la API")
 
