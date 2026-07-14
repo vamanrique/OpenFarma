@@ -125,7 +125,7 @@ Please include:
 - **Logs**: Paste any relevant stack traces or API error responses.
 - **CUM ID or drug name** (if the bug is search or prediction related).
 
-For security vulnerabilities, do **not** open a public issue. Email `farmavigia.app@gmail.com` directly.
+For security vulnerabilities, do **not** open a public issue. Email `vamanrique@gmail.com` directly.
 
 ---
 
