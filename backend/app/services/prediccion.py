@@ -7,8 +7,6 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import func, distinct, text
 
-from app.models.region import ConsultaRegion, Region
-from app.models.prediccion import PrediccionDesabastecimiento
 from app.models.cum_normalizado import CumNormalizado
 from app.models.reporte import ReporteNoDisponibilidad
 from app.ml.modelo import clasificar_nivel, MODEL_PATH
@@ -126,97 +124,6 @@ def _features_base_para_cum(cum: CumNormalizado, db: Session) -> np.ndarray:
 
     inv = _invima_features_para_atc(cum.atc_normalizado or "", db)
     return np.concatenate([base, inv])
-
-
-def _features_con_region(base: np.ndarray, cum_key: str, region_id: int, db: Session) -> np.ndarray:
-    """Añade señales regionales a las features base. Rápido si no hay consultas."""
-    busquedas = (
-        db.query(func.sum(ConsultaRegion.conteo))
-        .filter(ConsultaRegion.cum_id == cum_key, ConsultaRegion.region_id == region_id,
-                ConsultaRegion.tipo == "busqueda")
-        .scalar() or 0
-    )
-    reportes = (
-        db.query(func.sum(ConsultaRegion.conteo))
-        .filter(ConsultaRegion.cum_id == cum_key, ConsultaRegion.region_id == region_id,
-                ConsultaRegion.tipo == "reporte_no_disponibilidad")
-        .scalar() or 0
-    )
-    row = base.copy()
-    row[8] = min(float(busquedas) / 100.0, 1.0)
-    row[9] = min(float(reportes) / 10.0, 1.0)
-    return row
-
-
-class ServicioPrediccion:
-    def __init__(self, db: Session):
-        self.db = db
-        self._modelo = None
-
-    def _obtener_modelo(self):
-        if self._modelo is None and MODEL_PATH.exists():
-            from app.ml.modelo import cargar_modelo
-            self._modelo = cargar_modelo()
-        return self._modelo
-
-    def predecir_cum(self, cum_id: str) -> list[dict]:
-        partes = cum_id.split("-", 1)
-        if len(partes) != 2:
-            return []
-        cum = self.db.query(CumNormalizado).filter(
-            CumNormalizado.expediente_cum == partes[0],
-            CumNormalizado.consecutivo_cum == partes[1],
-        ).first()
-        if not cum:
-            return []
-        return self._predecir_para_cum(cum)
-
-    def _predecir_para_cum(self, cum: CumNormalizado) -> list[dict]:
-        regiones = self.db.query(Region).all()
-        modelo = self._obtener_modelo()
-        cum_id = f"{cum.expediente_cum}-{cum.consecutivo_cum}"
-        nombre = cum.nombre_comercial_norm or cum_id
-
-        # Pre-computar features base (independientes de región)
-        base = _features_base_para_cum(cum, self.db)
-
-        # Construir matriz (n_regiones × n_features) para un solo predict_proba batch
-        features_matrix = np.array([
-            _features_con_region(base, cum_id, region.id, self.db)
-            for region in regiones
-        ])
-
-        if modelo:
-            probas = modelo["modelo"].predict_proba(features_matrix)[:, 1]
-        else:
-            tasa = float(base[0])
-            probas = np.array([
-                min(tasa * 0.5 + float(features_matrix[i, 9]) * 0.05, 1.0)
-                for i in range(len(regiones))
-            ])
-
-        self.db.query(PrediccionDesabastecimiento).filter(
-            PrediccionDesabastecimiento.cum_id == cum_id
-        ).delete()
-
-        resultados = []
-        for i, region in enumerate(regiones):
-            proba = float(probas[i])
-            nivel = clasificar_nivel(proba)
-            pred = PrediccionDesabastecimiento(
-                cum_id=cum_id,
-                medicamento_nombre=nombre,
-                region_id=region.id,
-                probabilidad=proba,
-                nivel_riesgo=nivel,
-                horizonte_dias=30,
-            )
-            self.db.add(pred)
-            resultados.append({"cum_id": cum_id, "region_id": region.id,
-                                "probabilidad": proba, "nivel_riesgo": nivel})
-
-        self.db.commit()
-        return resultados
 
 
 _NIVEL_NUM = {"bajo": 1, "medio": 2, "alto": 3, "critico": 4}

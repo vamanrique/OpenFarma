@@ -42,25 +42,6 @@ export interface AlternativaLive {
   medicamento_destino?: MedicamentoLive
 }
 
-export interface Region {
-  id: number
-  nombre: string
-  codigo_dane: string
-  latitud?: number
-  longitud?: number
-}
-
-export interface PrediccionMapa {
-  cum_id: string
-  region_id: number
-  probabilidad: number
-  nivel_riesgo: string
-  latitud?: number
-  longitud?: number
-  region_nombre?: string
-  medicamento_nombre?: string
-}
-
 export interface ProductoEnGrupo {
   cum_id: string
   nombre_comercial: string
@@ -107,10 +88,6 @@ export const medicamentosApi = {
   },
 }
 
-export const regionesApi = {
-  listar: () => api.get<Region[]>('/regiones/'),
-}
-
 export interface PrediccionIndividual {
   cum_id: string
   probabilidad: number
@@ -145,10 +122,6 @@ export interface DashboardReportes {
 }
 
 export const prediccionesApi = {
-  mapa: (nivelRiesgo?: string) =>
-    api.get<PrediccionMapa[]>('/predicciones/mapa', {
-      params: nivelRiesgo ? { nivel_riesgo: nivelRiesgo } : {},
-    }),
   individual: (cumId: string) =>
     api.get<PrediccionIndividual>(`/predicciones/${encodeURIComponent(cumId)}`),
 }
