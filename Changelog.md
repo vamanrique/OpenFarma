@@ -5,6 +5,21 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 
 ---
 
+## [1.13.0] — 2026-07-13
+
+### Añadido
+- **`Makefile`**: 5 targets — `make backend`, `make frontend`, `make test`, `make retrain`, `make checkpoint`; cross-platform (Windows/macOS/Linux)
+- **`docs/deployment.md`**: guía de despliegue completa — Railway, variables de entorno, WAL workflow, troubleshooting
+- **Tags git** `v1.0.0` – `v1.13.0`: trazabilidad completa de versiones en GitHub
+
+### Mejorado
+- **`README.md`**: screenshot del proyecto (`RECURSOS/portada.png`), diagramas Mermaid de arquitectura y pipeline ML, feature importances actualizadas (27.5%/21.1%/12.9%), sección de reproducibilidad con `make retrain`, Inicio Rápido con Make
+- **`backend/.env.example`**: comentarios por sección, flags obligatorio/opcional, instrucciones para obtener DEEPSEEK_API_KEY
+- **`docs/fuentes_datos.md`**: columna `Fecha de acceso` y licencia explícita por fuente
+- **`.gitignore`**: protege archivos temporales del backend (`*.log`, `*_report.json`, `grupos_equivalencia.csv`) y artefactos de Claude Code
+
+---
+
 ## [1.12.0] — 2026-07-13
 
 ### Eliminado
