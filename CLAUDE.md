@@ -23,6 +23,17 @@ Deploy: Railway (auto-deploy desde main)
 - Cambios a `frontend/src/**` → hacer `npm run build` localmente + commitear `frontend/dist/` (Railway también lo recompila, pero es más rápido commitear el dist)
 - **WAL checkpoint**: antes de commitear `openfarma.db`, abrir conexión SQLite y ejecutar `PRAGMA wal_checkpoint(TRUNCATE)` para que los cambios pasen del WAL al archivo principal
 
+### Variables de entorno en Railway
+
+| Variable | Descripción |
+|---|---|
+| `DATABASE_URL` | `sqlite:////data/openfarma.db` (volumen Railway) |
+| `ENVIRONMENT` | `production` |
+| `SECRET_KEY` | Clave aleatoria para seguridad |
+| `CORS_ORIGINS` | URL del frontend en Railway |
+| `DEEPSEEK_API_KEY` | Solo para ETL — no requerida en runtime |
+| `SOCRATA_APP_TOKEN` | **Token de datos.gov.co** — sube rate limit de ~1K a 100K req/día. Sin token, Railway comparte IP y recibe 403. App registrada: OpenFarma. |
+
 ## Pipeline INVIMA
 
 **Tablas**: `invima_seguimiento` (17 meses: ene 2025 – may 2026, 9,795 registros tras limpieza)
