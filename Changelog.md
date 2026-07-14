@@ -5,6 +5,18 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 
 ---
 
+## [1.12.0] — 2026-07-13
+
+### Eliminado
+- **Mapa de riesgo** (`MapaRiesgo.tsx`) — tab "Mapa de riesgo" quitada de la navegación; componente vaciado; `react-leaflet`/`leaflet`/`@types/leaflet` removidos de `package.json`; bundle frontend −19% (826 KB → 668 KB)
+- **Backend mapa**: endpoints `GET /predicciones/mapa`, `GET /predicciones/mapa/resumen`, `GET /regiones/*` eliminados; `ServicioPrediccion`, `_features_con_region`, modelos `Region`/`ConsultaRegion`/`PrediccionDesabastecimiento` eliminados de services/models/schemas
+
+### Mejorado
+- **Formulario de reportes** (`FormularioReporte.tsx`): dropdown enriquecido con nombre, DCI, forma, concentración, laboratorio y CUM ID; tarjeta de confirmación completa (CUM completo, principio activo, forma, concentración, laboratorio, registro sanitario, badge estado activo/trámite) antes de enviar
+- **Presentación PPTX** (`RECURSOS/Presentacion.pptx`): rediseño completo a fondo blanco — paleta Navy/Verde/Rojo/Amber sobre blanco; cajas con borde izquierdo de color en lugar de fondos oscuros; referencias al mapa eliminadas; formulario de reportes actualizado en slide 7
+
+---
+
 ## [1.11.0] — 2026-07-13
 
 ### Añadido

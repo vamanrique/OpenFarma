@@ -1,32 +1,38 @@
 """
 crear_presentacion.py — Genera RECURSOS/Presentacion.pptx para el concurso
-Datos al Ecosistema 2026: IA para Colombia — Categoría Avanzado
+Datos al Ecosistema 2026: IA para Colombia — Categoria Avanzado
 
-Ejecutar desde la raíz del repo:
+Ejecutar desde la raiz del repo:
   python backend/crear_presentacion.py
 """
 from pptx import Presentation
-from pptx.util import Inches, Pt, Emu
-from pptx.dml.color import RGBColor
-from pptx.enum.text import PP_ALIGN
 from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
-import os
+from pptx.enum.text import PP_ALIGN
 from pathlib import Path
 
-# ── Paleta de colores OpenFarma ────────────────────────────────────────────────
-AZUL_OSCURO   = RGBColor(0x0D, 0x2B, 0x55)   # #0D2B55 — fondo principal
-AZUL_MEDIO    = RGBColor(0x1A, 0x56, 0x8C)   # #1A568C — acentos
-VERDE_SALUD   = RGBColor(0x00, 0xA8, 0x7E)   # #00A87E — highlight positivo
-ROJO_ALERTA   = RGBColor(0xE8, 0x3A, 0x3A)   # #E83A3A — alertas/riesgo
-GRIS_CLARO    = RGBColor(0xF2, 0xF6, 0xFC)   # #F2F6FC — fondo claro
+# ── Paleta — fondo BLANCO, pitch profesional ──────────────────────────────────
 BLANCO        = RGBColor(0xFF, 0xFF, 0xFF)
-AMARILLO      = RGBColor(0xF5, 0xA6, 0x23)   # #F5A623 — riesgo medio
-GRIS_TEXTO    = RGBColor(0x44, 0x4D, 0x5A)   # #444D5A — texto gris
+NAVY          = RGBColor(0x0D, 0x2B, 0x55)   # titulos, fondo portada izq
+AZUL          = RGBColor(0x1A, 0x56, 0x8C)   # acento principal
+VERDE         = RGBColor(0x00, 0x87, 0x65)   # positivo / exito
+ROJO          = RGBColor(0xC8, 0x20, 0x20)   # alerta / riesgo
+AMBER         = RGBColor(0xB4, 0x5A, 0x00)   # advertencia / roadmap
+TEXTO         = RGBColor(0x1E, 0x29, 0x3B)   # cuerpo texto oscuro
+TEXTO_SUB     = RGBColor(0x4A, 0x5B, 0x6E)   # subtitulos / descripcion
+GRIS          = RGBColor(0x94, 0xA3, 0xB8)   # pie de pagina
+GRIS_BORDE    = RGBColor(0xCB, 0xD5, 0xE1)   # bordes suaves
+FONDO_CLARO   = RGBColor(0xF7, 0xF9, 0xFC)   # cajas de contenido
+AZUL_CLARO    = RGBColor(0xEB, 0xF4, 0xFF)   # fondo caja azul
+VERDE_CLARO   = RGBColor(0xED, 0xFB, 0xF4)   # fondo caja verde
+ROJO_CLARO    = RGBColor(0xFE, 0xF2, 0xF2)   # fondo caja roja
+AMBER_CLARO   = RGBColor(0xFF, 0xF7, 0xED)   # fondo caja amber
 
 SLIDE_W = Inches(13.33)
 SLIDE_H = Inches(7.5)
 
+
+# ── Helpers base ──────────────────────────────────────────────────────────────
 
 def prs_nueva():
     prs = Presentation()
@@ -35,647 +41,515 @@ def prs_nueva():
     return prs
 
 
-def fondo_color(slide, color: RGBColor):
-    """Rellena el fondo completo de un slide con un color sólido."""
-    from pptx.util import Emu
-    background = slide.background
-    fill = background.fill
+def fondo(slide, color=BLANCO):
+    bg = slide.background
+    fill = bg.fill
     fill.solid()
     fill.fore_color.rgb = color
 
 
-def add_rect(slide, left, top, width, height, fill_color=None, line_color=None, line_width=Pt(0)):
-    from pptx.util import Pt
-    shape = slide.shapes.add_shape(
-        1,  # MSO_SHAPE_TYPE.RECTANGLE
-        left, top, width, height
-    )
-    if fill_color:
+def rect(slide, l, t, w, h, fill=None, line=None, line_w=Pt(1)):
+    shape = slide.shapes.add_shape(1, l, t, w, h)
+    if fill:
         shape.fill.solid()
-        shape.fill.fore_color.rgb = fill_color
+        shape.fill.fore_color.rgb = fill
     else:
         shape.fill.background()
-    if line_color:
-        shape.line.color.rgb = line_color
-        shape.line.width = line_width
+    if line:
+        shape.line.color.rgb = line
+        shape.line.width = line_w
     else:
         shape.line.fill.background()
     return shape
 
 
-def add_text_box(slide, text, left, top, width, height,
-                 font_size=Pt(14), bold=False, color=BLANCO,
-                 align=PP_ALIGN.LEFT, italic=False, wrap=True):
-    txBox = slide.shapes.add_textbox(left, top, width, height)
-    tf = txBox.text_frame
-    tf.word_wrap = wrap
-    p = tf.paragraphs[0]
+def txt(slide, text, l, t, w, h,
+        size=Pt(14), bold=False, color=TEXTO,
+        align=PP_ALIGN.LEFT, italic=False):
+    box = slide.shapes.add_textbox(l, t, w, h)
+    tf  = box.text_frame
+    tf.word_wrap = True
+    p   = tf.paragraphs[0]
     p.alignment = align
     run = p.add_run()
-    run.text = text
-    run.font.size = font_size
-    run.font.bold = bold
-    run.font.italic = italic
+    run.text         = text
+    run.font.size    = size
+    run.font.bold    = bold
+    run.font.italic  = italic
     run.font.color.rgb = color
-    return txBox
+    return box
 
 
-def add_bullet_slide(slide, title, bullets, title_color=BLANCO,
-                     bullet_color=BLANCO, accent_color=VERDE_SALUD,
-                     bg_color=AZUL_OSCURO):
-    """Slide estándar con título + lista de bullets."""
-    fondo_color(slide, bg_color)
-    # Barra superior
-    add_rect(slide, Inches(0), Inches(0), SLIDE_W, Inches(0.08), fill_color=accent_color)
-    # Título
-    add_text_box(slide, title, Inches(0.5), Inches(0.2), Inches(12.3), Inches(0.9),
-                 font_size=Pt(28), bold=True, color=title_color, align=PP_ALIGN.LEFT)
-    # Separador
-    add_rect(slide, Inches(0.5), Inches(1.05), Inches(2.5), Inches(0.05), fill_color=accent_color)
-    # Bullets
-    y = Inches(1.25)
-    for bullet in bullets:
-        if isinstance(bullet, tuple):
-            icon, texto = bullet
-        else:
-            icon, texto = "▸", bullet
-        add_text_box(slide, icon, Inches(0.5), y, Inches(0.4), Inches(0.45),
-                     font_size=Pt(16), bold=True, color=accent_color)
-        add_text_box(slide, texto, Inches(1.0), y, Inches(11.8), Inches(0.45),
-                     font_size=Pt(16), color=bullet_color)
-        y += Inches(0.52)
-    # Logo esquina inferior derecha
-    add_text_box(slide, "OpenFarma  |  Datos al Ecosistema 2026",
-                 Inches(8), Inches(7.1), Inches(5), Inches(0.35),
-                 font_size=Pt(9), color=RGBColor(0x88, 0x99, 0xAA),
-                 align=PP_ALIGN.RIGHT)
+def pie(slide):
+    txt(slide, "OpenFarma  |  Datos al Ecosistema 2026",
+        Inches(8), Inches(7.1), Inches(5), Inches(0.35),
+        size=Pt(9), color=GRIS, align=PP_ALIGN.RIGHT)
 
 
-def add_two_col_slide(slide, title, col1_title, col1_items,
-                      col2_title, col2_items, accent=VERDE_SALUD):
-    fondo_color(slide, AZUL_OSCURO)
-    add_rect(slide, Inches(0), Inches(0), SLIDE_W, Inches(0.08), fill_color=accent)
-    add_text_box(slide, title, Inches(0.5), Inches(0.2), Inches(12.3), Inches(0.9),
-                 font_size=Pt(28), bold=True, color=BLANCO)
-    add_rect(slide, Inches(0.5), Inches(1.05), Inches(2.5), Inches(0.05), fill_color=accent)
+# ── Componentes reutilizables ─────────────────────────────────────────────────
 
-    # Columna 1
-    add_rect(slide, Inches(0.4), Inches(1.2), Inches(5.9), Inches(5.8),
-             fill_color=RGBColor(0x10, 0x35, 0x65))
-    add_text_box(slide, col1_title, Inches(0.6), Inches(1.35), Inches(5.5), Inches(0.5),
-                 font_size=Pt(14), bold=True, color=accent)
-    y = Inches(1.9)
-    for item in col1_items:
-        add_text_box(slide, f"▸  {item}", Inches(0.7), y, Inches(5.3), Inches(0.5),
-                     font_size=Pt(13), color=BLANCO)
-        y += Inches(0.52)
-
-    # Columna 2
-    add_rect(slide, Inches(6.9), Inches(1.2), Inches(5.9), Inches(5.8),
-             fill_color=RGBColor(0x10, 0x35, 0x65))
-    add_text_box(slide, col2_title, Inches(7.1), Inches(1.35), Inches(5.5), Inches(0.5),
-                 font_size=Pt(14), bold=True, color=accent)
-    y = Inches(1.9)
-    for item in col2_items:
-        add_text_box(slide, f"▸  {item}", Inches(7.2), y, Inches(5.3), Inches(0.5),
-                     font_size=Pt(13), color=BLANCO)
-        y += Inches(0.52)
-
-    add_text_box(slide, "OpenFarma  |  Datos al Ecosistema 2026",
-                 Inches(8), Inches(7.1), Inches(5), Inches(0.35),
-                 font_size=Pt(9), color=RGBColor(0x88, 0x99, 0xAA),
-                 align=PP_ALIGN.RIGHT)
+def cabecera(slide, titulo, acento=AZUL, numero=None):
+    """Barra superior + titulo + linea acento."""
+    rect(slide, Inches(0), Inches(0), SLIDE_W, Inches(0.07), fill=acento)
+    fondo(slide, BLANCO)
+    rect(slide, Inches(0), Inches(0), SLIDE_W, Inches(0.07), fill=acento)
+    txt(slide, titulo,
+        Inches(0.55), Inches(0.18), Inches(11.8), Inches(0.85),
+        size=Pt(27), bold=True, color=NAVY)
+    rect(slide, Inches(0.55), Inches(1.0), Inches(2.8), Inches(0.055), fill=acento)
+    if numero:
+        txt(slide, numero,
+            Inches(12.3), Inches(0.18), Inches(0.9), Inches(0.85),
+            size=Pt(28), bold=True, color=acento, align=PP_ALIGN.RIGHT)
 
 
-def add_metric_box(slide, left, top, width, height,
-                   label, value, sublabel="", accent=VERDE_SALUD):
-    add_rect(slide, left, top, width, height,
-             fill_color=RGBColor(0x10, 0x35, 0x65))
-    add_rect(slide, left, top, width, Inches(0.07), fill_color=accent)
-    add_text_box(slide, value, left, top + Inches(0.15), width, Inches(0.8),
-                 font_size=Pt(32), bold=True, color=accent, align=PP_ALIGN.CENTER)
-    add_text_box(slide, label, left, top + Inches(0.9), width, Inches(0.5),
-                 font_size=Pt(12), bold=True, color=BLANCO, align=PP_ALIGN.CENTER)
-    if sublabel:
-        add_text_box(slide, sublabel, left, top + Inches(1.35), width, Inches(0.35),
-                     font_size=Pt(10), color=RGBColor(0x88, 0x99, 0xAA),
-                     align=PP_ALIGN.CENTER)
+def metrica(slide, l, t, w, h, valor, label, sub="", acento=AZUL,
+            fondo_caja=AZUL_CLARO):
+    """Caja de metrica limpia: fondo claro + borde izq acento + valor grande."""
+    rect(slide, l, t, w, h, fill=fondo_caja, line=GRIS_BORDE, line_w=Pt(0.5))
+    rect(slide, l, t, Inches(0.07), h, fill=acento)
+    txt(slide, valor, l + Inches(0.18), t + Inches(0.08), w - Inches(0.2), Inches(0.75),
+        size=Pt(30), bold=True, color=acento, align=PP_ALIGN.CENTER)
+    txt(slide, label, l + Inches(0.1), t + Inches(0.8), w - Inches(0.15), Inches(0.45),
+        size=Pt(11), bold=True, color=TEXTO, align=PP_ALIGN.CENTER)
+    if sub:
+        txt(slide, sub, l + Inches(0.1), t + Inches(1.2), w - Inches(0.15), Inches(0.3),
+            size=Pt(9), color=TEXTO_SUB, align=PP_ALIGN.CENTER)
+
+
+def bullet(slide, icono, texto, y, acento=AZUL):
+    txt(slide, icono, Inches(0.55), y, Inches(0.45), Inches(0.5),
+        size=Pt(15), bold=True, color=acento)
+    txt(slide, texto, Inches(1.1), y, Inches(11.7), Inches(0.5),
+        size=Pt(15), color=TEXTO)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SLIDES
-# ══════════════════════════════════════════════════════════════════════════════
+# ════════��═════════════════════════════════════════════════════════════════════
 
 def slide_01_portada(prs):
-    """Slide 1: Portada."""
-    slide = prs.slides.add_slide(prs.slide_layouts[6])  # blank
-    fondo_color(slide, AZUL_OSCURO)
+    """Portada: panel navy izquierdo + metricas derecha."""
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    fondo(slide, BLANCO)
 
-    # Banda lateral izquierda
-    add_rect(slide, Inches(0), Inches(0), Inches(0.12), SLIDE_H, fill_color=VERDE_SALUD)
+    # Panel izquierdo — navy
+    rect(slide, Inches(0), Inches(0), Inches(7.5), SLIDE_H, fill=NAVY)
+    # Acento verde vertical
+    rect(slide, Inches(0), Inches(0), Inches(0.14), SLIDE_H, fill=VERDE)
 
-    # Banda inferior
-    add_rect(slide, Inches(0), Inches(6.8), SLIDE_W, Inches(0.7), fill_color=RGBColor(0x08, 0x1A, 0x35))
+    # Nombre del proyecto
+    txt(slide, "OpenFarma",
+        Inches(0.35), Inches(0.7), Inches(7.0), Inches(1.5),
+        size=Pt(68), bold=True, color=BLANCO)
 
-    # Nombre del proyecto — grande
-    add_text_box(slide, "OpenFarma", Inches(0.5), Inches(0.6), Inches(9), Inches(1.6),
-                 font_size=Pt(72), bold=True, color=BLANCO)
-
-    # Línea verde decorativa
-    add_rect(slide, Inches(0.5), Inches(2.1), Inches(3), Inches(0.07), fill_color=VERDE_SALUD)
+    # Linea verde
+    rect(slide, Inches(0.35), Inches(2.15), Inches(3.2), Inches(0.07), fill=VERDE)
 
     # Tagline
-    add_text_box(slide,
-                 "Sistema de Alerta Temprana de\nDesabastecimiento Farmacéutico",
-                 Inches(0.5), Inches(2.25), Inches(9), Inches(1.2),
-                 font_size=Pt(24), bold=False, color=GRIS_CLARO)
+    txt(slide, "Sistema de Alerta Temprana de\nDesabastecimiento Farmaceutico",
+        Inches(0.35), Inches(2.3), Inches(7.0), Inches(1.1),
+        size=Pt(21), color=RGBColor(0xBD, 0xD5, 0xF5))
 
-    # Descripción
-    add_text_box(slide,
-                 "Predicción con IA · Datos CUM + INVIMA · Canal ciudadano",
-                 Inches(0.5), Inches(3.55), Inches(9), Inches(0.6),
-                 font_size=Pt(16), color=RGBColor(0x88, 0xCC, 0xEE))
+    # Subtitulo
+    txt(slide, "Prediccion con IA  ·  CUM + INVIMA  ·  Reportes Ciudadanos",
+        Inches(0.35), Inches(3.55), Inches(7.0), Inches(0.55),
+        size=Pt(14), color=RGBColor(0x7B, 0xA8, 0xD8))
 
-    # Badge concurso (caja verde)
-    add_rect(slide, Inches(0.5), Inches(4.3), Inches(4.5), Inches(0.65),
-             fill_color=VERDE_SALUD)
-    add_text_box(slide, "Datos al Ecosistema 2026: IA para Colombia",
-                 Inches(0.55), Inches(4.35), Inches(4.4), Inches(0.55),
-                 font_size=Pt(13), bold=True, color=BLANCO)
+    # Badges
+    rect(slide, Inches(0.35), Inches(4.3), Inches(4.3), Inches(0.6), fill=VERDE)
+    txt(slide, "Datos al Ecosistema 2026: IA para Colombia",
+        Inches(0.45), Inches(4.34), Inches(4.1), Inches(0.52),
+        size=Pt(12), bold=True, color=BLANCO)
 
-    # Badge categoría
-    add_rect(slide, Inches(5.1), Inches(4.3), Inches(2.2), Inches(0.65),
-             fill_color=AZUL_MEDIO)
-    add_text_box(slide, "Categoría: Avanzado",
-                 Inches(5.15), Inches(4.35), Inches(2.1), Inches(0.55),
-                 font_size=Pt(13), bold=True, color=BLANCO)
+    rect(slide, Inches(4.75), Inches(4.3), Inches(2.5), Inches(0.6), fill=AZUL)
+    txt(slide, "Categoria: Avanzado",
+        Inches(4.85), Inches(4.34), Inches(2.3), Inches(0.52),
+        size=Pt(12), bold=True, color=BLANCO)
 
     # Equipo — BORRADOR
-    add_rect(slide, Inches(0.5), Inches(5.15), Inches(6.8), Inches(1.3),
-             fill_color=RGBColor(0x10, 0x35, 0x65))
-    add_rect(slide, Inches(0.5), Inches(5.15), Inches(6.8), Inches(0.07),
-             fill_color=AMARILLO)
-    add_text_box(slide, "⚠  EQUIPO — BORRADOR (pendiente inscripción)",
-                 Inches(0.6), Inches(5.22), Inches(6.5), Inches(0.4),
-                 font_size=Pt(11), bold=True, color=AMARILLO)
-    add_text_box(slide,
-                 "Líder: [NOMBRE]  ·  Analista de Datos: [NOMBRE]  ·  Desarrollador: [NOMBRE]",
-                 Inches(0.6), Inches(5.62), Inches(6.5), Inches(0.35),
-                 font_size=Pt(11), color=RGBColor(0xBB, 0xCC, 0xDD))
-    add_text_box(slide, "Contacto: vamanrique@gmail.com",
-                 Inches(0.6), Inches(5.95), Inches(6.5), Inches(0.35),
-                 font_size=Pt(11), color=RGBColor(0x88, 0xCC, 0xEE))
+    rect(slide, Inches(0.35), Inches(5.15), Inches(6.8), Inches(1.25),
+         fill=RGBColor(0x08, 0x1D, 0x3A), line=RGBColor(0xF5, 0xA6, 0x23), line_w=Pt(1.5))
+    txt(slide, "⚠  EQUIPO — BORRADOR",
+        Inches(0.5), Inches(5.22), Inches(6.4), Inches(0.38),
+        size=Pt(10), bold=True, color=RGBColor(0xF5, 0xA6, 0x23))
+    txt(slide, "Lider: [NOMBRE]  ·  Analista ML: [NOMBRE]  ·  Desarrollador: [NOMBRE]",
+        Inches(0.5), Inches(5.58), Inches(6.4), Inches(0.35),
+        size=Pt(10), color=RGBColor(0xBB, 0xCC, 0xDD))
+    txt(slide, "Contacto: vamanrique@gmail.com",
+        Inches(0.5), Inches(5.9), Inches(6.4), Inches(0.35),
+        size=Pt(10), color=RGBColor(0x7B, 0xA8, 0xD8))
 
-    # Métricas a la derecha (mini dashboard)
-    add_rect(slide, Inches(10.0), Inches(0.5), Inches(3.0), Inches(6.0),
-             fill_color=RGBColor(0x08, 0x1A, 0x35))
-    for i, (val, lbl, sub) in enumerate([
-        ("52,830", "Medicamentos CUM", "normalizados"),
-        ("9,795",  "Alertas INVIMA",   "17 meses"),
-        ("0.8374", "ROC-AUC",          "split temporal"),
-        ("3,204",  "Grupos terapéuticos", "equivalencia"),
-    ]):
-        y = Inches(0.6 + i * 1.35)
-        add_rect(slide, Inches(10.1), y, Inches(2.8), Inches(1.2),
-                 fill_color=RGBColor(0x10, 0x35, 0x65))
-        add_text_box(slide, val, Inches(10.1), y + Inches(0.05), Inches(2.8), Inches(0.6),
-                     font_size=Pt(26), bold=True, color=VERDE_SALUD, align=PP_ALIGN.CENTER)
-        add_text_box(slide, lbl, Inches(10.1), y + Inches(0.6), Inches(2.8), Inches(0.35),
-                     font_size=Pt(10), bold=True, color=BLANCO, align=PP_ALIGN.CENTER)
-        add_text_box(slide, sub, Inches(10.1), y + Inches(0.9), Inches(2.8), Inches(0.25),
-                     font_size=Pt(9), color=RGBColor(0x88, 0x99, 0xAA), align=PP_ALIGN.CENTER)
+    # URL
+    txt(slide, "openfarma-production.up.railway.app",
+        Inches(0.35), Inches(6.9), Inches(7.0), Inches(0.45),
+        size=Pt(11), color=RGBColor(0x7B, 0xA8, 0xD8))
 
-    # URL demo
-    add_text_box(slide, "🌐  openfarma-production.up.railway.app",
-                 Inches(0.5), Inches(6.85), Inches(7), Inches(0.4),
-                 font_size=Pt(11), color=RGBColor(0x88, 0xCC, 0xEE))
-    add_text_box(slide, "github.com/vamanrique/OpenFarma",
-                 Inches(7.5), Inches(6.85), Inches(5.5), Inches(0.4),
-                 font_size=Pt(11), color=RGBColor(0x88, 0x99, 0xAA), align=PP_ALIGN.RIGHT)
+    # Panel derecho — metricas sobre fondo blanco
+    datos = [
+        ("52,830", "Medicamentos CUM",    "normalizados",      AZUL,  AZUL_CLARO),
+        ("9,795",  "Alertas INVIMA",      "17 meses de historial", VERDE, VERDE_CLARO),
+        ("0.8374", "ROC-AUC",            "split temporal honesto", VERDE, VERDE_CLARO),
+        ("3,204",  "Grupos terapeuticos", "equivalencia INN",  AZUL,  AZUL_CLARO),
+    ]
+    for i, (val, lbl, sub, ac, bg) in enumerate(datos):
+        row, col = divmod(i, 2)
+        x = Inches(7.7 + col * 2.75)
+        y = Inches(0.5 + row * 3.3)
+        metrica(slide, x, y, Inches(2.55), Inches(1.6), val, lbl, sub, ac, bg)
+
+    txt(slide, "github.com/vamanrique/OpenFarma",
+        Inches(7.7), Inches(7.1), Inches(5.5), Inches(0.35),
+        size=Pt(9), color=GRIS, align=PP_ALIGN.RIGHT)
 
 
 def slide_02_problema(prs):
-    """Slide 2: El Problema."""
+    """El Problema."""
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    fondo_color(slide, AZUL_OSCURO)
-    add_rect(slide, Inches(0), Inches(0), SLIDE_W, Inches(0.08), fill_color=ROJO_ALERTA)
+    cabecera(slide, "El Problema: Desabastecimiento Farmaceutico", ROJO, "02")
 
-    add_text_box(slide, "El Problema: Desabastecimiento Farmacéutico",
-                 Inches(0.5), Inches(0.2), Inches(12.3), Inches(0.9),
-                 font_size=Pt(28), bold=True, color=BLANCO)
-    add_rect(slide, Inches(0.5), Inches(1.05), Inches(3), Inches(0.05), fill_color=ROJO_ALERTA)
+    # Cita de impacto
+    rect(slide, Inches(0.55), Inches(1.15), Inches(12.2), Inches(0.85),
+         fill=ROJO_CLARO, line=ROJO, line_w=Pt(1))
+    txt(slide,
+        "Cuando INVIMA publica una alerta, el medicamento ya lleva semanas sin llegar a las farmacias.",
+        Inches(0.75), Inches(1.22), Inches(11.8), Inches(0.7),
+        size=Pt(16), italic=True, color=ROJO)
 
-    add_text_box(slide,
-                 "Cuando INVIMA publica una alerta de desabastecimiento,\nel medicamento ya lleva semanas sin llegar a las farmacias.",
-                 Inches(0.5), Inches(1.2), Inches(8.5), Inches(0.9),
-                 font_size=Pt(17), italic=True, color=RGBColor(0xDD, 0xEE, 0xFF))
-
-    # 3 cajas de cifras impactantes
-    for i, (num, lbl, desc) in enumerate([
-        ("9,795", "alertas INVIMA", "en 17 meses (ene 2025 – may 2026)"),
-        ("5+",    "semanas de retraso", "entre escasez real y alerta oficial"),
-        ("0",     "sistemas preventivos", "públicos integrados en Colombia"),
+    # 3 cifras de impacto
+    for i, (num, lbl, desc, ac, bg) in enumerate([
+        ("9,795",  "alertas INVIMA",      "ene 2025 – may 2026 (17 meses)", ROJO,  ROJO_CLARO),
+        ("5+",     "semanas de retraso",  "entre escasez real y alerta oficial",  AMBER, AMBER_CLARO),
+        ("0",      "sistemas preventivos","publicos integrados en Colombia",       AZUL,  AZUL_CLARO),
     ]):
-        x = Inches(0.4 + i * 4.3)
-        add_rect(slide, x, Inches(2.2), Inches(4.0), Inches(2.0),
-                 fill_color=RGBColor(0x10, 0x35, 0x65))
-        add_rect(slide, x, Inches(2.2), Inches(4.0), Inches(0.08), fill_color=ROJO_ALERTA)
-        add_text_box(slide, num, x, Inches(2.35), Inches(4.0), Inches(0.85),
-                     font_size=Pt(40), bold=True, color=ROJO_ALERTA, align=PP_ALIGN.CENTER)
-        add_text_box(slide, lbl, x, Inches(3.1), Inches(4.0), Inches(0.45),
-                     font_size=Pt(13), bold=True, color=BLANCO, align=PP_ALIGN.CENTER)
-        add_text_box(slide, desc, x, Inches(3.5), Inches(4.0), Inches(0.55),
-                     font_size=Pt(10), color=RGBColor(0x88, 0x99, 0xAA), align=PP_ALIGN.CENTER)
+        x = Inches(0.55 + i * 4.25)
+        metrica(slide, x, Inches(2.2), Inches(3.9), Inches(1.65),
+                num, lbl, desc, ac, bg)
 
-    add_text_box(slide, "El impacto:", Inches(0.5), Inches(4.4), Inches(2), Inches(0.45),
-                 font_size=Pt(14), bold=True, color=AMARILLO)
+    # Consecuencias
+    txt(slide, "Consecuencias concretas:",
+        Inches(0.55), Inches(4.05), Inches(4), Inches(0.45),
+        size=Pt(13), bold=True, color=NAVY)
 
-    for i, txt in enumerate([
-        "Pacientes con enfermedades crónicas interrumpen tratamientos",
-        "IPS y clínicas no pueden anticipar compras de emergencia",
+    items = [
+        "Pacientes con enfermedades cronicas interrumpen tratamientos",
+        "IPS y clinicas no pueden anticipar compras de emergencia",
         "INVIMA reacciona cuando la escasez ya es un hecho consumado",
-        "No existe señal ciudadana integrada con los datos regulatorios",
-    ]):
-        add_text_box(slide, f"▸  {txt}", Inches(0.5), Inches(4.85 + i * 0.48),
-                     Inches(12.4), Inches(0.45), font_size=Pt(14), color=BLANCO)
+        "No existe senal ciudadana integrada con los datos regulatorios",
+    ]
+    for i, item in enumerate(items):
+        bullet(slide, "▸", item, Inches(4.55 + i * 0.52), ROJO)
 
-    add_text_box(slide, "OpenFarma  |  Datos al Ecosistema 2026",
-                 Inches(8), Inches(7.1), Inches(5), Inches(0.35),
-                 font_size=Pt(9), color=RGBColor(0x88, 0x99, 0xAA), align=PP_ALIGN.RIGHT)
+    pie(slide)
 
 
 def slide_03_datos(prs):
-    """Slide 3: Los Datos."""
+    """Los Datos."""
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    fondo_color(slide, AZUL_OSCURO)
-    add_rect(slide, Inches(0), Inches(0), SLIDE_W, Inches(0.08), fill_color=VERDE_SALUD)
+    cabecera(slide, "Los Datos: Fuentes Publicas Integradas por Primera Vez", VERDE, "03")
 
-    add_text_box(slide, "Los Datos: Fuentes Públicas Integradas por Primera Vez",
-                 Inches(0.5), Inches(0.2), Inches(12.3), Inches(0.9),
-                 font_size=Pt(26), bold=True, color=BLANCO)
-    add_rect(slide, Inches(0.5), Inches(1.05), Inches(3), Inches(0.05), fill_color=VERDE_SALUD)
-
-    # 4 fuentes de datos
-    sources = [
-        ("CUM Activos",        "52,830 presentaciones",  "datos.gov.co · i7cb-raxc",    VERDE_SALUD),
-        ("CUM Renovación",     "~8,000 registros",        "datos.gov.co · vgr4-gemg",    AZUL_MEDIO),
-        ("Alertas INVIMA",     "9,795 entradas limpias",  "PDFs portal INVIMA · 17 meses", AMARILLO),
-        ("Reportes ciudadanos","Canal propio",             "Formulario OpenFarma · activo",ROJO_ALERTA),
+    fuentes = [
+        ("CUM Activos",         "52,830",  "presentaciones normalizadas", "datos.gov.co · i7cb-raxc",     AZUL,  AZUL_CLARO),
+        ("CUM Renovacion",      "~8,000",  "registros en tramite",        "datos.gov.co · vgr4-gemg",     AZUL,  AZUL_CLARO),
+        ("Alertas INVIMA",      "9,795",   "entradas limpias",            "PDFs portal INVIMA · 17 meses", VERDE, VERDE_CLARO),
+        ("Reportes ciudadanos", "activo",  "canal propio en crecimiento", "Formulario OpenFarma",              ROJO,  ROJO_CLARO),
     ]
-    for i, (title, metric, source, color) in enumerate(sources):
-        col = i % 2
-        row = i // 2
-        x = Inches(0.4 + col * 6.5)
-        y = Inches(1.25 + row * 2.7)
-        add_rect(slide, x, y, Inches(6.1), Inches(2.4), fill_color=RGBColor(0x10, 0x35, 0x65))
-        add_rect(slide, x, y, Inches(6.1), Inches(0.08), fill_color=color)
-        add_text_box(slide, title, x + Inches(0.15), y + Inches(0.15),
-                     Inches(5.8), Inches(0.5), font_size=Pt(16), bold=True, color=color)
-        add_text_box(slide, metric, x + Inches(0.15), y + Inches(0.65),
-                     Inches(5.8), Inches(0.7), font_size=Pt(28), bold=True, color=BLANCO)
-        add_text_box(slide, source, x + Inches(0.15), y + Inches(1.4),
-                     Inches(5.8), Inches(0.4), font_size=Pt(11),
-                     color=RGBColor(0x88, 0x99, 0xAA))
+    for i, (titulo, val, sub, fuente, ac, bg) in enumerate(fuentes):
+        col, row = i % 2, i // 2
+        x = Inches(0.55 + col * 6.3)
+        y = Inches(1.2 + row * 2.85)
+        rect(slide, x, y, Inches(5.9), Inches(2.6), fill=bg, line=GRIS_BORDE, line_w=Pt(0.5))
+        rect(slide, x, y, Inches(5.9), Inches(0.07), fill=ac)
+        txt(slide, titulo, x + Inches(0.2), y + Inches(0.15), Inches(5.5), Inches(0.45),
+            size=Pt(13), bold=True, color=ac)
+        txt(slide, val,    x + Inches(0.2), y + Inches(0.55), Inches(5.5), Inches(0.9),
+            size=Pt(34), bold=True, color=NAVY)
+        txt(slide, sub,    x + Inches(0.2), y + Inches(1.4), Inches(5.5), Inches(0.35),
+            size=Pt(11), color=TEXTO_SUB)
+        txt(slide, fuente, x + Inches(0.2), y + Inches(1.8), Inches(5.5), Inches(0.6),
+            size=Pt(10), color=GRIS)
 
     # Nota diferenciadora
-    add_rect(slide, Inches(0.4), Inches(6.7), Inches(12.5), Inches(0.55),
-             fill_color=RGBColor(0x00, 0x40, 0x30))
-    add_text_box(slide,
-                 "✓  Primera integración pública completa CUM + INVIMA + Reportes Ciudadanos en Colombia",
-                 Inches(0.55), Inches(6.75), Inches(12.2), Inches(0.45),
-                 font_size=Pt(13), bold=True, color=VERDE_SALUD)
+    rect(slide, Inches(0.55), Inches(6.9), Inches(12.2), Inches(0.45),
+         fill=VERDE_CLARO, line=VERDE, line_w=Pt(1))
+    txt(slide, "✓  Primera integracion publica completa CUM + INVIMA + Reportes Ciudadanos en Colombia",
+        Inches(0.75), Inches(6.95), Inches(11.8), Inches(0.38),
+        size=Pt(12), bold=True, color=VERDE)
 
 
 def slide_04_arquitectura(prs):
-    """Slide 4: Arquitectura de la Solución."""
+    """Arquitectura."""
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    fondo_color(slide, AZUL_OSCURO)
-    add_rect(slide, Inches(0), Inches(0), SLIDE_W, Inches(0.08), fill_color=VERDE_SALUD)
+    cabecera(slide, "Arquitectura: Tres Componentes Integrados", AZUL, "04")
 
-    add_text_box(slide, "Arquitectura: Tres Componentes Integrados",
-                 Inches(0.5), Inches(0.2), Inches(12.3), Inches(0.9),
-                 font_size=Pt(28), bold=True, color=BLANCO)
-    add_rect(slide, Inches(0.5), Inches(1.05), Inches(3), Inches(0.05), fill_color=VERDE_SALUD)
+    capas = [
+        ("CIUDADANO",       ["Busca medicamento", "Ve alternativas", "Consulta riesgo ML", "Reporta escasez"], VERDE,  VERDE_CLARO),
+        ("REACT FRONTEND",  ["React 19 + Vite", "Tailwind CSS", "Recharts", "ARIA a11y"],                      AZUL,   AZUL_CLARO),
+        ("FASTAPI BACKEND", ["Busqueda CUM", "Alternativas", "Predicciones ML", "Reportes API", "Cache INVIMA"], AMBER, AMBER_CLARO),
+        ("DATOS + ML",      ["SQLite 52K CUM", "3,204 grupos", "INVIMA 17m", "RF + Calibrado", "Bias Tests"],    ROJO,  ROJO_CLARO),
+        ("ALERTA",          ["Senales\ntempranas", "30 dias\nantes"],                                           ROJO,  ROJO_CLARO),
+    ]
+    widths = [Inches(2.3), Inches(2.3), Inches(2.3), Inches(2.3), Inches(1.6)]
+    xs = [Inches(0.3), Inches(2.75), Inches(5.2), Inches(7.65), Inches(10.1)]
+    arrow_x = [Inches(2.65), Inches(5.1), Inches(7.55), Inches(10.0)]
 
-    # Capa Ciudadano
-    add_rect(slide, Inches(0.3), Inches(1.2), Inches(2.2), Inches(5.8),
-             fill_color=RGBColor(0x08, 0x22, 0x45))
-    add_rect(slide, Inches(0.3), Inches(1.2), Inches(2.2), Inches(0.08), fill_color=VERDE_SALUD)
-    add_text_box(slide, "CIUDADANO", Inches(0.3), Inches(1.3), Inches(2.2), Inches(0.5),
-                 font_size=Pt(11), bold=True, color=VERDE_SALUD, align=PP_ALIGN.CENTER)
-    for item in ["Busca medicamento", "Ve alternativas", "Consulta riesgo ML", "Reporta escasez", "Ve mapa Colombia"]:
-        y_off = Inches(1.9 + ["Busca medicamento","Ve alternativas","Consulta riesgo ML","Reporta escasez","Ve mapa Colombia"].index(item) * 0.9)
-        add_text_box(slide, item, Inches(0.35), y_off, Inches(2.1), Inches(0.8),
-                     font_size=Pt(11), color=BLANCO, align=PP_ALIGN.CENTER)
+    for i, ((lbl, items, ac, bg), w, x) in enumerate(zip(capas, widths, xs)):
+        rect(slide, x, Inches(1.15), w, Inches(5.9), fill=bg, line=GRIS_BORDE, line_w=Pt(0.5))
+        rect(slide, x, Inches(1.15), w, Inches(0.07), fill=ac)
+        txt(slide, lbl, x, Inches(1.25), w, Inches(0.5),
+            size=Pt(10), bold=True, color=ac, align=PP_ALIGN.CENTER)
+        for j, item in enumerate(items):
+            txt(slide, item, x + Inches(0.1), Inches(1.85 + j * 0.85), w - Inches(0.2), Inches(0.75),
+                size=Pt(11), color=TEXTO, align=PP_ALIGN.CENTER)
 
-    # Flecha
-    add_text_box(slide, "→", Inches(2.55), Inches(3.8), Inches(0.5), Inches(0.5),
-                 font_size=Pt(24), bold=True, color=VERDE_SALUD)
+    for ax in arrow_x:
+        txt(slide, "→", ax, Inches(3.7), Inches(0.5), Inches(0.5),
+            size=Pt(22), bold=True, color=GRIS)
 
-    # Frontend React
-    add_rect(slide, Inches(3.1), Inches(1.2), Inches(2.2), Inches(5.8),
-             fill_color=RGBColor(0x08, 0x22, 0x45))
-    add_rect(slide, Inches(3.1), Inches(1.2), Inches(2.2), Inches(0.08), fill_color=AZUL_MEDIO)
-    add_text_box(slide, "REACT FRONTEND", Inches(3.1), Inches(1.3), Inches(2.2), Inches(0.5),
-                 font_size=Pt(11), bold=True, color=AZUL_MEDIO, align=PP_ALIGN.CENTER)
-    for item in ["React 19 + Vite", "Tailwind CSS", "Leaflet Maps", "Recharts", "ARIA a11y"]:
-        y_off = Inches(1.9 + ["React 19 + Vite","Tailwind CSS","Leaflet Maps","Recharts","ARIA a11y"].index(item) * 0.9)
-        add_text_box(slide, item, Inches(3.15), y_off, Inches(2.1), Inches(0.8),
-                     font_size=Pt(11), color=BLANCO, align=PP_ALIGN.CENTER)
-
-    add_text_box(slide, "→", Inches(5.35), Inches(3.8), Inches(0.5), Inches(0.5),
-                 font_size=Pt(24), bold=True, color=AZUL_MEDIO)
-
-    # FastAPI Backend
-    add_rect(slide, Inches(5.9), Inches(1.2), Inches(2.2), Inches(5.8),
-             fill_color=RGBColor(0x08, 0x22, 0x45))
-    add_rect(slide, Inches(5.9), Inches(1.2), Inches(2.2), Inches(0.08), fill_color=AMARILLO)
-    add_text_box(slide, "FASTAPI BACKEND", Inches(5.9), Inches(1.3), Inches(2.2), Inches(0.5),
-                 font_size=Pt(11), bold=True, color=AMARILLO, align=PP_ALIGN.CENTER)
-    for item in ["Búsqueda CUM", "Alternativas", "Predicciones ML", "Reportes API", "INVIMA Cache"]:
-        y_off = Inches(1.9 + ["Búsqueda CUM","Alternativas","Predicciones ML","Reportes API","INVIMA Cache"].index(item) * 0.9)
-        add_text_box(slide, item, Inches(5.95), y_off, Inches(2.1), Inches(0.8),
-                     font_size=Pt(11), color=BLANCO, align=PP_ALIGN.CENTER)
-
-    add_text_box(slide, "→", Inches(8.15), Inches(3.8), Inches(0.5), Inches(0.5),
-                 font_size=Pt(24), bold=True, color=AMARILLO)
-
-    # Datos + ML
-    add_rect(slide, Inches(8.7), Inches(1.2), Inches(2.2), Inches(5.8),
-             fill_color=RGBColor(0x08, 0x22, 0x45))
-    add_rect(slide, Inches(8.7), Inches(1.2), Inches(2.2), Inches(0.08), fill_color=ROJO_ALERTA)
-    add_text_box(slide, "DATOS + ML", Inches(8.7), Inches(1.3), Inches(2.2), Inches(0.5),
-                 font_size=Pt(11), bold=True, color=ROJO_ALERTA, align=PP_ALIGN.CENTER)
-    for item in ["SQLite 52K CUM", "3,204 grupos", "INVIMA 17m", "RF + Calibrado", "Bias Tests"]:
-        y_off = Inches(1.9 + ["SQLite 52K CUM","3,204 grupos","INVIMA 17m","RF + Calibrado","Bias Tests"].index(item) * 0.9)
-        add_text_box(slide, item, Inches(8.75), y_off, Inches(2.1), Inches(0.8),
-                     font_size=Pt(11), color=BLANCO, align=PP_ALIGN.CENTER)
-
-    add_text_box(slide, "→", Inches(10.95), Inches(3.8), Inches(0.5), Inches(0.5),
-                 font_size=Pt(24), bold=True, color=ROJO_ALERTA)
-
-    # Alerta
-    add_rect(slide, Inches(11.5), Inches(1.2), Inches(1.5), Inches(5.8),
-             fill_color=RGBColor(0x3A, 0x10, 0x10))
-    add_rect(slide, Inches(11.5), Inches(1.2), Inches(1.5), Inches(0.08), fill_color=ROJO_ALERTA)
-    add_text_box(slide, "ALERTA\nTEMPRANA", Inches(11.5), Inches(3.5), Inches(1.5), Inches(1.2),
-                 font_size=Pt(13), bold=True, color=ROJO_ALERTA, align=PP_ALIGN.CENTER)
-
-    # Railway badge
-    add_text_box(slide, "Deploy: Railway · Auto-deploy desde GitHub main",
-                 Inches(0.5), Inches(7.1), Inches(7), Inches(0.35),
-                 font_size=Pt(9), color=RGBColor(0x88, 0x99, 0xAA))
-    add_text_box(slide, "OpenFarma  |  Datos al Ecosistema 2026",
-                 Inches(8), Inches(7.1), Inches(5), Inches(0.35),
-                 font_size=Pt(9), color=RGBColor(0x88, 0x99, 0xAA), align=PP_ALIGN.RIGHT)
+    # Deploy info
+    txt(slide, "Deploy: Railway · Auto-deploy desde GitHub main · nixpacks.toml",
+        Inches(0.55), Inches(7.15), Inches(8), Inches(0.3),
+        size=Pt(9), color=GRIS)
+    pie(slide)
 
 
 def slide_05_pipeline(prs):
-    """Slide 5: Pipeline ETL & Normalización."""
+    """Pipeline ETL."""
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    add_bullet_slide(
-        slide,
-        "Pipeline ETL: Calidad Farmacéutica de Alta Precisión",
-        bullets=[
-            ("▸", "52,830 medicamentos del CUM descargados vía Socrata API (datos.gov.co)"),
-            ("▸", "Normalización INN: 420 reglas de sinonimia + 50 patrones de sal farmacéutica"),
-            ("▸", "3,204 grupos de equivalencia terapéutica construidos con DeepSeek + reglas"),
-            ("▸", "105 rondas de auditoría INN: radiofármacos, vacunas, biológicos, hemoderivados"),
-            ("▸", "9,795 alertas INVIMA parseadas de PDFs mensuales (17 meses, ene 2025–may 2026)"),
-            ("▸", "0 duplicados · 0 NULL concentración · 0 mismatches DCI tras auditoría completa"),
-        ],
-        accent_color=VERDE_SALUD,
-    )
-    # Métricas de calidad en fila
-    y = Inches(5.4)
-    for i, (val, lbl) in enumerate([
-        ("100%", "DCIs normalizados"),
-        ("105",  "Rondas auditoría"),
-        ("0",    "Duplicados"),
-        ("17",   "Meses INVIMA"),
-    ]):
-        x = Inches(0.4 + i * 3.2)
-        add_rect(slide, x, y, Inches(3.0), Inches(1.5),
-                 fill_color=RGBColor(0x10, 0x35, 0x65))
-        add_text_box(slide, val, x, y + Inches(0.1), Inches(3.0), Inches(0.8),
-                     font_size=Pt(30), bold=True, color=VERDE_SALUD, align=PP_ALIGN.CENTER)
-        add_text_box(slide, lbl, x, y + Inches(0.85), Inches(3.0), Inches(0.5),
-                     font_size=Pt(11), color=BLANCO, align=PP_ALIGN.CENTER)
-    add_text_box(slide,
-                 "Fallback local: si datos.gov.co no responde, los 52,830 productos siguen disponibles",
-                 Inches(0.5), Inches(7.0), Inches(12), Inches(0.35),
-                 font_size=Pt(10), italic=True, color=RGBColor(0x88, 0x99, 0xAA))
+    cabecera(slide, "Pipeline ETL: Calidad Farmaceutica de Alta Precision", VERDE, "05")
+
+    items = [
+        ("52,830",  "medicamentos del CUM descargados via Socrata API (datos.gov.co)"),
+        ("420",     "reglas de sinonimia INN + 50 patrones de sal farmaceutica"),
+        ("3,204",   "grupos de equivalencia terapeutica — DeepSeek + reglas manuales"),
+        ("105",     "rondas de auditoria INN: radiofarmacos, vacunas, biologicos, hemoderivados"),
+        ("9,795",   "alertas INVIMA parseadas de PDFs mensuales (17 meses, ene 2025–may 2026)"),
+        ("0",       "duplicados · 0 NULL concentracion · 0 mismatches DCI tras auditoria completa"),
+    ]
+    y = Inches(1.2)
+    for val, desc in items:
+        rect(slide, Inches(0.55), y, Inches(12.2), Inches(0.6),
+             fill=FONDO_CLARO, line=GRIS_BORDE, line_w=Pt(0.5))
+        txt(slide, val, Inches(0.65), y + Inches(0.05), Inches(1.5), Inches(0.5),
+            size=Pt(20), bold=True, color=VERDE)
+        txt(slide, desc, Inches(2.3), y + Inches(0.12), Inches(10.3), Inches(0.4),
+            size=Pt(14), color=TEXTO)
+        y += Inches(0.67)
+
+    # Fila de metricas
+    y2 = Inches(5.4)
+    kpis = [("100%", "DCIs normalizados", VERDE, VERDE_CLARO),
+            ("105",  "Rondas auditoria",  AZUL,  AZUL_CLARO),
+            ("0",    "Duplicados finales", VERDE, VERDE_CLARO),
+            ("17",   "Meses INVIMA",       AZUL,  AZUL_CLARO)]
+    for i, (v, l, ac, bg) in enumerate(kpis):
+        metrica(slide, Inches(0.55 + i * 3.1), y2, Inches(2.9), Inches(1.65),
+                v, l, acento=ac, fondo_caja=bg)
+
+    txt(slide, "Fallback local: si datos.gov.co no responde, los 52,830 productos siguen disponibles",
+        Inches(0.55), Inches(7.15), Inches(12), Inches(0.3),
+        size=Pt(9), italic=True, color=GRIS)
 
 
 def slide_06_modelo(prs):
-    """Slide 6: Modelo ML."""
+    """Modelo ML."""
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    fondo_color(slide, AZUL_OSCURO)
-    add_rect(slide, Inches(0), Inches(0), SLIDE_W, Inches(0.08), fill_color=ROJO_ALERTA)
+    cabecera(slide, "Modelo Predictivo: Integridad Estadistica Rigurosa", ROJO, "06")
 
-    add_text_box(slide, "Modelo Predictivo: Integridad Estadística Rigurosa",
-                 Inches(0.5), Inches(0.2), Inches(12.3), Inches(0.9),
-                 font_size=Pt(26), bold=True, color=BLANCO)
-    add_rect(slide, Inches(0.5), Inches(1.05), Inches(3), Inches(0.05), fill_color=ROJO_ALERTA)
-
-    # Métricas principales
-    add_metric_box(slide, Inches(0.4), Inches(1.2), Inches(3.1), Inches(2.0),
-                   "ROC-AUC", "0.8374", "split temporal honesto", VERDE_SALUD)
-    add_metric_box(slide, Inches(3.65), Inches(1.2), Inches(3.1), Inches(2.0),
-                   "Avg Precision", "0.1707", "1.6% positivos reales", AMARILLO)
-    add_metric_box(slide, Inches(6.9), Inches(1.2), Inches(3.1), Inches(2.0),
-                   "Meses test", "3", "mar–may 2026 (nunca vistos)", AZUL_MEDIO)
-    add_metric_box(slide, Inches(10.15), Inches(1.2), Inches(2.8), Inches(2.0),
-                   "Features", "15", "10 CUM + 5 INVIMA", ROJO_ALERTA)
-
-    # Split temporal explicado
-    add_rect(slide, Inches(0.4), Inches(3.4), Inches(6.0), Inches(3.8),
-             fill_color=RGBColor(0x10, 0x35, 0x65))
-    add_text_box(slide, "Split Temporal (sin Data Leakage)",
-                 Inches(0.5), Inches(3.5), Inches(5.8), Inches(0.5),
-                 font_size=Pt(14), bold=True, color=VERDE_SALUD)
-    add_text_box(slide,
-                 "▸  Train: ene 2025 – feb 2026 (14 meses)\n"
-                 "▸  Test:  mar – may 2026 (3 meses, nunca vistos)\n"
-                 "▸  Con split aleatorio: ROC-AUC era 1.000 (data leakage)\n"
-                 "▸  Con split temporal: ROC-AUC 0.8374 (honesto)\n"
-                 "▸  Modelo producción: reentrenado en todos los datos",
-                 Inches(0.5), Inches(4.0), Inches(5.8), Inches(3.0),
-                 font_size=Pt(13), color=BLANCO)
-
-    # Top features
-    add_rect(slide, Inches(6.6), Inches(3.4), Inches(6.5), Inches(3.8),
-             fill_color=RGBColor(0x10, 0x35, 0x65))
-    add_text_box(slide, "Top Features por Importancia",
-                 Inches(6.7), Inches(3.5), Inches(6.3), Inches(0.5),
-                 font_size=Pt(14), bold=True, color=ROJO_ALERTA)
-    features = [
-        ("invima_sev_actual",         "27.5%", ROJO_ALERTA),
-        ("invima_peor_sev_hist",       "21.1%", ROJO_ALERTA),
-        ("invima_meses_monitoreado",   "12.9%", AMARILLO),
-        ("tasa_inactivacion_atc5",     "11.6%", AMARILLO),
-        ("invima_sev_t3_avg",          "11.5%", AMARILLO),
+    # 4 metricas en fila
+    metricas_row = [
+        ("0.8374", "ROC-AUC",       "split temporal honesto", VERDE, VERDE_CLARO),
+        ("0.1707", "Avg Precision", "1.6% positivos reales",  AZUL,  AZUL_CLARO),
+        ("3",      "Meses test",    "mar–may 2026",      AZUL,  AZUL_CLARO),
+        ("15",     "Features",      "10 CUM + 5 INVIMA",      ROJO,  ROJO_CLARO),
     ]
-    for i, (feat, pct, color) in enumerate(features):
-        y = Inches(4.05 + i * 0.6)
-        bar_w = float(pct.strip("%")) / 30.0
-        add_rect(slide, Inches(6.7), y + Inches(0.05), Inches(bar_w), Inches(0.38),
-                 fill_color=RGBColor(0x1A, 0x56, 0x8C))
-        add_text_box(slide, feat, Inches(6.7), y, Inches(4.5), Inches(0.45),
-                     font_size=Pt(11), color=BLANCO)
-        add_text_box(slide, pct, Inches(11.8), y, Inches(1.1), Inches(0.45),
-                     font_size=Pt(12), bold=True, color=color, align=PP_ALIGN.RIGHT)
+    for i, (v, l, s, ac, bg) in enumerate(metricas_row):
+        metrica(slide, Inches(0.55 + i * 3.15), Inches(1.2), Inches(2.95), Inches(1.7),
+                v, l, s, ac, bg)
 
-    add_text_box(slide,
-                 "Tipo: CalibratedClassifierCV (Platt scaling) + RandomForestClassifier · scikit-learn 1.9.0",
-                 Inches(0.4), Inches(7.1), Inches(12.5), Inches(0.35),
-                 font_size=Pt(9), color=RGBColor(0x88, 0x99, 0xAA))
-    add_text_box(slide, "OpenFarma  |  Datos al Ecosistema 2026",
-                 Inches(8), Inches(7.1), Inches(5), Inches(0.35),
-                 font_size=Pt(9), color=RGBColor(0x88, 0x99, 0xAA), align=PP_ALIGN.RIGHT)
+    # Columna izq — split temporal
+    rect(slide, Inches(0.55), Inches(3.1), Inches(5.8), Inches(3.9),
+         fill=FONDO_CLARO, line=GRIS_BORDE, line_w=Pt(0.5))
+    rect(slide, Inches(0.55), Inches(3.1), Inches(0.07), Inches(3.9), fill=VERDE)
+    txt(slide, "Split Temporal (sin Data Leakage)",
+        Inches(0.75), Inches(3.18), Inches(5.4), Inches(0.5),
+        size=Pt(14), bold=True, color=NAVY)
+    split_items = [
+        "Train: ene 2025 – feb 2026 (14 meses)",
+        "Test:  mar – may 2026 (3 meses, nunca vistos)",
+        "Con split aleatorio: ROC-AUC era 1.000 (data leakage)",
+        "Con split temporal: ROC-AUC 0.8374 (honesto)",
+        "Modelo produccion: reentrenado en todos los datos",
+    ]
+    for i, item in enumerate(split_items):
+        txt(slide, f"▸  {item}",
+            Inches(0.75), Inches(3.72 + i * 0.59), Inches(5.4), Inches(0.52),
+            size=Pt(12), color=TEXTO)
+
+    # Columna der — top features
+    rect(slide, Inches(6.6), Inches(3.1), Inches(6.2), Inches(3.9),
+         fill=FONDO_CLARO, line=GRIS_BORDE, line_w=Pt(0.5))
+    rect(slide, Inches(6.6), Inches(3.1), Inches(0.07), Inches(3.9), fill=ROJO)
+    txt(slide, "Top Features por Importancia",
+        Inches(6.8), Inches(3.18), Inches(5.8), Inches(0.5),
+        size=Pt(14), bold=True, color=NAVY)
+
+    feats = [
+        ("invima_sev_actual",       "27.5%", ROJO),
+        ("invima_peor_sev_hist",     "21.1%", ROJO),
+        ("invima_meses_monitoreado", "12.9%", AMBER),
+        ("tasa_inactivacion_atc5",   "11.6%", AMBER),
+        ("invima_sev_t3_avg",        "11.5%", AMBER),
+    ]
+    for i, (feat, pct, ac) in enumerate(feats):
+        y = Inches(3.72 + i * 0.59)
+        # barra proporcional
+        bar_w = float(pct.rstrip("%")) / 30.0
+        rect(slide, Inches(6.8), y + Inches(0.12), Inches(bar_w), Inches(0.3), fill=ac)
+        txt(slide, feat, Inches(6.8), y, Inches(4.5), Inches(0.48),
+            size=Pt(11), color=TEXTO)
+        txt(slide, pct, Inches(12.0), y, Inches(0.7), Inches(0.48),
+            size=Pt(12), bold=True, color=ac, align=PP_ALIGN.RIGHT)
+
+    txt(slide, "Tipo: CalibratedClassifierCV (Platt scaling) + RandomForestClassifier · scikit-learn 1.9.0",
+        Inches(0.55), Inches(7.15), Inches(12.5), Inches(0.3),
+        size=Pt(9), color=GRIS)
+    pie(slide)
 
 
 def slide_07_aplicacion(prs):
-    """Slide 7: La Aplicación."""
+    """La Aplicacion."""
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    add_bullet_slide(
-        slide,
-        "La Aplicación: Accesible para Pacientes, Clínicos e INVIMA",
-        bullets=[
-            ("🔍", "Búsqueda en tiempo real en 52,830 medicamentos CUM (Socrata API + fallback local)"),
-            ("💊", "Alternativas terapéuticas en 8 niveles: sustituto directo → clase ATC completa"),
-            ("🤖", "Badge de riesgo ML por medicamento: probabilidad 0-100% con nivel Bajo/Medio/Alto/Crítico"),
-            ("🗺️",  "Mapa interactivo de Colombia: riesgo por departamento filtrable por nivel"),
-            ("📊", "Dashboard de vigilancia: top 20 reportados + spike detector vs. alertas INVIMA"),
-            ("🚨", "Señales anticipadas: medicamentos con spike ciudadano sin alerta INVIMA aún"),
-        ],
-        accent_color=AZUL_MEDIO,
-    )
-    # URL + tech
-    add_rect(slide, Inches(0.4), Inches(6.05), Inches(12.5), Inches(0.75),
-             fill_color=RGBColor(0x10, 0x35, 0x65))
-    add_text_box(slide,
-                 "🌐  https://openfarma-production.up.railway.app  "
-                 "·  CI/CD GitHub Actions  ·  16/16 tests verdes  "
-                 "·  ARIA accesible  ·  MIT License",
-                 Inches(0.55), Inches(6.12), Inches(12.2), Inches(0.55),
-                 font_size=Pt(12), color=VERDE_SALUD)
-    add_text_box(slide,
-                 "Stack: FastAPI · SQLAlchemy · SQLite · React 19 · Vite · Tailwind · Leaflet · Recharts · scikit-learn",
-                 Inches(0.5), Inches(7.1), Inches(12), Inches(0.35),
-                 font_size=Pt(9), color=RGBColor(0x88, 0x99, 0xAA))
+    cabecera(slide, "La Aplicacion: Para Pacientes, Clinicos e INVIMA", AZUL, "07")
+
+    funciones = [
+        ("\U0001f50d", "Busqueda en tiempo real: 52,830 medicamentos CUM via Socrata API + fallback local"),
+        ("\U0001f48a", "Alternativas terapeuticas en 8 niveles: sustituto directo → clase ATC completa"),
+        ("\U0001f916", "Badge de riesgo ML por medicamento: probabilidad 0-100% con nivel Bajo/Medio/Alto/Critico"),
+        ("\U0001f4cb", "Formulario de reporte mejorado: busca con ficha CUM completa antes de enviar"),
+        ("\U0001f4ca", "Dashboard de vigilancia: top 20 reportados + spike detector vs. alertas INVIMA"),
+        ("\U0001f6a8", "Senales anticipadas: spike ciudadano sin alerta INVIMA = riesgo emergente"),
+    ]
+    y = Inches(1.2)
+    for icon, desc in funciones:
+        rect(slide, Inches(0.55), y, Inches(12.2), Inches(0.62),
+             fill=FONDO_CLARO, line=GRIS_BORDE, line_w=Pt(0.5))
+        txt(slide, icon, Inches(0.65), y + Inches(0.05), Inches(0.5), Inches(0.52),
+            size=Pt(16), color=AZUL)
+        txt(slide, desc, Inches(1.25), y + Inches(0.1), Inches(11.3), Inches(0.45),
+            size=Pt(14), color=TEXTO)
+        y += Inches(0.7)
+
+    # Banner URL + CI
+    rect(slide, Inches(0.55), Inches(6.1), Inches(12.2), Inches(0.72),
+         fill=AZUL_CLARO, line=AZUL, line_w=Pt(1))
+    txt(slide, "\U0001f310  openfarma-production.up.railway.app"
+               "  ·  CI/CD GitHub Actions  ·  16/16 tests verdes  ·  MIT License",
+        Inches(0.75), Inches(6.17), Inches(11.8), Inches(0.58),
+        size=Pt(13), bold=True, color=AZUL)
+
+    txt(slide, "Stack: FastAPI · SQLAlchemy · SQLite · React 19 · Vite · Tailwind · Recharts · scikit-learn",
+        Inches(0.55), Inches(7.15), Inches(12), Inches(0.3),
+        size=Pt(9), color=GRIS)
 
 
 def slide_08_impacto(prs):
-    """Slide 8: Impacto y Escalabilidad."""
+    """Impacto y Escalabilidad."""
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    fondo_color(slide, AZUL_OSCURO)
-    add_rect(slide, Inches(0), Inches(0), SLIDE_W, Inches(0.08), fill_color=VERDE_SALUD)
+    cabecera(slide, "Impacto y Escalabilidad", VERDE, "08")
 
-    add_text_box(slide, "Impacto y Escalabilidad",
-                 Inches(0.5), Inches(0.2), Inches(12.3), Inches(0.9),
-                 font_size=Pt(28), bold=True, color=BLANCO)
-    add_rect(slide, Inches(0.5), Inches(1.05), Inches(2), Inches(0.05), fill_color=VERDE_SALUD)
-
-    # Columna izquierda: impacto
-    add_rect(slide, Inches(0.4), Inches(1.2), Inches(6.0), Inches(5.4),
-             fill_color=RGBColor(0x10, 0x35, 0x65))
-    add_text_box(slide, "Impacto Inmediato", Inches(0.55), Inches(1.3),
-                 Inches(5.7), Inches(0.5), font_size=Pt(16), bold=True, color=VERDE_SALUD)
+    # Columna izq — impacto
+    rect(slide, Inches(0.55), Inches(1.2), Inches(5.9), Inches(5.4),
+         fill=VERDE_CLARO, line=GRIS_BORDE, line_w=Pt(0.5))
+    rect(slide, Inches(0.55), Inches(1.2), Inches(0.07), Inches(5.4), fill=VERDE)
+    txt(slide, "Impacto Inmediato",
+        Inches(0.75), Inches(1.3), Inches(5.5), Inches(0.5),
+        size=Pt(16), bold=True, color=NAVY)
     impacts = [
         "52,830 medicamentos monitoreados en tiempo real",
-        "Canal ciudadano → señal regulatoria directa a INVIMA",
-        "Anticipa desabastecimiento 30 días antes que alertas oficiales",
-        "Alternativas terapéuticas: reduce impacto de escasez en pacientes",
-        "Código abierto MIT: cualquier entidad puede adoptar el sistema",
+        "Canal ciudadano → senal regulatoria directa a INVIMA",
+        "Anticipa desabastecimiento 30 dias antes que alertas oficiales",
+        "Alternativas terapeuticas: reduce impacto en pacientes",
+        "Codigo abierto MIT: cualquier entidad puede adoptarlo",
     ]
-    for i, txt in enumerate(impacts):
-        add_text_box(slide, f"✓  {txt}", Inches(0.6), Inches(1.9 + i * 0.75),
-                     Inches(5.6), Inches(0.65), font_size=Pt(13), color=BLANCO)
+    for i, item in enumerate(impacts):
+        txt(slide, f"✓  {item}",
+            Inches(0.75), Inches(1.9 + i * 0.8), Inches(5.5), Inches(0.72),
+            size=Pt(13), color=TEXTO)
 
-    # Columna derecha: escalabilidad
-    add_rect(slide, Inches(6.8), Inches(1.2), Inches(6.0), Inches(5.4),
-             fill_color=RGBColor(0x10, 0x35, 0x65))
-    add_text_box(slide, "Escalabilidad y Roadmap", Inches(6.95), Inches(1.3),
-                 Inches(5.7), Inches(0.5), font_size=Pt(16), bold=True, color=AMARILLO)
+    # Columna der — roadmap
+    rect(slide, Inches(6.85), Inches(1.2), Inches(6.0), Inches(5.4),
+         fill=AMBER_CLARO, line=GRIS_BORDE, line_w=Pt(0.5))
+    rect(slide, Inches(6.85), Inches(1.2), Inches(0.07), Inches(5.4), fill=AMBER)
+    txt(slide, "Escalabilidad y Roadmap",
+        Inches(7.05), Inches(1.3), Inches(5.6), Inches(0.5),
+        size=Pt(16), bold=True, color=NAVY)
     roadmap = [
-        "🏥  Integración directa API INVIMA (alertas automáticas)",
-        "📱  Notificaciones push a IPS y farmacias en riesgo",
-        "🌎  Replicable a Ecuador, Perú, Chile (datos similares DIGEMID/ISP)",
-        "📈  Re-entreno mensual automático con datos INVIMA nuevos",
-        "🤝  Partnership con MinSalud para adopción institucional",
+        "\U0001f3e5  Integracion directa API INVIMA (alertas automaticas)",
+        "\U0001f4f1  Notificaciones push a IPS y farmacias en riesgo",
+        "\U0001f30e  Replicable: Ecuador, Peru, Chile (DIGEMID/ISP)",
+        "\U0001f4c8  Re-entrenamiento mensual automatico con datos nuevos",
+        "\U0001f91d  Partnership con MinSalud para adopcion institucional",
     ]
-    for i, txt in enumerate(roadmap):
-        add_text_box(slide, txt, Inches(7.0), Inches(1.9 + i * 0.75),
-                     Inches(5.5), Inches(0.65), font_size=Pt(13), color=BLANCO)
+    for i, item in enumerate(roadmap):
+        txt(slide, item,
+            Inches(7.05), Inches(1.9 + i * 0.8), Inches(5.6), Inches(0.72),
+            size=Pt(13), color=TEXTO)
 
-    # CTA final
-    add_rect(slide, Inches(0.4), Inches(6.75), Inches(12.5), Inches(0.6),
-             fill_color=VERDE_SALUD)
-    add_text_box(slide,
-                 "⭐  github.com/vamanrique/OpenFarma  ·  "
-                 "🌐  openfarma-production.up.railway.app  ·  "
-                 "📧  vamanrique@gmail.com",
-                 Inches(0.55), Inches(6.82), Inches(12.2), Inches(0.45),
-                 font_size=Pt(13), bold=True, color=BLANCO, align=PP_ALIGN.CENTER)
+    # CTA — verde
+    rect(slide, Inches(0.55), Inches(6.78), Inches(12.2), Inches(0.58), fill=NAVY)
+    txt(slide,
+        "⭐  github.com/vamanrique/OpenFarma  ·  "
+        "\U0001f310  openfarma-production.up.railway.app  ·  "
+        "\U0001f4e7  vamanrique@gmail.com",
+        Inches(0.75), Inches(6.84), Inches(11.8), Inches(0.46),
+        size=Pt(12), bold=True, color=BLANCO, align=PP_ALIGN.CENTER)
 
 
 def slide_09_equipo(prs):
-    """Slide 9: Equipo — BORRADOR."""
+    """Equipo — BORRADOR."""
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    fondo_color(slide, AZUL_OSCURO)
-    add_rect(slide, Inches(0), Inches(0), SLIDE_W, Inches(0.08), fill_color=AMARILLO)
-
-    add_text_box(slide, "El Equipo",
-                 Inches(0.5), Inches(0.2), Inches(12.3), Inches(0.9),
-                 font_size=Pt(28), bold=True, color=BLANCO)
-    add_rect(slide, Inches(0.5), Inches(1.05), Inches(2), Inches(0.05), fill_color=AMARILLO)
+    cabecera(slide, "El Equipo", AMBER, "09")
 
     # Banner BORRADOR
-    add_rect(slide, Inches(0.4), Inches(1.15), Inches(12.5), Inches(0.6),
-             fill_color=RGBColor(0x5A, 0x40, 0x00))
-    add_text_box(slide,
-                 "⚠  BORRADOR — Información de participantes pendiente de confirmación para inscripción oficial",
-                 Inches(0.55), Inches(1.2), Inches(12.2), Inches(0.5),
-                 font_size=Pt(13), bold=True, color=AMARILLO)
+    rect(slide, Inches(0.55), Inches(1.12), Inches(12.2), Inches(0.55),
+         fill=AMBER_CLARO, line=RGBColor(0xF5, 0xA6, 0x23), line_w=Pt(1.5))
+    txt(slide, "⚠  BORRADOR — Informacion de participantes pendiente de confirmacion",
+        Inches(0.75), Inches(1.18), Inches(11.8), Inches(0.43),
+        size=Pt(12), bold=True, color=AMBER)
 
-    # 3 placeholders de miembros
+    # 3 tarjetas de miembros
     roles = [
-        ("Líder de Equipo", "[NOMBRE COMPLETO]", "[Cargo/Institución]", "[Ciudad, Colombia]"),
-        ("Analista de Datos / ML", "[NOMBRE COMPLETO]", "[Cargo/Institución]", "[Ciudad, Colombia]"),
-        ("Desarrollador Full-Stack", "[NOMBRE COMPLETO]", "[Cargo/Institución]", "[Ciudad, Colombia]"),
+        ("Lider de Equipo",          "[NOMBRE COMPLETO]", "[Cargo / Institucion]", "[Ciudad, Colombia]"),
+        ("Analista de Datos / ML",   "[NOMBRE COMPLETO]", "[Cargo / Institucion]", "[Ciudad, Colombia]"),
+        ("Desarrollador Full-Stack", "[NOMBRE COMPLETO]", "[Cargo / Institucion]", "[Ciudad, Colombia]"),
     ]
-    for i, (role, name, org, city) in enumerate(roles):
-        x = Inches(0.4 + i * 4.3)
-        add_rect(slide, x, Inches(1.95), Inches(4.0), Inches(4.5),
-                 fill_color=RGBColor(0x10, 0x35, 0x65))
-        add_rect(slide, x, Inches(1.95), Inches(4.0), Inches(0.08), fill_color=AMARILLO)
-        # Avatar placeholder
-        add_rect(slide, x + Inches(1.25), Inches(2.1), Inches(1.5), Inches(1.5),
-                 fill_color=RGBColor(0x1A, 0x56, 0x8C))
-        add_text_box(slide, "👤", x + Inches(1.25), Inches(2.15), Inches(1.5), Inches(1.4),
-                     font_size=Pt(40), align=PP_ALIGN.CENTER, color=BLANCO)
-        add_text_box(slide, role, x, Inches(3.7), Inches(4.0), Inches(0.5),
-                     font_size=Pt(11), bold=True, color=AMARILLO, align=PP_ALIGN.CENTER)
-        add_text_box(slide, name, x, Inches(4.15), Inches(4.0), Inches(0.5),
-                     font_size=Pt(13), bold=True, color=BLANCO, align=PP_ALIGN.CENTER)
-        add_text_box(slide, org, x, Inches(4.6), Inches(4.0), Inches(0.4),
-                     font_size=Pt(10), color=RGBColor(0xBB, 0xCC, 0xDD),
-                     align=PP_ALIGN.CENTER)
-        add_text_box(slide, city, x, Inches(4.95), Inches(4.0), Inches(0.4),
-                     font_size=Pt(10), color=RGBColor(0x88, 0x99, 0xAA),
-                     align=PP_ALIGN.CENTER)
+    for i, (rol, nombre, org, ciudad) in enumerate(roles):
+        x = Inches(0.55 + i * 4.25)
+        rect(slide, x, Inches(1.85), Inches(4.0), Inches(4.4),
+             fill=FONDO_CLARO, line=GRIS_BORDE, line_w=Pt(0.5))
+        rect(slide, x, Inches(1.85), Inches(4.0), Inches(0.07), fill=AMBER)
+        # Avatar
+        rect(slide, x + Inches(1.25), Inches(2.05), Inches(1.5), Inches(1.5),
+             fill=AZUL_CLARO, line=GRIS_BORDE, line_w=Pt(0.5))
+        txt(slide, "\U0001f464", x + Inches(1.25), Inches(2.1), Inches(1.5), Inches(1.4),
+            size=Pt(36), align=PP_ALIGN.CENTER, color=AZUL)
+        txt(slide, rol, x, Inches(3.65), Inches(4.0), Inches(0.45),
+            size=Pt(10), bold=True, color=AMBER, align=PP_ALIGN.CENTER)
+        txt(slide, nombre, x, Inches(4.08), Inches(4.0), Inches(0.45),
+            size=Pt(13), bold=True, color=NAVY, align=PP_ALIGN.CENTER)
+        txt(slide, org, x, Inches(4.5), Inches(4.0), Inches(0.4),
+            size=Pt(10), color=TEXTO_SUB, align=PP_ALIGN.CENTER)
+        txt(slide, ciudad, x, Inches(4.88), Inches(4.0), Inches(0.4),
+            size=Pt(10), color=GRIS, align=PP_ALIGN.CENTER)
 
-    add_text_box(slide,
-                 "Requisito concurso: equipos de 2-4 personas · mínimo una mujer · al menos un perfil técnico",
-                 Inches(0.5), Inches(6.6), Inches(12), Inches(0.4),
-                 font_size=Pt(10), italic=True, color=RGBColor(0x88, 0x99, 0xAA))
-    add_text_box(slide, "vamanrique@gmail.com",
-                 Inches(0.5), Inches(7.05), Inches(5), Inches(0.4),
-                 font_size=Pt(11), color=RGBColor(0x88, 0xCC, 0xEE))
-    add_text_box(slide, "OpenFarma  |  Datos al Ecosistema 2026",
-                 Inches(8), Inches(7.1), Inches(5), Inches(0.35),
-                 font_size=Pt(9), color=RGBColor(0x88, 0x99, 0xAA), align=PP_ALIGN.RIGHT)
+    txt(slide, "Requisito concurso: equipos 2-4 personas · minimo una mujer · al menos un perfil tecnico",
+        Inches(0.55), Inches(6.45), Inches(12), Inches(0.4),
+        size=Pt(10), italic=True, color=GRIS)
+    txt(slide, "vamanrique@gmail.com",
+        Inches(0.55), Inches(7.0), Inches(5), Inches(0.4),
+        size=Pt(11), color=AZUL)
+    pie(slide)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -686,22 +560,22 @@ def main():
     prs = prs_nueva()
 
     print("Generando slides...")
-    slide_01_portada(prs)     ; print("  ✓ Slide 1: Portada")
-    slide_02_problema(prs)    ; print("  ✓ Slide 2: El Problema")
-    slide_03_datos(prs)       ; print("  ✓ Slide 3: Los Datos")
-    slide_04_arquitectura(prs); print("  ✓ Slide 4: Arquitectura")
-    slide_05_pipeline(prs)    ; print("  ✓ Slide 5: Pipeline ETL")
-    slide_06_modelo(prs)      ; print("  ✓ Slide 6: Modelo ML")
-    slide_07_aplicacion(prs)  ; print("  ✓ Slide 7: La Aplicación")
-    slide_08_impacto(prs)     ; print("  ✓ Slide 8: Impacto y Escalabilidad")
-    slide_09_equipo(prs)      ; print("  ✓ Slide 9: Equipo (BORRADOR)")
+    slide_01_portada(prs)     ; print("  [OK] Slide 1: Portada")
+    slide_02_problema(prs)    ; print("  [OK] Slide 2: El Problema")
+    slide_03_datos(prs)       ; print("  [OK] Slide 3: Los Datos")
+    slide_04_arquitectura(prs); print("  [OK] Slide 4: Arquitectura")
+    slide_05_pipeline(prs)    ; print("  [OK] Slide 5: Pipeline ETL")
+    slide_06_modelo(prs)      ; print("  [OK] Slide 6: Modelo ML")
+    slide_07_aplicacion(prs)  ; print("  [OK] Slide 7: La Aplicacion")
+    slide_08_impacto(prs)     ; print("  [OK] Slide 8: Impacto y Escalabilidad")
+    slide_09_equipo(prs)      ; print("  [OK] Slide 9: Equipo (BORRADOR)")
 
     out_dir = Path(__file__).parent.parent / "RECURSOS"
     out_dir.mkdir(exist_ok=True)
     out_path = out_dir / "Presentacion.pptx"
     prs.save(str(out_path))
-    print(f"\n✅  Guardado: {out_path}")
-    print(f"   {len(prs.slides)} slides · {out_path.stat().st_size // 1024} KB")
+    print(f"\nGuardado: {out_path}")
+    print(f"  {len(prs.slides)} slides - {out_path.stat().st_size // 1024} KB")
 
 
 if __name__ == "__main__":
