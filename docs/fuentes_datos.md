@@ -12,7 +12,8 @@
 | **Formato** | JSON via Socrata SODA API |
 | **Registros** | ~52,000 presentaciones activas |
 | **Actualización** | Continua (tiempo real) |
-| **Licencia** | Datos Abiertos Colombia |
+| **Fecha de acceso** | Snapshot ETL: julio 2026; búsquedas en tiempo real vía Socrata |
+| **Licencia** | Datos Abiertos Colombia (Ley 1712 de 2014) |
 
 **Campos utilizados:** `expedientecum`, `consecutivocum`, `producto`, `principioactivo`, `estadocum`, `atc`, `forma`, `via`, `concentracion`, `titular`, `registro`
 
@@ -27,6 +28,8 @@
 | **Dataset ID** | `vgr4-gemg` |
 | **Endpoint** | `https://www.datos.gov.co/resource/vgr4-gemg.json` |
 | **Registros** | ~8,000 |
+| **Fecha de acceso** | Snapshot ETL: julio 2026; consulta en tiempo real en producción |
+| **Licencia** | Datos Abiertos Colombia |
 | **Uso** | Complementa búsqueda: productos cuyo registro venció pero están en renovación |
 
 ---
@@ -41,7 +44,8 @@
 | **Formato** | PDF (descarga directa) |
 | **Cobertura** | Enero 2025 – Mayo 2026 (17 meses, 9,795 entradas) |
 | **Frecuencia** | Mensual (publicación aproximada los viernes) |
-| **Licencia** | Información pública |
+| **Fecha de acceso** | Enero 2025 – Mayo 2026 (procesados al momento del entrenamiento) |
+| **Licencia** | Información pública (INVIMA) |
 
 **Categorías en los PDFs:**
 - `MONITORIZACION`: medicamento con señal de riesgo, bajo vigilancia activa

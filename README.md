@@ -4,6 +4,8 @@
 
 > Plataforma de inteligencia farmacéutica que combina datos abiertos del CUM, historial de alertas del INVIMA y reportes ciudadanos para predecir y alertar sobre el desabastecimiento de medicamentos en Colombia antes de que ocurra.
 
+![OpenFarma — pantalla principal](RECURSOS/portada.png)
+
 ---
 
 ## Problema
@@ -30,21 +32,35 @@ El desabastecimiento de medicamentos afecta a millones de pacientes colombianos 
 
 ## Arquitectura
 
-```
-[Ciudadano]
-     │
-     ▼
-[React Frontend] ──► [FastAPI Backend] ──► [Socrata API / datos.gov.co]
-                            │
-                            ├──► [SQLite: cum_normalizado, grupos_equivalencia]
-                            ├──► [INVIMA: cache en memoria (PDF scraper)]
-                            └──► [Modelo ML: CalibratedRandomForest]
+```mermaid
+graph TD
+    subgraph Fuentes["Fuentes de datos"]
+        D1["CUM · datos.gov.co\nSocrata API"]
+        D2["Alertas INVIMA\nPDFs mensuales"]
+        D3["Reportes ciudadanos"]
+    end
+
+    subgraph Sistema["Backend · FastAPI"]
+        API["REST API"]
+        DB[("SQLite\ncum_normalizado\ngrupos_equivalencia\ninvima_seguimiento")]
+        ML["CalibratedRandomForest\nROC-AUC 0.8374"]
+    end
+
+    UI["React 19 · Tailwind CSS\nBúsqueda · Predicción · Reportes"]
+
+    D1 -->|httpx async| API
+    D2 -->|ETL pdfminer| DB
+    D3 -->|formulario| API
+    API <--> DB
+    DB --> ML
+    ML --> API
+    API --> UI
 ```
 
 **Flujo de búsqueda:**
 1. El usuario escribe un medicamento → consulta en tiempo real a datos.gov.co (CUM activo + renovación)
 2. Si Socrata no responde → fallback local en `cum_normalizado` (52,830 productos)
-3. Enriquecimiento con grupos de equivalencia → muestra alternativas terapéuticas y estado INVIMA
+3. Enriquecimiento con grupos de equivalencia → alternativas terapéuticas y estado INVIMA
 4. Predicción de riesgo de desabastecimiento para el mes siguiente
 
 ---
@@ -60,11 +76,24 @@ El desabastecimiento de medicamentos afecta a millones de pacientes colombianos 
 **Tipo:** `CalibratedClassifierCV` sobre `RandomForestClassifier` (scikit-learn 1.9.0)
 
 **Features más importantes:**
-- Severidad INVIMA el mes anterior (28.3%)
-- Peor severidad histórica (21.7%)
-- Meses bajo monitorización INVIMA (12.0%)
-- Tendencia reciente (promedio 3m vs anterior)
-- Estructura de mercado: número de competidores, monopolio, tasa de inactivación ATC
+- Severidad INVIMA el mes anterior — `invima_sev_actual` (27.5%)
+- Promedio severidad últimos 3 meses — `invima_sev_t3_avg` (21.1%)
+- Meses bajo monitorización INVIMA — `invima_meses_monitoreado` (12.9%)
+- Tasa de inactivación en el grupo ATC — `tasa_inactivacion_atc5` (11.6%)
+- Peor severidad histórica — `invima_peor_sev_hist` (11.5%)
+
+**Pipeline de entrenamiento:**
+
+```mermaid
+flowchart LR
+    A["CUM\n52,830 productos"] --> C["Feature engineering\n15 variables"]
+    B["INVIMA\n9,795 alertas\n17 meses"] --> C
+    C --> D{"Split\ntemporal\nhonesto"}
+    D -->|ene 2025 – feb 2026| E["Entrenamiento"]
+    D -->|mar – may 2026| F["Evaluación\nROC-AUC 0.8374"]
+    E --> G["CalibratedRandomForest\nmodelo_prod"]
+    G --> H["API\n/predicciones/{cum_id}"]
+```
 
 ---
 
@@ -73,7 +102,7 @@ El desabastecimiento de medicamentos afecta a millones de pacientes colombianos 
 | Capa | Tecnología |
 |------|-----------|
 | Backend | Python 3.11 · FastAPI · SQLAlchemy · SQLite |
-| Frontend | React 18 · Vite · Tailwind CSS |
+| Frontend | React 19 · Vite · Tailwind CSS |
 | ML | scikit-learn 1.9.0 · pandas · numpy |
 | ETL / NLP | DeepSeek API (clasificación farmacológica ATC) |
 | Deploy | Railway (auto-deploy desde `main`) |
@@ -81,32 +110,34 @@ El desabastecimiento de medicamentos afecta a millones de pacientes colombianos 
 
 ---
 
-## Instalación y Ejecución Local
-
-### Requisitos
-- Python 3.11+
-- Node.js 20+
-
-### Backend
+## Inicio Rápido
 
 ```bash
+git clone https://github.com/vamanrique/OpenFarma
+cd OpenFarma
+make backend      # instala deps Python y arranca la API en :8000
+make frontend     # instala deps Node y arranca el frontend en :5173
+```
+
+### Prerequisitos
+- Python 3.11+ · Node.js 20+
+
+### Manual (sin Make)
+
+```bash
+# Backend
 cd backend
 python -m venv .venv
-source .venv/Scripts/activate   # Windows: .venv\Scripts\activate
+source .venv/Scripts/activate   # Windows
 pip install -r requirements.txt
+cp .env.example .env            # añade tu DEEPSEEK_API_KEY
 uvicorn app.main:app --reload
+
+# Frontend (otra terminal)
+cd frontend && npm install && npm run dev
 ```
 
-La API queda disponible en `http://localhost:8000`. Documentación interactiva: `http://localhost:8000/docs`
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
+La API queda disponible en `http://localhost:8000` · Docs: `http://localhost:8000/docs`  
 El frontend queda disponible en `http://localhost:5173`
 
 ---
@@ -127,23 +158,38 @@ El frontend queda disponible en `http://localhost:5173`
 
 ```
 openfarma/
-├── RECURSOS/               # Presentación del proyecto
+├── RECURSOS/               # Presentación del concurso
 ├── README.md
+├── Makefile                # make backend / frontend / test / retrain
 ├── LICENSE
 ├── Changelog.md
 ├── requirements.txt
-├── nixpacks.toml           # Configuración de deploy Railway
+├── nixpacks.toml           # Deploy Railway
 ├── docs/                   # Documentación técnica y metodológica
-├── notebooks/              # Análisis exploratorio y notebooks
+├── notebooks/              # EDA, transformación, modelo, reportes (01–05)
 ├── backend/
 │   ├── app/                # API FastAPI
-│   ├── etl/                # Pipeline de datos (INVIMA, CUM, transformación)
-│   ├── data/               # Modelo ML y datos auxiliares
+│   ├── etl/                # Pipeline ETL (INVIMA, CUM, normalización)
+│   ├── data/               # Modelo ML (modelo_rf.pkl)
 │   └── openfarma.db        # SQLite con CUM normalizado y grupos
 ├── frontend/
-│   └── src/                # React + Tailwind
+│   └── src/                # React 19 + Tailwind
 └── reports/                # Figuras y reporte final
 ```
+
+---
+
+## Reproducibilidad
+
+```bash
+# Reentrenar el modelo con los datos más recientes
+make retrain
+
+# Equivalente manual
+.venv/Scripts/python.exe retrain_invima.py --db openfarma.db
+```
+
+Ver `docs/deployment.md` para el flujo completo de actualización en producción.
 
 ---
 
@@ -155,8 +201,7 @@ openfarma/
 
 ## Equipo
 
-Concurso Datos al Ecosistema 2026 — Categoría Avanzado
-
+Concurso Datos al Ecosistema 2026 — Categoría Avanzado  
 Contacto: vamanrique@gmail.com
 
 ---

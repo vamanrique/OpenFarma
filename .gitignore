@@ -14,6 +14,16 @@ backend/data/cum_raw.csv
 backend/data/cum_limpio.csv
 backend/data/validacion_reporte.csv
 
+# Logs y reportes temporales del backend (generados por ETL y scripts de auditoría)
+backend/*.log
+backend/*_report.json
+backend/grupos_equivalencia.csv
+backend/grupos_ia*.log
+
+# Artefactos de Claude Code
+.claude/worktrees/
+.claude/projects/
+
 # Node
 node_modules/
 .vite/
