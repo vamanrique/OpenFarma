@@ -1,12 +1,12 @@
 # OpenFarma — Build config for Railway (nixpacks)
+# frontend/dist/ is committed — no Node.js needed at build time
 [phases.setup]
-nixPkgs = ["python311", "nodejs_22", "nodePackages.npm"]
+nixPkgs = ["python311"]
 
 [phases.install]
 cmds = [
   "python -m venv /opt/venv",
-  "/opt/venv/bin/pip install -r backend/requirements.txt",
-  "cd frontend && npm ci && npm run build"
+  "/opt/venv/bin/pip install -r backend/requirements.txt"
 ]
 
 [start]
