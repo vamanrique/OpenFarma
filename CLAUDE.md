@@ -18,9 +18,9 @@ Deploy: Railway (auto-deploy desde main)
 ## Deploy — Railway
 
 - Auto-deploy desde `main` via GitHub webhook
-- **nixpacks.toml** (raíz): instala Python + Node 20, ejecuta `pip install` + `npm ci && npm run build`
+- **nixpacks.toml** (raíz): instala Python 3.11 + dependencias vía venv
 - **start.sh**: copia siempre `backend/openfarma.db` → `/data/openfarma.db` (fuente de verdad = git)
-- Cambios a `frontend/src/**` → hacer `npm run build` localmente + commitear `frontend/dist/` (Railway también lo recompila, pero es más rápido commitear el dist)
+- Cambios a `frontend/src/**` → hacer `npm run build` localmente + commitear `frontend/dist/` (Railway sirve el dist pre-compilado)
 - **WAL checkpoint**: antes de commitear `openfarma.db`, abrir conexión SQLite y ejecutar `PRAGMA wal_checkpoint(TRUNCATE)` para que los cambios pasen del WAL al archivo principal
 
 ### Variables de entorno en Railway

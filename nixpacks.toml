@@ -1,5 +1,4 @@
-# OpenFarma — Build config for Railway (nixpacks)
-# frontend/dist/ is committed — no Node.js needed at build time
+# OpenFarma — configuración de build para Railway
 [phases.setup]
 nixPkgs = ["python311"]
 
