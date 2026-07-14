@@ -17,11 +17,15 @@ RENOVACION_URL = "https://www.datos.gov.co/resource/vgr4-gemg.json"
 TIMEOUT = 30.0
 
 import os as _os
-_SOCRATA_HEADERS = {"X-App-Token": _os.environ["SOCRATA_APP_TOKEN"]} if _os.environ.get("SOCRATA_APP_TOKEN") else {}
+
+
+def _socrata_headers() -> dict:
+    token = _os.environ.get("SOCRATA_APP_TOKEN", "")
+    return {"X-App-Token": token} if token else {}
 
 
 async def _get(params: dict, url: str = API_URL) -> list[dict]:
-    async with httpx.AsyncClient(timeout=TIMEOUT, headers=_SOCRATA_HEADERS) as client:
+    async with httpx.AsyncClient(timeout=TIMEOUT, headers=_socrata_headers()) as client:
         resp = await client.get(url, params=params)
         resp.raise_for_status()
         return resp.json()
@@ -37,7 +41,7 @@ async def _completar_grupos(filas: list[dict], url: str = API_URL) -> list[dict]
         return filas
     BATCH = 50
     filas_extra: list[dict] = []
-    async with httpx.AsyncClient(timeout=TIMEOUT, headers=_SOCRATA_HEADERS) as client:
+    async with httpx.AsyncClient(timeout=TIMEOUT, headers=_socrata_headers()) as client:
         for i in range(0, len(expedientes), BATCH):
             lote = expedientes[i:i + BATCH]
             ids  = ', '.join(f"'{e}'" for e in lote)
@@ -176,7 +180,7 @@ async def _fetch_grupo_expedientes(cum_ids: list[str]) -> list[dict]:
         return []
     BATCH = 50
     filas: list[dict] = []
-    async with httpx.AsyncClient(timeout=TIMEOUT, headers=_SOCRATA_HEADERS) as client:
+    async with httpx.AsyncClient(timeout=TIMEOUT, headers=_socrata_headers()) as client:
         for i in range(0, len(expedientes), BATCH):
             lote = expedientes[i:i + BATCH]
             ids = ', '.join(f"'{e}'" for e in lote)
