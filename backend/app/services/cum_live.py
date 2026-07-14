@@ -1,6 +1,7 @@
 """
 Cliente para la API Socrata del CUM (datos.gov.co).
-Siempre consulta el JSON en línea — nunca lee archivos locales.
+Consulta datos.gov.co con App Token cuando está disponible; si Socrata
+falla o devuelve error, cae a la base de datos local (cum_normalizado).
 """
 import asyncio
 import json

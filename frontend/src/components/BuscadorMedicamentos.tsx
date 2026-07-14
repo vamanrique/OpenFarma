@@ -664,7 +664,7 @@ function PanelAlternativas({ medicamento, grupoMeds, alternativas, cargando, err
             </p>
             <p className="text-slate-400 text-xs leading-relaxed">
               No hay sustitutos directos, otras concentraciones, otras formas farmacéuticas
-              ni equivalentes terapéuticos ATC activos registrados en Colombia para este producto.
+              ni equivalentes terapéuticos ATC activos registrados en Colombia.
             </p>
           </div>
         )}

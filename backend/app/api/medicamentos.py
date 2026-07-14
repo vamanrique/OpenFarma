@@ -1,16 +1,17 @@
 import asyncio
 import logging
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
 from typing import List
 
-logger = logging.getLogger(__name__)
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.schemas.medicamento import MedicamentoLiveRead, AlternativaLiveRead, EstadoInvimaRead
 from app.services import cum_live, invima_service
 from etl.enriquecedor import enriquecer_con_llm
 from etl.transformacion import MedicamentoTransformado
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 

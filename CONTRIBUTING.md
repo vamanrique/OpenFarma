@@ -21,7 +21,7 @@ Thank you for your interest in contributing to OpenFarma — an open-source earl
 ### Prerequisites
 
 - Python 3.11+
-- Node.js 20+
+- Node.js 22+
 - Git
 
 ### Backend
