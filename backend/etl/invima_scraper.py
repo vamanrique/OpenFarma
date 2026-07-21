@@ -4,12 +4,14 @@ invima_scraper.py — Descarga PDFs nuevos del portal INVIMA y los inserta en DB
 Flujo:
   1. Fetch HTML de la página de desabastecimientos INVIMA
   2. Extraer todos los enlaces a PDFs de listados de abastecimiento
-  3. Para cada PDF encontrado:
+  3. Fallback: intentar URLs candidatas construidas para los últimos 3 meses
+     (cubre el caso donde INVIMA publicó el PDF pero no lo listó en la página)
+  4. Para cada PDF encontrado:
      a. Descargarlo a un directorio temporal
      b. Leer su contenido para inferir mes/año (no desde URL/filename)
      c. Saltarlo si ese mes/año ya está en la DB
      d. Insertar en DB si es nuevo
-  4. Retornar resumen: cuántos PDFs nuevos, cuántos registros insertados
+  5. Retornar resumen: cuántos PDFs nuevos, cuántos registros insertados
 """
 from __future__ import annotations
 
@@ -19,6 +21,7 @@ import time
 import logging
 import sqlite3
 import tempfile
+import datetime
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
@@ -30,6 +33,10 @@ INVIMA_BASE  = "https://www.invima.gov.co"
 INVIMA_PAGE  = (
     "https://www.invima.gov.co/productos-vigilados/"
     "medicamentos-y-productos-biologicos/desabastecimientos"
+)
+INVIMA_ATTACH_BASE = (
+    "https://www.invima.gov.co/invima_website/static/attachments/"
+    "medicamentos_desabastecimientos/"
 )
 
 HEADERS = {
@@ -50,6 +57,13 @@ KEYWORDS_POSITIVOS = {
 KEYWORDS_NEGATIVOS = {
     "circular", "resolucion", "comunicado",
     "instructivo", "guia",
+}
+
+# Nombres de mes en español para construir URLs candidatas
+_MESES_ES = {
+    1: "enero", 2: "febrero", 3: "marzo", 4: "abril",
+    5: "mayo", 6: "junio", 7: "julio", 8: "agosto",
+    9: "septiembre", 10: "octubre", 11: "noviembre", 12: "diciembre",
 }
 
 
@@ -106,6 +120,103 @@ def _es_pdf_listado(url: str, text: str) -> bool:
     return False
 
 
+def _es_link_biblioteca_listado(url: str, text: str) -> bool:
+    """Detecta links /biblioteca/ de INVIMA que apuntan a un listado de abastecimiento.
+    INVIMA migró sus PDFs a este sistema desde oct 2025; los links no terminan en .pdf."""
+    if "/biblioteca/" not in url.lower():
+        return False
+    combined = (url + " " + text).lower()
+    if any(kw in combined for kw in KEYWORDS_NEGATIVOS):
+        return False
+    return any(kw in combined for kw in KEYWORDS_POSITIVOS)
+
+
+def _resolver_url_descarga_biblioteca(
+    url: str, client, timeout: int = 20
+) -> str | None:
+    """Sigue un enlace /biblioteca/ y extrae la URL real de descarga (/biblioteca/download/N)."""
+    try:
+        resp = client.get(url, headers=HEADERS, follow_redirects=True, timeout=timeout)
+        resp.raise_for_status()
+        sub = _LinkExtractor()
+        sub.feed(resp.text)
+        for link in sub.links:
+            href = link["url"]
+            if "/biblioteca/download/" in href:
+                if href.startswith("/"):
+                    return INVIMA_BASE + href
+                return href
+    except Exception as exc:
+        logger.warning("No se pudo resolver enlace biblioteca %s: %s", url, exc)
+    return None
+
+
+def _candidatas_recientes(meses_atras: int = 3) -> list[dict]:
+    """
+    Genera URLs candidatas para los últimos `meses_atras` meses.
+    INVIMA ha cambiado el naming de sus PDFs varias veces; se prueban varios
+    patrones por mes para aumentar la probabilidad de encontrar el PDF correcto.
+    Retorna lista de [{url, filename}] — igual que scrape_urls_invima().
+    """
+    hoy  = datetime.date.today()
+    mes  = hoy.month
+    anio = hoy.year
+
+    candidatas: list[dict] = []
+    vistos: set[str] = set()
+
+    for _ in range(meses_atras):
+        m = _MESES_ES[mes]
+        patrones = [
+            # Patrón 2025 estándar (ene-ago)
+            f"listado_abastecimiento_y_desabastecimiento_medicamentos_{m}_de_{anio}.pdf",
+            # Patrón con sufijo _def (sep 2025)
+            f"listado_abastecimiento_{m}_{anio}_def.pdf",
+            # Patrón corto sin "y_desabastecimiento"
+            f"listado_abastecimiento_{m}_{anio}.pdf",
+            # Patrón con "resumen" (algunos PDFs de 2026)
+            f"resumen_abastecimiento_medicamentos_{m}_{anio}.pdf",
+            f"resumen_seguimiento_abastecimiento_{m}_{anio}.pdf",
+            # Variantes con "de_" entre mes y año
+            f"listado_abastecimiento_{m}_de_{anio}.pdf",
+            f"listado_abastecimiento_y_desabastecimiento_{m}_de_{anio}.pdf",
+            # Patrón con fecha en nombre (DD_MM_AAAA al inicio)
+            f"listado_seguimiento_abastecimiento_medicamentos_{m}_{anio}.pdf",
+        ]
+        for nombre in patrones:
+            url = INVIMA_ATTACH_BASE + nombre
+            if url not in vistos:
+                vistos.add(url)
+                candidatas.append({"url": url, "filename": nombre})
+
+        # Retroceder un mes
+        mes -= 1
+        if mes == 0:
+            mes = 12
+            anio -= 1
+
+    return candidatas
+
+
+def _probar_url_existe(url: str, timeout: int = 10) -> bool:
+    """
+    HEAD request para verificar si un PDF existe en el servidor INVIMA.
+    No sigue redirects: INVIMA devuelve 301 para paths inexistentes (redirect loop),
+    así que cualquier 301 se trata como "no encontrado".
+    Solo acepta 200 como confirmación de existencia.
+    """
+    try:
+        import httpx
+        with httpx.Client(follow_redirects=False, timeout=timeout) as c:
+            r = c.head(url, headers=HEADERS)
+            if r.status_code == 200:
+                ct = r.headers.get("content-type", "").lower()
+                return "pdf" in ct or "octet-stream" in ct
+            return False
+    except Exception:
+        return False
+
+
 def scrape_urls_invima(timeout: int = 20) -> list[dict]:
     """
     Descarga la página INVIMA y extrae URLs de PDFs de listados de abastecimiento.
@@ -150,6 +261,7 @@ def scrape_urls_invima(timeout: int = 20) -> list[dict]:
 
     results: list[dict] = []
     seen_urls: set[str] = set()
+    biblioteca_pendientes: list[dict] = []  # /biblioteca/ links to resolve in second pass
 
     for link in parser.links:
         url  = link["url"].strip()
@@ -164,13 +276,37 @@ def scrape_urls_invima(timeout: int = 20) -> list[dict]:
         elif not url.startswith("http"):
             url = urljoin(INVIMA_PAGE, url)
 
-        if not _es_pdf_listado(url, text):
+        if url in seen_urls:
             continue
 
-        seen_urls.add(url)
-        filename = urlparse(url).path.split("/")[-1]
-        results.append({"url": url, "filename": filename})
-        logger.info("  Enlace PDF: %s", filename)
+        if _es_pdf_listado(url, text):
+            seen_urls.add(url)
+            filename = urlparse(url).path.split("/")[-1]
+            results.append({"url": url, "filename": filename})
+            logger.info("  Enlace PDF directo: %s", filename)
+        elif _es_link_biblioteca_listado(url, text):
+            seen_urls.add(url)
+            biblioteca_pendientes.append({"url": url, "text": text})
+
+    # Segunda pasada: resolver links /biblioteca/ (estructura usada por INVIMA desde oct 2025)
+    if biblioteca_pendientes:
+        logger.info("Resolviendo %d enlace(s) /biblioteca/ ...", len(biblioteca_pendientes))
+        try:
+            import httpx
+            with httpx.Client(follow_redirects=True, timeout=timeout) as bib_client:
+                for bib in biblioteca_pendientes:
+                    download_url = _resolver_url_descarga_biblioteca(
+                        bib["url"], bib_client, timeout
+                    )
+                    if download_url and download_url not in seen_urls:
+                        seen_urls.add(download_url)
+                        slug = urlparse(bib["url"]).path.split("/")[-1]
+                        filename = slug if slug.endswith(".pdf") else slug + ".pdf"
+                        results.append({"url": download_url, "filename": filename})
+                        logger.info("  Biblioteca→descarga: %s → %s", filename, download_url)
+                    time.sleep(0.3)
+        except ImportError:
+            logger.warning("httpx no disponible — no se pueden resolver links /biblioteca/")
 
     logger.info("Total PDFs encontrados en página: %d", len(results))
     return results
@@ -303,11 +439,28 @@ def verificar_y_actualizar(
         "meses_nuevos": [],
     }
 
-    # 1. Obtener URLs disponibles
+    # 1. Obtener URLs disponibles desde la página web
     pdfs_web = scrape_urls_invima()
+
+    # 1b. Fallback: probar URLs candidatas construidas para los últimos 3 meses.
+    # Cubre el caso donde INVIMA publicó el PDF pero no actualizó el enlace en su página.
+    ya_procesados_pre = meses_en_db(db_path)
+    candidatas = _candidatas_recientes(meses_atras=3)
+    urls_web   = {p["url"] for p in pdfs_web}
+    for cand in candidatas:
+        if cand["url"] in urls_web:
+            continue  # ya está en la lista principal
+        # Solo probamos HEAD si el mes candidato no está en DB (evita HEAD requests innecesarios)
+        # No podemos saber el mes sin descargar el PDF, así que probamos todas las candidatas
+        # que no están ya en la lista web
+        if _probar_url_existe(cand["url"]):
+            logger.info("  Candidata encontrada (fuera de la página web): %s", cand["filename"])
+            pdfs_web.append(cand)
+            urls_web.add(cand["url"])
+
     resultado["pdfs_encontrados"] = len(pdfs_web)
     if not pdfs_web:
-        logger.warning("No se encontraron PDFs en la página INVIMA.")
+        logger.warning("No se encontraron PDFs en la página INVIMA ni en URLs candidatas.")
         return resultado
 
     # 2. Meses ya presentes en DB

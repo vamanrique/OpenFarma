@@ -1277,8 +1277,9 @@ _MESES_MAP_PARSER = {
 def inferir_mes_anio_desde_pdf(pdf_path: str | Path) -> tuple[int, int] | None:
     """
     Lee el encabezado del PDF para extraer mes y año del listado INVIMA.
-    Busca el año (202x) y nombre de mes en español en las primeras ~2000 chars.
-    Retorna (mes, anio) o None si no puede inferirlos.
+    Estrategia 1: año + nombre de mes en ventana ±200 chars (PDFs con título, formato 2024-2025).
+    Estrategia 2: fecha máxima DD/MM/AAAA en la primera página (PDFs sin título, formato 2026+).
+    Estrategia 3: fallback — mes en cualquier parte de los 2000 chars (legacy).
     """
     pdf_path = Path(pdf_path)
     try:
@@ -1288,18 +1289,20 @@ def inferir_mes_anio_desde_pdf(pdf_path: str | Path) -> tuple[int, int] | None:
             header_text += doc[page_num].get_text()
             if len(header_text) > 2000:
                 break
+        # Primera página completa para estrategia DD/MM/AAAA
+        page0_full = doc[0].get_text() if len(doc) > 0 else ""
         doc.close()
     except Exception:
         return None
 
-    # Buscar año en los primeros 2000 caracteres del texto
     header_lower = header_text[:2000].lower()
+
+    # Estrategia 1: año en texto + mes en ventana ±200 chars
     year_m = re.search(r"\b(202[0-9])\b", header_lower)
     if not year_m:
         return None
     anio = int(year_m.group(1))
 
-    # Buscar nombre de mes cerca del año (ventana ±200 chars alrededor del año)
     y_start = max(0, year_m.start() - 200)
     y_end   = min(len(header_lower), year_m.end() + 200)
     window  = header_lower[y_start:y_end]
@@ -1308,7 +1311,19 @@ def inferir_mes_anio_desde_pdf(pdf_path: str | Path) -> tuple[int, int] | None:
         if re.search(r"\b" + re.escape(mes_str) + r"\b", window):
             return mes_num, anio
 
-    # Fallback: buscar mes en todo el header sin restricción de ventana
+    # Estrategia 2: fecha máxima DD/MM/AAAA en la primera página.
+    # PDFs del formato 2026 comienzan directamente con la tabla de datos (sin título).
+    # El campo "Fecha del último seguimiento" siempre es ≤ fin del mes del informe,
+    # así que la fecha más alta encontrada indica el mes correcto.
+    dates = re.findall(r"\b(\d{2})/(\d{2})/(202[0-9])\b", page0_full.lower())
+    if dates:
+        valid = [(int(d), int(m), int(y)) for d, m, y in dates
+                 if 1 <= int(d) <= 31 and 1 <= int(m) <= 12]
+        if valid:
+            _, m_max, y_max = max(valid, key=lambda x: (x[2], x[1], x[0]))
+            return m_max, y_max
+
+    # Estrategia 3: fallback legado — mes en todo el encabezado sin restricción
     for mes_str, mes_num in sorted(_MESES_MAP_PARSER.items(), key=lambda x: -len(x[0])):
         if re.search(r"\b" + re.escape(mes_str) + r"\b", header_lower):
             return mes_num, anio
