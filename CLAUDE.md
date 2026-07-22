@@ -36,25 +36,31 @@ Deploy: Railway (auto-deploy desde main)
 
 ## Pipeline INVIMA
 
-**Tablas**: `invima_seguimiento` (17 meses: ene 2025 – may 2026, 9,795 registros tras limpieza)
+**Tablas**: `invima_seguimiento` — 18 meses modelo (ene 2025 – jun 2026) + histórico archivado (2022–2024); total 13,869 registros
 
 **Flujo de actualización**:
 1. `etl/invima_scraper.py` — descarga PDFs del portal INVIMA, infiere mes/año leyendo contenido
 2. `etl/invima_parser.py` — extrae entradas del PDF (3 secciones: MON/NO_DESAB/NO_COM) + `_limpiar_entrada()` post-proceso
 3. `app/services/invima_service.py` — cache en memoria, reconstruida al arrancar; indexada por ATC7 y ATC5
-4. Background task `_loop_viernes_invima()` en `main.py` — verifica PDFs nuevos cada 6h, procesa solo viernes
-5. Cloud trigger `trig_01YUczECNbarwSQfQu9ew4hr` (cron `0 14 * * 5`) — disparo adicional vía Claude Code Remote
+4. Background task `_loop_invima()` en `main.py` — verifica PDFs nuevos cada 24 h; sleep inicial 30 min al arrancar
+
+**Scraper — formato INVIMA (2026-07-20)**:
+- PDFs hasta sep 2025: links directos `/invima_website/static/attachments/*.pdf` en la página de desabastecimientos
+- PDFs desde oct 2025: INVIMA migró a portal `/biblioteca/`. El scraper hace una segunda pasada para seguir esos links y extraer la URL real `/biblioteca/download/N`
+- `_probar_url_existe()` usa `follow_redirects=False` — INVIMA devuelve 301 para paths inexistentes (loop infinito si se siguen redirects)
 
 **Parser — casos edge conocidos**:
 - `_limpiar_entrada()` separa ATC pegado al nombre (`CICLOFOSFAMIDAL01AA01` → `CICLOFOSFAMIDA` + ATC) y descarta texto de pie de tabla
 - Algunos campos `forma`/`concentracion` quedan fragmentados en entradas largas (ej: ALENDRONATO forma="A ACIDO ALENDRONICO") — artefacto del layout PDF, no bloquea funcionalidad
-- Para re-parsear un PDF manualmente: `python actualizar_invima.py --retrain`
+- PDFs de 2026 **no tienen título** — empiezan directamente con la tabla de datos. `inferir_mes_anio_desde_pdf()` usa Estrategia 2: fecha máxima DD/MM/AAAA en página 0 (siempre ≤ fin del mes del informe); el fallback anterior leía "septiembre" de proyecciones UMD en lugar del mes real
+- Para re-parsear un PDF manualmente: `python actualizar_invima.py` (sin `--retrain`)
 
 ## Modelo ML — predicción de desabastecimiento
 
 **Archivo**: `backend/data/modelo_rf.pkl`
 **Tipo**: `CalibratedClassifierCV` (Platt scaling) sobre `RandomForestClassifier` (scikit-learn 1.9.0)
 **Métricas actuales** (2026-07-13, split temporal honesto): ROC-AUC **0.8374** | Avg Precision **0.1707**
+**Nota**: el modelo NO fue reentrenado con datos de jun 2026 (revertido para consistencia con documentación del concurso). El pkl del 2026-07-13 es la versión canónica. Si se reentrena con los 18 meses disponibles, el split temporal cambia a abr–jun 2026 como test.
 
 ### ¿Qué predice?
 
@@ -62,7 +68,7 @@ Para cada medicamento del CUM (~52,000 presentaciones), asigna una probabilidad 
 
 ### Cómo aprendió (estrategia temporal)
 
-El historial INVIMA tiene 17 meses (ene 2025 – may 2026). Para evitar data leakage, el entrenamiento genera **una fila por (principio_activo_ATC7 × mes_target)**:
+El historial INVIMA relevante para el modelo son 17 meses (ene 2025 – may 2026) con el pkl actual; la DB ya tiene 18 meses (hasta jun 2026). Para evitar data leakage, el entrenamiento genera **una fila por (principio_activo_ATC7 × mes_target)**:
 
 - **Features**: todo lo observable *antes* del mes target (historial de meses anteriores + estructura CUM)
 - **Target (y=1)**: ese ATC aparece como DESABASTECIDO o EN_RIESGO en INVIMA en el mes target
@@ -102,17 +108,19 @@ Escala de severidad: 0=sin alerta, 1=descontinuado, 2=no comercializado, 3=en mo
 
 ### Por qué las métricas son lo que son
 
-- **ROC-AUC 0.87**: buena discriminación. Si tomas un medicamento desabastecido y uno sin problema al azar, el modelo le asigna mayor probabilidad al correcto el 87% de las veces.
+- **ROC-AUC 0.8374**: buena discriminación. Si tomas un medicamento desabastecido y uno sin problema al azar, el modelo le asigna mayor probabilidad al correcto el 83.7% de las veces.
 - **Avg Precision 0.17**: parece baja, pero el test tiene solo 1.6% de positivos (real imbalance). Es difícil tener alta precisión sin muchas falsas alarmas. Es útil como sistema de alerta temprana, no oráculo definitivo.
 - **Antes era ROC-AUC 1.000**: con split aleatorio, el mismo ATC aparecía en train (mes 3) y test (mes 8). Los desabastecimientos duran meses — `invima_sev_actual` del mes anterior era casi idéntico al target. Data leakage trivial.
 
 ### Reentrenar
 
 ```bash
-# Desde la raíz del repo (no desde backend/)
-.venv/Scripts/python.exe retrain_invima.py --db openfarma.db
-# Luego commitear backend/data/modelo_rf.pkl
+# Desde backend/ (el script está ahí, no en la raíz)
+cd backend
+python retrain_invima.py --db openfarma.db
+# Luego WAL checkpoint + commitear backend/data/modelo_rf.pkl
 ```
+**Precaución concurso**: el README y model_card documentan 0.8374/0.1707. Si se reentrena, actualizar también esos documentos antes de pushear.
 
 ## Base de datos: grupos_equivalencia
 
